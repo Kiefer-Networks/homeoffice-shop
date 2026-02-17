@@ -32,6 +32,12 @@ class HiBobClient:
                 params={"showInactive": "false", "humanReadable": "REPLACE"},
             )
             resp.raise_for_status()
+            content_type = resp.headers.get("content-type", "")
+            if "application/json" not in content_type:
+                raise RuntimeError(
+                    f"HiBob API returned unexpected content-type: {content_type} "
+                    f"(status {resp.status_code}). Check your HIBOB_API_KEY credentials."
+                )
             data = resp.json()
 
         employees = []
