@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { adminApi } from '@/services/adminApi'
@@ -233,113 +234,117 @@ export function AdminEmployeesPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-md border border-[hsl(var(--border))] overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
-              <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                <SortHeader label="Name" sortKey="name_asc" currentSort={sort} onSort={setSort} />
-              </th>
-              <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                <SortHeader label="Department" sortKey="department" currentSort={sort} onSort={setSort} />
-              </th>
-              <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Role</th>
-              <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                <SortHeader label="Start Date" sortKey="start_date" currentSort={sort} onSort={setSort} />
-              </th>
-              <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                <SortHeader label="Budget / Spent" sortKey="budget" currentSort={sort} onSort={setSort} />
-              </th>
-              <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Status</th>
-              <th className="text-right px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.5)]">
-                {/* Avatar + Name */}
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar user={u} />
-                    <div>
-                      <div className="font-medium">{u.display_name}</div>
-                      <div className="text-xs text-[hsl(var(--muted-foreground))]">{u.email}</div>
-                    </div>
-                  </div>
-                </td>
-                {/* Department */}
-                <td className="px-4 py-3">{u.department || '—'}</td>
-                {/* Role */}
-                <td className="px-4 py-3">
-                  <Badge variant={u.role === 'admin' ? 'default' : 'secondary'}>{u.role}</Badge>
-                </td>
-                {/* Start Date */}
-                <td className="px-4 py-3">{u.start_date ? formatDate(u.start_date) : '—'}</td>
-                {/* Budget / Spent */}
-                <td className="px-4 py-3">
-                  <div>{formatCents(u.total_budget_cents)}</div>
-                  <div className="text-xs text-[hsl(var(--muted-foreground))]">
-                    Spent: {formatCents(u.cached_spent_cents)}
-                  </div>
-                </td>
-                {/* Status */}
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-1">
-                    <Badge variant={u.is_active ? 'success' : 'destructive'}>
-                      {u.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
-                    {u.probation_override && <Badge variant="warning">Early Access</Badge>}
-                  </div>
-                </td>
-                {/* Actions */}
-                <td className="px-4 py-3 text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button size="sm" variant="outline" onClick={() => toggleRole(u)}>
-                      {u.role === 'admin' ? <ShieldOff className="h-3 w-3 mr-1" /> : <Shield className="h-3 w-3 mr-1" />}
-                      {u.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => toggleProbation(u)}>
-                      {u.probation_override ? 'Revoke EA' : 'Grant EA'}
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {users.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-[hsl(var(--muted-foreground))]">
-                  No employees found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
+                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
+                    <SortHeader label="Name" sortKey="name_asc" currentSort={sort} onSort={setSort} />
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
+                    <SortHeader label="Department" sortKey="department" currentSort={sort} onSort={setSort} />
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Role</th>
+                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
+                    <SortHeader label="Start Date" sortKey="start_date" currentSort={sort} onSort={setSort} />
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
+                    <SortHeader label="Budget / Spent" sortKey="budget" currentSort={sort} onSort={setSort} />
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Status</th>
+                  <th className="text-right px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr key={u.id} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.5)]">
+                    {/* Avatar + Name */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar user={u} />
+                        <div>
+                          <div className="font-medium">{u.display_name}</div>
+                          <div className="text-xs text-[hsl(var(--muted-foreground))]">{u.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    {/* Department */}
+                    <td className="px-4 py-3">{u.department || '—'}</td>
+                    {/* Role */}
+                    <td className="px-4 py-3">
+                      <Badge variant={u.role === 'admin' ? 'default' : 'secondary'}>{u.role}</Badge>
+                    </td>
+                    {/* Start Date */}
+                    <td className="px-4 py-3">{u.start_date ? formatDate(u.start_date) : '—'}</td>
+                    {/* Budget / Spent */}
+                    <td className="px-4 py-3">
+                      <div>{formatCents(u.total_budget_cents)}</div>
+                      <div className="text-xs text-[hsl(var(--muted-foreground))]">
+                        Spent: {formatCents(u.cached_spent_cents)}
+                      </div>
+                    </td>
+                    {/* Status */}
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant={u.is_active ? 'success' : 'destructive'}>
+                          {u.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                        {u.probation_override && <Badge variant="warning">Early Access</Badge>}
+                      </div>
+                    </td>
+                    {/* Actions */}
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="outline" onClick={() => toggleRole(u)}>
+                          {u.role === 'admin' ? <ShieldOff className="h-3 w-3 mr-1" /> : <Shield className="h-3 w-3 mr-1" />}
+                          {u.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => toggleProbation(u)}>
+                          {u.probation_override ? 'Revoke EA' : 'Grant EA'}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {users.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-[hsl(var(--muted-foreground))]">
+                      No employees found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-[hsl(var(--muted-foreground))]">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-[hsl(var(--border))]">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-[hsl(var(--muted-foreground))]">
+                Page {page} of {totalPages}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
