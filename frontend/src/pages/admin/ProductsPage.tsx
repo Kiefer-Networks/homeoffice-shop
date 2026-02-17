@@ -8,7 +8,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { adminApi } from '@/services/adminApi'
 import { productApi } from '@/services/productApi'
 import { formatCents } from '@/lib/utils'
-import { Plus, Search, RefreshCcw, Loader2 } from 'lucide-react'
+import { Plus, Search, RefreshCcw, Loader2, ChevronDown, ChevronUp, Link } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import type { Product, Category } from '@/types'
 
@@ -28,11 +28,42 @@ export function AdminProductsPage() {
   const [search, setSearch] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState({ name: '', category_id: '', price_cents: 0, external_url: '', amazon_asin: '', brand: '', description: '' })
+  const [amazonUrl, setAmazonUrl] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<AmazonSearchResult[]>([])
   const [searching, setSearching] = useState(false)
   const [loadingProduct, setLoadingProduct] = useState(false)
+  const [showKeywordSearch, setShowKeywordSearch] = useState(false)
   const { addToast } = useUiStore()
+
+  const extractAsin = (url: string): string | null => {
+    const match = url.match(/\/dp\/([A-Z0-9]{10})/) || url.match(/\/gp\/product\/([A-Z0-9]{10})/)
+    return match ? match[1] : null
+  }
+
+  const handleAmazonUrl = async (url: string) => {
+    setAmazonUrl(url)
+    const asin = extractAsin(url)
+    if (!asin) return
+    setLoadingProduct(true)
+    try {
+      const { data } = await adminApi.amazonProduct(asin)
+      setForm(f => ({
+        ...f,
+        name: data.name || f.name,
+        brand: data.brand || f.brand,
+        description: data.description || (data.feature_bullets?.length ? data.feature_bullets.join('\n') : '') || f.description,
+        price_cents: data.price_cents || f.price_cents,
+        amazon_asin: asin,
+        external_url: data.url || f.external_url,
+      }))
+      addToast({ title: 'Product data loaded from URL' })
+    } catch {
+      addToast({ title: 'Failed to load product from URL', variant: 'destructive' })
+    } finally {
+      setLoadingProduct(false)
+    }
+  }
 
   useEffect(() => {
     const params = new URLSearchParams()
@@ -91,8 +122,10 @@ export function AdminProductsPage() {
       })
       setShowCreate(false)
       setForm({ name: '', category_id: '', price_cents: 0, external_url: '', amazon_asin: '', brand: '', description: '' })
+      setAmazonUrl('')
       setSearchResults([])
       setSearchQuery('')
+      setShowKeywordSearch(false)
       const params = new URLSearchParams(); params.set('per_page', '100')
       productApi.search(params).then(({ data }) => setProducts(data.items))
       addToast({ title: 'Product created' })
@@ -164,36 +197,53 @@ export function AdminProductsPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Add Product</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="flex gap-2">
-              <Input placeholder="Search Amazon (EAN, name, etc.)" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAmazonSearch()} />
-              <Button variant="outline" onClick={handleAmazonSearch} disabled={searching}>
-                {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
-              </Button>
+            <div className="relative">
+              <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input placeholder="Amazon URL einfügen" value={amazonUrl}
+                onChange={(e) => handleAmazonUrl(e.target.value)}
+                className="pl-10" />
             </div>
-
-            {searchResults.length > 0 && (
-              <div className="border rounded-md max-h-48 overflow-y-auto">
-                {searchResults.map((r) => (
-                  <button key={r.asin} onClick={() => handleSelectResult(r)} disabled={loadingProduct}
-                    className="w-full flex items-center gap-3 p-2 hover:bg-[hsl(var(--muted))] text-left border-b last:border-b-0">
-                    {r.image_url && <img src={r.image_url} alt="" className="w-10 h-10 object-contain shrink-0" />}
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium truncate">{r.name}</div>
-                      <div className="text-xs text-[hsl(var(--muted-foreground))]">
-                        ASIN: {r.asin} {r.price_cents > 0 && `| ${formatCents(r.price_cents)}`}
-                        {r.rating && ` | ${r.rating}*`}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
 
             {loadingProduct && (
               <div className="flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))]">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading product details...
               </div>
+            )}
+
+            <button type="button" onClick={() => setShowKeywordSearch(!showKeywordSearch)}
+              className="flex items-center gap-1 text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
+              {showKeywordSearch ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              Search Amazon by keyword
+            </button>
+
+            {showKeywordSearch && (
+              <>
+                <div className="flex gap-2">
+                  <Input placeholder="Search Amazon (EAN, name, etc.)" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAmazonSearch()} />
+                  <Button variant="outline" onClick={handleAmazonSearch} disabled={searching}>
+                    {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
+                  </Button>
+                </div>
+
+                {searchResults.length > 0 && (
+                  <div className="border rounded-md max-h-48 overflow-y-auto">
+                    {searchResults.map((r) => (
+                      <button key={r.asin} onClick={() => handleSelectResult(r)} disabled={loadingProduct}
+                        className="w-full flex items-center gap-3 p-2 hover:bg-[hsl(var(--muted))] text-left border-b last:border-b-0">
+                        {r.image_url && <img src={r.image_url} alt="" className="w-10 h-10 object-contain shrink-0" />}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium truncate">{r.name}</div>
+                          <div className="text-xs text-[hsl(var(--muted-foreground))]">
+                            ASIN: {r.asin} {r.price_cents > 0 && `| ${formatCents(r.price_cents)}`}
+                            {r.rating && ` | ${r.rating}*`}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
 
             <Input placeholder="Product Name *" value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />

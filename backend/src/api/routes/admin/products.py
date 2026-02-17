@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from uuid import UUID
 
@@ -13,6 +14,8 @@ from src.services.image_service import download_and_store_product_images
 from src.models.dto.product import ProductCreate, ProductUpdate
 from src.models.orm.product import Product
 from src.models.orm.user import User
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/products", tags=["admin-products"])
 
@@ -46,6 +49,27 @@ async def create_product(
     )
     db.add(product)
     await db.flush()
+
+    if product.amazon_asin:
+        try:
+            client = AmazonClient()
+            amazon_data = await client.get_product(product.amazon_asin)
+            if amazon_data:
+                main_image = amazon_data.images[0] if amazon_data.images else None
+                gallery = amazon_data.images[1:] if len(amazon_data.images) > 1 else []
+
+                paths = await download_and_store_product_images(
+                    product.id, main_image, gallery, UPLOAD_DIR, product.name,
+                )
+                product.image_url = paths.main_image
+                product.image_gallery = paths.gallery
+
+                if amazon_data.specifications:
+                    product.specifications = amazon_data.specifications
+
+                await db.flush()
+        except Exception:
+            logger.exception("Failed to auto-download images for product %s", product.id)
 
     ip = request.client.host if request.client else None
     await write_audit_log(
