@@ -19,6 +19,10 @@ ALLOWED_IMAGE_HOSTS = {
     "ws-eu.amazon-adsystem.com",
 }
 
+MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB per image
+MAX_GALLERY_IMAGES = 20
+ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"}
+
 
 def _validate_image_url(url: str) -> None:
     """Validate URL to prevent SSRF attacks."""
@@ -72,12 +76,20 @@ async def download_and_store_product_images(
     main_image_path = None
     gallery_paths = []
 
+    # Limit gallery count
+    gallery_urls = gallery_urls[:MAX_GALLERY_IMAGES]
+
     async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
         if main_image_url:
             try:
                 _validate_image_url(main_image_url)
                 resp = await client.get(main_image_url)
                 resp.raise_for_status()
+                content_type = resp.headers.get("content-type", "").split(";")[0].strip()
+                if content_type and content_type not in ALLOWED_CONTENT_TYPES:
+                    raise ValueError(f"Disallowed content type: {content_type}")
+                if len(resp.content) > MAX_IMAGE_SIZE:
+                    raise ValueError(f"Image too large: {len(resp.content)} bytes")
                 ext = _get_extension(main_image_url, resp.headers.get("content-type", ""))
                 filename = f"main{ext}"
                 filepath = product_dir / filename
@@ -98,6 +110,11 @@ async def download_and_store_product_images(
                 _validate_image_url(url)
                 resp = await client.get(url)
                 resp.raise_for_status()
+                content_type = resp.headers.get("content-type", "").split(";")[0].strip()
+                if content_type and content_type not in ALLOWED_CONTENT_TYPES:
+                    raise ValueError(f"Disallowed content type: {content_type}")
+                if len(resp.content) > MAX_IMAGE_SIZE:
+                    raise ValueError(f"Image too large: {len(resp.content)} bytes")
                 ext = _get_extension(url, resp.headers.get("content-type", ""))
                 filename = f"gallery_{i}{ext}"
                 filepath = product_dir / filename

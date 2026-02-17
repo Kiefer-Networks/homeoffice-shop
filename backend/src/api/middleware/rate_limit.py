@@ -43,6 +43,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             allowed, retry_after = _limiter.is_allowed(
                 f"auth:{client_ip}", limit=10, window_seconds=300
             )
+        elif path.startswith("/api/admin"):
+            allowed, retry_after = _limiter.is_allowed(
+                f"admin:{client_ip}", limit=120, window_seconds=60
+            )
         else:
             allowed, retry_after = _limiter.is_allowed(
                 f"global:{client_ip}", limit=300, window_seconds=60

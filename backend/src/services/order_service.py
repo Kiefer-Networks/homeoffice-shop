@@ -263,6 +263,16 @@ async def get_orders(
 async def update_order_item_check(
     db: AsyncSession, order_id: UUID, order_item_id: UUID, vendor_ordered: bool
 ) -> OrderItem | None:
+    # Validate order is in a modifiable status
+    order_result = await db.execute(
+        select(Order).where(Order.id == order_id)
+    )
+    order = order_result.scalar_one_or_none()
+    if not order:
+        raise NotFoundError("Order not found")
+    if order.status not in ("pending", "ordered"):
+        raise BadRequestError("Cannot modify items on a completed order")
+
     result = await db.execute(
         select(OrderItem).where(
             OrderItem.id == order_item_id,

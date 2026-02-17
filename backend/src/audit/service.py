@@ -110,6 +110,7 @@ async def export_audit_csv(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
 ) -> str:
+    MAX_EXPORT_ROWS = 10000
     items, _ = await query_audit_logs(
         db,
         user_id=user_id,
@@ -118,7 +119,7 @@ async def export_audit_csv(
         date_from=date_from,
         date_to=date_to,
         page=1,
-        per_page=5000,
+        per_page=MAX_EXPORT_ROWS,
     )
 
     output = io.StringIO()
@@ -137,9 +138,12 @@ async def export_audit_csv(
     return output.getvalue()
 
 
+AUDIT_RETENTION_MONTHS = 12
+
+
 async def ensure_audit_partitions(db: AsyncSession) -> None:
     """Create partitions for current month + next 2 months.
-    Drop partitions older than 12 months.
+    Drop partitions older than AUDIT_RETENTION_MONTHS.
     """
     now = datetime.now(timezone.utc)
 
@@ -167,7 +171,7 @@ async def ensure_audit_partitions(db: AsyncSession) -> None:
             await db.execute(create_sql)
             logger.info("Created audit partition: %s", partition_name)
 
-    for month_offset in range(13, 25):
+    for month_offset in range(AUDIT_RETENTION_MONTHS + 1, AUDIT_RETENTION_MONTHS + 13):
         old_month = now - relativedelta(months=month_offset)
         partition_name = f"audit_log_{old_month.year}_{old_month.month:02d}"
 

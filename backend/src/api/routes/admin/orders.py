@@ -6,13 +6,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
-from src.core.exceptions import NotFoundError
+from src.core.exceptions import BadRequestError, NotFoundError
+from src.models.dto import DetailResponse
 from src.models.dto.order import OrderItemCheckUpdate, OrderListResponse, OrderResponse, OrderStatusUpdate
 from src.models.orm.user import User
 from src.notifications.service import notify_admins_slack, notify_user_email
 from src.services import order_service
 
 router = APIRouter(prefix="/orders", tags=["admin-orders"])
+
+
+VALID_STATUSES = {"pending", "ordered", "delivered", "rejected", "cancelled"}
 
 
 @router.get("", response_model=OrderListResponse)
@@ -23,6 +27,8 @@ async def list_all_orders(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
+    if status and status not in VALID_STATUSES:
+        raise BadRequestError(f"Invalid status. Must be one of: {', '.join(sorted(VALID_STATUSES))}")
     items, total = await order_service.get_orders(
         db, status=status, page=page, per_page=per_page
     )

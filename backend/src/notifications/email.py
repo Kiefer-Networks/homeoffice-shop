@@ -13,6 +13,12 @@ logger = logging.getLogger(__name__)
 _template_dir = Path(__file__).parent / "templates"
 _jinja_env = Environment(loader=FileSystemLoader(str(_template_dir)), autoescape=True)
 
+ALLOWED_TEMPLATES = {
+    "order_status_changed.html",
+    "order_created.html",
+    "hibob_sync_complete.html",
+}
+
 
 async def send_email(
     to: str,
@@ -22,6 +28,10 @@ async def send_email(
 ) -> bool:
     if not settings.smtp_host:
         logger.debug("SMTP not configured, skipping email to %s", to)
+        return False
+
+    if template_name not in ALLOWED_TEMPLATES:
+        logger.error("Blocked email with disallowed template: %s", template_name)
         return False
 
     try:

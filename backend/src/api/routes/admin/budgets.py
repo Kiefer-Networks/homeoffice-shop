@@ -17,7 +17,6 @@ router = APIRouter(prefix="/budgets", tags=["admin-budgets"])
 
 
 @router.get("/adjustments")
-async def list_adjustments(
     user_id: UUID | None = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=100),

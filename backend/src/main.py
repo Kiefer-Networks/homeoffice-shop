@@ -38,7 +38,8 @@ logger = logging.getLogger(__name__)
 try:
     settings.validate_secrets()
 except ValueError as e:
-    logger.warning("Secret validation: %s", e)
+    logger.critical("Secret validation failed: %s", e)
+    raise SystemExit(f"FATAL: {e}") from e
 
 
 @asynccontextmanager

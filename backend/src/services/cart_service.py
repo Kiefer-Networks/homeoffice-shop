@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.exceptions import BadRequestError
 from src.models.orm.cart_item import CartItem
 from src.models.orm.product import Product
 from src.services.budget_service import get_available_budget_cents
@@ -77,7 +78,6 @@ async def add_to_cart(
 ) -> CartItem:
     product = await db.get(Product, product_id)
     if not product or not product.is_active:
-        from src.core.exceptions import BadRequestError
         raise BadRequestError("Product not available")
 
     existing = await db.execute(
@@ -91,14 +91,12 @@ async def add_to_cart(
     if cart_item:
         new_qty = cart_item.quantity + quantity
         if new_qty > product.max_quantity_per_user:
-            from src.core.exceptions import BadRequestError
             raise BadRequestError(
                 f"Maximum quantity per user is {product.max_quantity_per_user}"
             )
         cart_item.quantity = new_qty
     else:
         if quantity > product.max_quantity_per_user:
-            from src.core.exceptions import BadRequestError
             raise BadRequestError(
                 f"Maximum quantity per user is {product.max_quantity_per_user}"
             )
@@ -133,7 +131,6 @@ async def update_cart_item(
 
     product = await db.get(Product, product_id)
     if product and quantity > product.max_quantity_per_user:
-        from src.core.exceptions import BadRequestError
         raise BadRequestError(
             f"Maximum quantity per user is {product.max_quantity_per_user}"
         )

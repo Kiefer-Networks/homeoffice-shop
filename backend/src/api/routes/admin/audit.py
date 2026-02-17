@@ -1,13 +1,13 @@
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
-from src.audit.service import export_audit_csv, query_audit_logs
+from src.audit.service import export_audit_csv, query_audit_logs, write_audit_log
 from src.models.orm.user import User
 
 router = APIRouter(prefix="/audit", tags=["admin-audit"])
@@ -42,6 +42,7 @@ async def list_audit_logs(
 
 @router.get("/export")
 async def export_audit_logs(
+    request: Request,
     user_id: UUID | None = None,
     action: str | None = None,
     resource_type: str | None = None,
@@ -57,6 +58,14 @@ async def export_audit_logs(
         resource_type=resource_type,
         date_from=date_from,
         date_to=date_to,
+    )
+
+    ip = request.client.host if request.client else None
+    await write_audit_log(
+        db, user_id=admin.id, action="admin.audit.exported",
+        resource_type="audit_log",
+        details={"filters": {"user_id": str(user_id) if user_id else None, "action": action, "resource_type": resource_type}},
+        ip_address=ip,
     )
 
     return StreamingResponse(
