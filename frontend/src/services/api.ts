@@ -2,7 +2,7 @@ import axios from 'axios'
 import { getAccessToken, setAccessToken } from '@/lib/token'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  baseURL: import.meta.env.VITE_API_URL || '',
   withCredentials: true,
 })
 
@@ -26,7 +26,7 @@ api.interceptors.response.use(
       error.config._retry = true
       try {
         const { data } = await axios.post(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/auth/refresh`,
+          `${import.meta.env.VITE_API_URL || ''}/api/auth/refresh`,
           {},
           { withCredentials: true }
         )

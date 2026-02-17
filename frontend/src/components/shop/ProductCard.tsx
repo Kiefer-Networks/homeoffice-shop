@@ -29,7 +29,7 @@ export function ProductCard({ product, onRefreshCart }: Props) {
   }
 
   const imageUrl = product.image_url
-    ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${product.image_url}`
+    ? `${import.meta.env.VITE_API_URL || ''}${product.image_url}`
     : null
 
   return (
