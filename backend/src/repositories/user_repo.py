@@ -36,18 +36,48 @@ async def get_active_admins(db: AsyncSession) -> list[User]:
 
 
 async def get_all(
-    db: AsyncSession, *, page: int = 1, per_page: int = 50
+    db: AsyncSession,
+    *,
+    page: int = 1,
+    per_page: int = 50,
+    q: str | None = None,
+    department: str | None = None,
+    role: str | None = None,
+    is_active: bool | None = None,
+    sort: str = "name_asc",
 ) -> tuple[list[User], int]:
-    from sqlalchemy import func
+    from sqlalchemy import func, or_
 
-    count_result = await db.execute(select(func.count()).select_from(User))
+    base = select(User)
+
+    if q:
+        pattern = f"%{q}%"
+        base = base.where(
+            or_(User.display_name.ilike(pattern), User.email.ilike(pattern))
+        )
+    if department is not None:
+        base = base.where(User.department == department)
+    if role is not None:
+        base = base.where(User.role == role)
+    if is_active is not None:
+        base = base.where(User.is_active == is_active)
+
+    sort_map = {
+        "name_asc": User.display_name.asc(),
+        "name_desc": User.display_name.desc(),
+        "department": User.department.asc(),
+        "start_date": User.start_date.desc(),
+        "budget": User.total_budget_cents.desc(),
+    }
+    order = sort_map.get(sort, User.display_name.asc())
+
+    count_result = await db.execute(
+        select(func.count()).select_from(base.subquery())
+    )
     total = count_result.scalar() or 0
 
     result = await db.execute(
-        select(User)
-        .order_by(User.display_name)
-        .offset((page - 1) * per_page)
-        .limit(per_page)
+        base.order_by(order).offset((page - 1) * per_page).limit(per_page)
     )
     return list(result.scalars().all()), total
 

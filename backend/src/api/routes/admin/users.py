@@ -18,10 +18,24 @@ router = APIRouter(prefix="/users", tags=["admin-users"])
 async def list_users(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=100),
+    q: str | None = Query(None),
+    department: str | None = Query(None),
+    role: str | None = Query(None),
+    is_active: bool | None = Query(None),
+    sort: str = Query("name_asc"),
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    users, total = await user_repo.get_all(db, page=page, per_page=per_page)
+    users, total = await user_repo.get_all(
+        db,
+        page=page,
+        per_page=per_page,
+        q=q,
+        department=department,
+        role=role,
+        is_active=is_active,
+        sort=sort,
+    )
     return {"items": users, "total": total, "page": page, "per_page": per_page}
 
 
