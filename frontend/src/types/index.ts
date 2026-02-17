@@ -177,6 +177,16 @@ export interface NotificationPrefs {
   email_events: string[]
 }
 
+export interface AmazonSearchResult {
+  name: string
+  asin: string
+  price_cents: number
+  image_url: string | null
+  url: string | null
+  rating: number | null
+  reviews: number | null
+}
+
 export interface ProductCreateInput {
   category_id: string
   name: string

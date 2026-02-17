@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 
+export type FilterKey = 'q' | 'category' | 'brand' | 'color' | 'material' | 'priceMin' | 'priceMax' | 'sort' | 'page'
+
 interface FilterState {
   q: string
   category: string
@@ -10,7 +12,7 @@ interface FilterState {
   priceMax: string
   sort: string
   page: number
-  setFilter: (key: string, value: string | number) => void
+  setFilter: (key: FilterKey, value: string | number) => void
   resetFilters: () => void
   syncFromUrl: (params: URLSearchParams) => void
   toSearchParams: () => URLSearchParams

@@ -16,13 +16,14 @@ interface Props {
 
 export function ProductCard({ product, onRefreshCart, onShowDetail }: Props) {
   const { addToast } = useUiStore()
+  const setCartOpen = useCartStore((s) => s.setOpen)
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation()
     try {
       await cartApi.addItem(product.id)
       onRefreshCart()
-      useCartStore.getState().setOpen(true)
+      setCartOpen(true)
       addToast({ title: 'Added to cart', description: product.name })
     } catch (err: unknown) {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })

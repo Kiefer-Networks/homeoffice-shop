@@ -13,17 +13,7 @@ import {
   Trash2, Pencil, Eye, EyeOff,
 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
-import type { Product, Category } from '@/types'
-
-interface AmazonSearchResult {
-  name: string
-  asin: string
-  price_cents: number
-  image_url: string | null
-  url: string | null
-  rating: number | null
-  reviews: number | null
-}
+import type { Product, Category, AmazonSearchResult } from '@/types'
 
 const PER_PAGE = 20
 

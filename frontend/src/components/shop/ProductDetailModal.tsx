@@ -20,6 +20,7 @@ interface Props {
 export function ProductDetailModal({ product, open, onClose, onRefreshCart }: Props) {
   const [currentImage, setCurrentImage] = useState(0)
   const { addToast } = useUiStore()
+  const setCartOpen = useCartStore((s) => s.setOpen)
 
   useEffect(() => { setCurrentImage(0) }, [product?.id])
 
@@ -35,7 +36,7 @@ export function ProductDetailModal({ product, open, onClose, onRefreshCart }: Pr
     try {
       await cartApi.addItem(product.id)
       onRefreshCart()
-      useCartStore.getState().setOpen(true)
+      setCartOpen(true)
       onClose()
       addToast({ title: 'Added to cart', description: product.name })
     } catch (err: unknown) {

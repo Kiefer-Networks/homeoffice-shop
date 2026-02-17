@@ -13,8 +13,8 @@ export const adminApi = {
   deactivateProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/deactivate`),
   deleteProduct: (id: string) => api.delete(`/api/admin/products/${id}`),
   redownloadImages: (id: string) => api.post(`/api/admin/products/${id}/redownload-images`),
-  amazonSearch: (query: string) => api.post('/api/admin/amazon/search', { query }),
-  amazonProduct: (asin: string) => api.post('/api/admin/amazon/product', { asin }),
+  amazonSearch: (query: string) => api.get('/api/admin/amazon/search', { params: { query } }),
+  amazonProduct: (asin: string) => api.get('/api/admin/amazon/product', { params: { asin } }),
 
   // Categories
   listCategories: () => api.get<Category[]>('/api/admin/categories'),
