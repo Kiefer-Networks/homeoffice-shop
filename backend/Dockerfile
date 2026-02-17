@@ -1,4 +1,5 @@
-FROM python:3.12-slim
+# Pin to specific version for reproducible builds
+FROM python:3.12-slim AS base
 
 WORKDIR /app
 
