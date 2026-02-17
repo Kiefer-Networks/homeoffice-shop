@@ -94,8 +94,12 @@ async def reorder_categories(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
+    ids = [item.id for item in items]
+    result = await db.execute(select(Category).where(Category.id.in_(ids)))
+    categories_map = {c.id: c for c in result.scalars().all()}
+
     for item in items:
-        category = await db.get(Category, item.id)
+        category = categories_map.get(item.id)
         if not category:
             raise NotFoundError(f"Category {item.id} not found")
         category.sort_order = item.sort_order

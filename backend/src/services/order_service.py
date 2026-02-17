@@ -131,6 +131,36 @@ async def transition_order(
     return order
 
 
+def _order_item_to_dict(item: OrderItem, product_name: str | None) -> dict:
+    return {
+        "id": item.id,
+        "product_id": item.product_id,
+        "product_name": product_name,
+        "quantity": item.quantity,
+        "price_cents": item.price_cents,
+        "external_url": item.external_url,
+        "vendor_ordered": item.vendor_ordered,
+    }
+
+
+def _order_to_dict(order: Order, user: User | None, items: list[dict]) -> dict:
+    return {
+        "id": order.id,
+        "user_id": order.user_id,
+        "user_email": user.email if user else None,
+        "user_display_name": user.display_name if user else None,
+        "status": order.status,
+        "total_cents": order.total_cents,
+        "delivery_note": order.delivery_note,
+        "admin_note": order.admin_note,
+        "reviewed_by": order.reviewed_by,
+        "reviewed_at": order.reviewed_at,
+        "items": items,
+        "created_at": order.created_at,
+        "updated_at": order.updated_at,
+    }
+
+
 async def get_order_with_items(db: AsyncSession, order_id: UUID) -> dict | None:
     result = await db.execute(
         select(Order).where(Order.id == order_id)
@@ -147,33 +177,12 @@ async def get_order_with_items(db: AsyncSession, order_id: UUID) -> dict | None:
 
     user = await db.get(User, order.user_id)
 
-    items = []
-    for item, product_name in items_result.all():
-        items.append({
-            "id": item.id,
-            "product_id": item.product_id,
-            "product_name": product_name,
-            "quantity": item.quantity,
-            "price_cents": item.price_cents,
-            "external_url": item.external_url,
-            "vendor_ordered": item.vendor_ordered,
-        })
+    items = [
+        _order_item_to_dict(item, product_name)
+        for item, product_name in items_result.all()
+    ]
 
-    return {
-        "id": order.id,
-        "user_id": order.user_id,
-        "user_email": user.email if user else None,
-        "user_display_name": user.display_name if user else None,
-        "status": order.status,
-        "total_cents": order.total_cents,
-        "delivery_note": order.delivery_note,
-        "admin_note": order.admin_note,
-        "reviewed_by": order.reviewed_by,
-        "reviewed_at": order.reviewed_at,
-        "items": items,
-        "created_at": order.created_at,
-        "updated_at": order.updated_at,
-    }
+    return _order_to_dict(order, user, items)
 
 
 async def get_orders(
@@ -225,37 +234,16 @@ async def get_orders(
         )
         product_names = {pid: pname for pid, pname in prod_result.all()}
 
-    items = []
+    result_list = []
     for order in orders:
         user = users_map.get(order.user_id)
-        order_items = []
-        for item in order.items:
-            order_items.append({
-                "id": item.id,
-                "product_id": item.product_id,
-                "product_name": product_names.get(item.product_id),
-                "quantity": item.quantity,
-                "price_cents": item.price_cents,
-                "external_url": item.external_url,
-                "vendor_ordered": item.vendor_ordered,
-            })
-        items.append({
-            "id": order.id,
-            "user_id": order.user_id,
-            "user_email": user.email if user else None,
-            "user_display_name": user.display_name if user else None,
-            "status": order.status,
-            "total_cents": order.total_cents,
-            "delivery_note": order.delivery_note,
-            "admin_note": order.admin_note,
-            "reviewed_by": order.reviewed_by,
-            "reviewed_at": order.reviewed_at,
-            "items": order_items,
-            "created_at": order.created_at,
-            "updated_at": order.updated_at,
-        })
+        order_items = [
+            _order_item_to_dict(item, product_names.get(item.product_id))
+            for item in order.items
+        ]
+        result_list.append(_order_to_dict(order, user, order_items))
 
-    return items, total
+    return result_list, total
 
 
 async def update_order_item_check(

@@ -16,7 +16,7 @@
         </tr>
         {% for item in items %}
         <tr>
-            <td style="padding: 8px; border-bottom: 1px solid #eee;">{{ item.name }}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">{{ item.product_name }}</td>
             <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">{{ item.quantity }}</td>
             <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">&euro;{{ "%.2f"|format(item.price_cents / 100) }}</td>
         </tr>

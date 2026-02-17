@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin
@@ -6,9 +6,7 @@ from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.integrations.amazon.client import AmazonClient
 from src.models.dto.product import (
-    AmazonProductRequest,
     AmazonProductResponse,
-    AmazonSearchRequest,
     AmazonSearchResponse,
 )
 from src.models.orm.user import User
@@ -16,13 +14,13 @@ from src.models.orm.user import User
 router = APIRouter(prefix="/amazon", tags=["admin-amazon"])
 
 
-@router.post("/search", response_model=list[AmazonSearchResponse])
+@router.get("/search", response_model=list[AmazonSearchResponse])
 async def amazon_search(
-    body: AmazonSearchRequest,
+    query: str = Query(min_length=1, max_length=200),
     admin: User = Depends(require_admin),
 ):
     client = AmazonClient()
-    results = await client.search(body.query)
+    results = await client.search(query)
     return [
         AmazonSearchResponse(
             name=r.name,
@@ -37,22 +35,22 @@ async def amazon_search(
     ]
 
 
-@router.post("/product", response_model=AmazonProductResponse)
+@router.get("/product", response_model=AmazonProductResponse)
 async def amazon_product(
-    body: AmazonProductRequest,
-    request: Request,
+    asin: str = Query(min_length=10, max_length=10),
+    request: Request = None,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
     client = AmazonClient()
-    product = await client.get_product(body.asin)
+    product = await client.get_product(asin)
     if not product:
         return AmazonProductResponse(name="", description=None)
 
     ip = request.client.host if request.client else None
     await write_audit_log(
         db, user_id=admin.id, action="admin.amazon.product_lookup",
-        resource_type="amazon", details={"asin": body.asin}, ip_address=ip,
+        resource_type="amazon", details={"asin": asin}, ip_address=ip,
     )
 
     return AmazonProductResponse(
