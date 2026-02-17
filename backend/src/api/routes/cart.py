@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import get_current_user
@@ -61,7 +61,7 @@ async def update_cart_item(
     return {"detail": "Cart item updated"}
 
 
-@router.delete("/items/{product_id}", response_model=DetailResponse)
+@router.delete("/items/{product_id}", status_code=204)
 async def remove_from_cart(
     product_id: UUID,
     request: Request,
@@ -77,10 +77,10 @@ async def remove_from_cart(
             details={"product_id": str(product_id)},
             ip_address=ip,
         )
-    return {"detail": "Item removed from cart"}
+    return Response(status_code=204)
 
 
-@router.delete("", response_model=DetailResponse)
+@router.delete("", status_code=204)
 async def clear_cart(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -93,4 +93,4 @@ async def clear_cart(
         resource_type="cart", details={"items_removed": count},
         ip_address=ip,
     )
-    return {"detail": f"Cart cleared ({count} items removed)"}
+    return Response(status_code=204)

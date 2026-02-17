@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/products", tags=["admin-products"])
 
 
-@router.post("", response_model=ProductResponse)
+@router.post("", response_model=ProductResponse, status_code=201)
 async def create_product(
     body: ProductCreate,
     request: Request,
@@ -165,7 +165,7 @@ async def deactivate_product(
     return product
 
 
-@router.delete("/{product_id}", response_model=DetailResponse)
+@router.delete("/{product_id}", status_code=204)
 async def delete_product(
     product_id: UUID,
     request: Request,
@@ -186,7 +186,7 @@ async def delete_product(
         resource_type="product", resource_id=product_id,
         details={"name": product_name}, ip_address=ip,
     )
-    return {"detail": "Product deleted"}
+    return Response(status_code=204)
 
 
 @router.post("/{product_id}/redownload-images", response_model=ProductResponse)

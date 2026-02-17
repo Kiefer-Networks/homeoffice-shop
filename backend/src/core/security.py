@@ -18,11 +18,14 @@ def create_access_token(
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.jwt_access_token_expire_minutes)
     )
+    now = datetime.now(timezone.utc)
     payload = {
         "sub": user_id,
         "email": email,
         "role": role,
         "exp": expire,
+        "iat": now,
+        "nbf": now,
         "iss": "homeoffice-shop",
         "aud": "homeoffice-shop",
         "jti": str(uuid.uuid4()),
@@ -41,9 +44,12 @@ def create_refresh_token(
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(days=settings.jwt_refresh_token_expire_days)
     )
+    now = datetime.now(timezone.utc)
     payload = {
         "sub": user_id,
         "exp": expire,
+        "iat": now,
+        "nbf": now,
         "iss": "homeoffice-shop",
         "aud": "homeoffice-shop",
         "jti": jti,

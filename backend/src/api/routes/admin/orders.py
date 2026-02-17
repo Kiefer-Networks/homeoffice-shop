@@ -89,8 +89,7 @@ async def update_order_status(
             db, event="order.cancelled",
             text=f"Order {str(order.id)[:8]} has been cancelled.",
         )
-
-    if body.status != "cancelled":
+    else:
         await notify_admins_slack(
             db, event="order.status_changed",
             text=f"Order {str(order.id)[:8]} status changed to {body.status}.",

@@ -1,6 +1,7 @@
 import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
 from pathlib import Path
 
 import aiosmtplib
@@ -39,7 +40,7 @@ async def send_email(
         html_body = template.render(**context)
 
         message = MIMEMultipart("alternative")
-        message["From"] = f"{settings.smtp_from_name} <{settings.smtp_from_address}>"
+        message["From"] = formataddr((settings.smtp_from_name, settings.smtp_from_address))
         message["To"] = to
         message["Subject"] = subject
         message.attach(MIMEText(html_body, "html"))
@@ -50,7 +51,8 @@ async def send_email(
             port=settings.smtp_port,
             username=settings.smtp_username or None,
             password=settings.smtp_password or None,
-            use_tls=settings.smtp_use_tls,
+            start_tls=settings.smtp_use_tls if settings.smtp_port == 587 else False,
+            use_tls=settings.smtp_use_tls if settings.smtp_port != 587 else False,
         )
         logger.info("Email sent to %s: %s", to, subject)
         return True

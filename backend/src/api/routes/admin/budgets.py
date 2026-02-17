@@ -17,6 +17,7 @@ router = APIRouter(prefix="/budgets", tags=["admin-budgets"])
 
 
 @router.get("/adjustments")
+async def list_adjustments(
     user_id: UUID | None = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=100),
@@ -45,7 +46,7 @@ router = APIRouter(prefix="/budgets", tags=["admin-budgets"])
     return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
-@router.post("/adjustments", response_model=BudgetAdjustmentResponse)
+@router.post("/adjustments", response_model=BudgetAdjustmentResponse, status_code=201)
 async def create_adjustment(
     body: BudgetAdjustmentCreate,
     request: Request,

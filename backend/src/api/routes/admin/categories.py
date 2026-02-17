@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,7 +28,7 @@ async def list_categories(
     return list(result.scalars().all())
 
 
-@router.post("", response_model=CategoryResponse)
+@router.post("", response_model=CategoryResponse, status_code=201)
 async def create_category(
     body: CategoryCreate,
     request: Request,
@@ -110,7 +110,7 @@ async def reorder_categories(
     return {"detail": "Categories reordered"}
 
 
-@router.delete("/{category_id}", response_model=DetailResponse)
+@router.delete("/{category_id}", status_code=204)
 async def delete_category(
     category_id: UUID,
     request: Request,
@@ -129,4 +129,4 @@ async def delete_category(
     )
 
     await db.delete(category)
-    return {"detail": "Category deleted"}
+    return Response(status_code=204)

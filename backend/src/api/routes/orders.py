@@ -40,7 +40,7 @@ async def get_my_order(
     return order_data
 
 
-@router.post("", response_model=OrderResponse)
+@router.post("", response_model=OrderResponse, status_code=201)
 async def create_order(
     body: OrderCreate,
     request: Request,

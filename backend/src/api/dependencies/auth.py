@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.database import get_db
 from src.core.exceptions import ForbiddenError, UnauthorizedError
 from src.core.security import verify_access_token
+from src.models.orm.user import User
 from src.repositories import user_repo
 
 security = HTTPBearer(auto_error=False)
@@ -16,7 +17,7 @@ async def get_current_user(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
     db: AsyncSession = Depends(get_db),
-):
+) -> User:
     if not credentials:
         raise UnauthorizedError("Missing authentication token")
 
@@ -34,8 +35,8 @@ async def get_current_user(
 
 
 async def require_admin(
-    user=Depends(get_current_user),
-):
+    user: User = Depends(get_current_user),
+) -> User:
     if user.role != "admin":
         raise ForbiddenError("Admin access required")
     return user
