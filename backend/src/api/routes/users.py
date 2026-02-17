@@ -3,13 +3,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import get_current_user
 from src.api.dependencies.database import get_db
+from src.models.dto.user import UserResponse
 from src.models.orm.user import User
 from src.services.budget_service import get_available_budget_cents
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.get("/me")
+@router.get("/me", response_model=UserResponse)
 async def get_current_user_profile(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),

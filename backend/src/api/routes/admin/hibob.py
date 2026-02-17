@@ -7,6 +7,7 @@ from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.integrations.hibob.client import HiBobClient
 from src.integrations.hibob.sync import sync_employees
+from src.models.dto.hibob import HiBobSyncLogListResponse, HiBobSyncLogResponse
 from src.models.orm.hibob_sync_log import HiBobSyncLog
 from src.models.orm.user import User
 from src.notifications.service import notify_admins_email, notify_admins_slack
@@ -14,7 +15,7 @@ from src.notifications.service import notify_admins_email, notify_admins_slack
 router = APIRouter(prefix="/hibob", tags=["admin-hibob"])
 
 
-@router.post("/sync")
+@router.post("/sync", response_model=HiBobSyncLogResponse)
 async def trigger_sync(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -57,7 +58,7 @@ async def trigger_sync(
     return log
 
 
-@router.get("/sync-log")
+@router.get("/sync-log", response_model=HiBobSyncLogListResponse)
 async def get_sync_logs(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),

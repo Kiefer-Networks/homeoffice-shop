@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
@@ -8,10 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
+from src.core.config import settings
 from src.core.exceptions import BadRequestError, NotFoundError
+from src.models.dto import DetailResponse
 from src.integrations.amazon.client import AmazonClient
 from src.services.image_service import download_and_store_product_images
-from src.models.dto.product import ProductCreate, ProductUpdate
+from src.models.dto.product import ProductCreate, ProductResponse, ProductUpdate
 from src.models.orm.product import Product
 from src.models.orm.user import User
 
@@ -19,13 +20,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/products", tags=["admin-products"])
 
-UPLOAD_DIR = Path("/app/uploads")
-if not UPLOAD_DIR.exists():
-    UPLOAD_DIR = Path("uploads")
-    UPLOAD_DIR.mkdir(exist_ok=True)
 
-
-@router.post("")
+@router.post("", response_model=ProductResponse)
 async def create_product(
     body: ProductCreate,
     request: Request,
@@ -59,7 +55,7 @@ async def create_product(
                 gallery = amazon_data.images[1:] if len(amazon_data.images) > 1 else []
 
                 paths = await download_and_store_product_images(
-                    product.id, main_image, gallery, UPLOAD_DIR, product.name,
+                    product.id, main_image, gallery, settings.upload_dir, product.name,
                 )
                 product.image_url = paths.main_image
                 product.image_gallery = paths.gallery
@@ -81,7 +77,7 @@ async def create_product(
     return product
 
 
-@router.put("/{product_id}")
+@router.put("/{product_id}", response_model=ProductResponse)
 async def update_product(
     product_id: UUID,
     body: ProductUpdate,
@@ -116,7 +112,7 @@ async def update_product(
     return product
 
 
-@router.post("/{product_id}/activate")
+@router.post("/{product_id}/activate", response_model=ProductResponse)
 async def activate_product(
     product_id: UUID,
     request: Request,
@@ -139,7 +135,7 @@ async def activate_product(
     return product
 
 
-@router.post("/{product_id}/deactivate")
+@router.post("/{product_id}/deactivate", response_model=ProductResponse)
 async def deactivate_product(
     product_id: UUID,
     request: Request,
@@ -158,6 +154,30 @@ async def deactivate_product(
         resource_type="product", resource_id=product.id, ip_address=ip,
     )
     return product
+
+
+@router.delete("/{product_id}", response_model=DetailResponse)
+async def delete_product(
+    product_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    product = await db.get(Product, product_id)
+    if not product:
+        raise NotFoundError("Product not found")
+
+    product_name = product.name
+    await db.delete(product)
+    await db.flush()
+
+    ip = request.client.host if request.client else None
+    await write_audit_log(
+        db, user_id=admin.id, action="admin.product.deleted",
+        resource_type="product", resource_id=product_id,
+        details={"name": product_name}, ip_address=ip,
+    )
+    return {"detail": "Product deleted"}
 
 
 @router.post("/{product_id}/redownload-images")
@@ -185,7 +205,7 @@ async def redownload_images(
         product.id,
         main_image,
         gallery,
-        UPLOAD_DIR,
+        settings.upload_dir,
         product.name,
     )
 

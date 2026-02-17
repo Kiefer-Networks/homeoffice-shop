@@ -8,7 +8,7 @@ from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import NotFoundError
-from src.models.dto.budget import BudgetAdjustmentCreate
+from src.models.dto.budget import BudgetAdjustmentCreate, BudgetAdjustmentResponse
 from src.models.orm.budget_adjustment import BudgetAdjustment
 from src.models.orm.user import User
 from src.services.budget_service import refresh_budget_cache
@@ -46,7 +46,7 @@ async def list_adjustments(
     return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
-@router.post("/adjustments")
+@router.post("/adjustments", response_model=BudgetAdjustmentResponse)
 async def create_adjustment(
     body: BudgetAdjustmentCreate,
     request: Request,

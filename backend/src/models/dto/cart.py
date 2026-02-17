@@ -1,15 +1,15 @@
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CartItemAdd(BaseModel):
     product_id: UUID
-    quantity: int = 1
+    quantity: int = Field(default=1, ge=1, le=100)
 
 
 class CartItemUpdate(BaseModel):
-    quantity: int
+    quantity: int = Field(ge=1, le=100)
 
 
 class CartItemResponse(BaseModel):

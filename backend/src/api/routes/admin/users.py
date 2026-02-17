@@ -6,15 +6,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
-from src.core.exceptions import BadRequestError, NotFoundError
-from src.models.dto.user import UserProbationOverride, UserRoleUpdate
+from src.core.exceptions import NotFoundError
+from src.models.dto import DetailResponse
+from src.models.dto.user import UserAdminListResponse, UserProbationOverride, UserRoleUpdate
 from src.models.orm.user import User
 from src.repositories import user_repo
 
 router = APIRouter(prefix="/users", tags=["admin-users"])
 
 
-@router.get("")
+@router.get("", response_model=UserAdminListResponse)
 async def list_users(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=100),
@@ -39,7 +40,7 @@ async def list_users(
     return {"items": users, "total": total, "page": page, "per_page": per_page}
 
 
-@router.put("/{user_id}/role")
+@router.put("/{user_id}/role", response_model=DetailResponse)
 async def update_user_role(
     user_id: UUID,
     body: UserRoleUpdate,
@@ -47,9 +48,6 @@ async def update_user_role(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    if body.role not in ("employee", "admin"):
-        raise BadRequestError("Invalid role. Must be 'employee' or 'admin'.")
-
     target = await user_repo.get_by_id(db, user_id)
     if not target:
         raise NotFoundError("User not found")
@@ -69,7 +67,7 @@ async def update_user_role(
     return {"detail": f"Role updated to {body.role}"}
 
 
-@router.put("/{user_id}/probation-override")
+@router.put("/{user_id}/probation-override", response_model=DetailResponse)
 async def update_probation_override(
     user_id: UUID,
     body: UserProbationOverride,

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import get_current_user
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
+from src.models.dto import DetailResponse
 from src.models.dto.cart import CartItemAdd, CartItemUpdate, CartResponse
 from src.models.orm.user import User
 from src.services import cart_service
@@ -21,7 +22,7 @@ async def get_cart(
     return await cart_service.get_cart(db, user.id)
 
 
-@router.post("/items")
+@router.post("/items", response_model=DetailResponse)
 async def add_to_cart(
     body: CartItemAdd,
     request: Request,
@@ -41,7 +42,7 @@ async def add_to_cart(
     return {"detail": "Item added to cart"}
 
 
-@router.put("/items/{product_id}")
+@router.put("/items/{product_id}", response_model=DetailResponse)
 async def update_cart_item(
     product_id: UUID,
     body: CartItemUpdate,
@@ -60,7 +61,7 @@ async def update_cart_item(
     return {"detail": "Cart item updated"}
 
 
-@router.delete("/items/{product_id}")
+@router.delete("/items/{product_id}", response_model=DetailResponse)
 async def remove_from_cart(
     product_id: UUID,
     request: Request,
@@ -79,7 +80,7 @@ async def remove_from_cart(
     return {"detail": "Item removed from cart"}
 
 
-@router.delete("")
+@router.delete("", response_model=DetailResponse)
 async def clear_cart(
     request: Request,
     db: AsyncSession = Depends(get_db),

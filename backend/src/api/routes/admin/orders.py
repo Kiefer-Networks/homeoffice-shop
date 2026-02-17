@@ -7,7 +7,7 @@ from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import NotFoundError
-from src.models.dto.order import OrderItemCheckUpdate, OrderStatusUpdate
+from src.models.dto.order import OrderItemCheckUpdate, OrderListResponse, OrderResponse, OrderStatusUpdate
 from src.models.orm.user import User
 from src.notifications.service import notify_admins_slack, notify_user_email
 from src.services import order_service
@@ -15,7 +15,7 @@ from src.services import order_service
 router = APIRouter(prefix="/orders", tags=["admin-orders"])
 
 
-@router.get("")
+@router.get("", response_model=OrderListResponse)
 async def list_all_orders(
     status: str | None = None,
     page: int = Query(1, ge=1),
@@ -29,7 +29,7 @@ async def list_all_orders(
     return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
-@router.get("/{order_id}")
+@router.get("/{order_id}", response_model=OrderResponse)
 async def get_order(
     order_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -41,7 +41,7 @@ async def get_order(
     return data
 
 
-@router.put("/{order_id}/status")
+@router.put("/{order_id}/status", response_model=OrderResponse)
 async def update_order_status(
     order_id: UUID,
     body: OrderStatusUpdate,
@@ -102,7 +102,7 @@ async def check_order_item(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    item = await order_service.update_order_item_check(db, item_id, body.vendor_ordered)
+    item = await order_service.update_order_item_check(db, order_id, item_id, body.vendor_ordered)
     if not item:
         raise NotFoundError("Order item not found")
 

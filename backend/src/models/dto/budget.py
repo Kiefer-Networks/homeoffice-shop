@@ -1,13 +1,13 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class BudgetAdjustmentCreate(BaseModel):
     user_id: UUID
-    amount_cents: int
-    reason: str
+    amount_cents: int = Field(ge=-10_000_00, le=10_000_00)
+    reason: str = Field(min_length=1, max_length=500)
 
 
 class BudgetAdjustmentResponse(BaseModel):

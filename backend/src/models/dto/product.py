@@ -1,33 +1,33 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ProductCreate(BaseModel):
     category_id: UUID
-    name: str
+    name: str = Field(min_length=1, max_length=500)
     description: str | None = None
     brand: str | None = None
     model: str | None = None
-    price_cents: int
+    price_cents: int = Field(ge=0)
     amazon_asin: str | None = None
     external_url: str
     is_active: bool = True
-    max_quantity_per_user: int = 1
+    max_quantity_per_user: int = Field(default=1, ge=1, le=100)
 
 
 class ProductUpdate(BaseModel):
     category_id: UUID | None = None
-    name: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = None
     brand: str | None = None
     model: str | None = None
-    price_cents: int | None = None
+    price_cents: int | None = Field(default=None, ge=0)
     amazon_asin: str | None = None
     external_url: str | None = None
     is_active: bool | None = None
-    max_quantity_per_user: int | None = None
+    max_quantity_per_user: int | None = Field(default=None, ge=1, le=100)
 
 
 class ProductResponse(BaseModel):

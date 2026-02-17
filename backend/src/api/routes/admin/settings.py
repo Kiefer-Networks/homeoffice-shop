@@ -4,14 +4,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
-from src.models.dto.settings import AppSettingUpdate
+from src.core.exceptions import BadRequestError
+from src.models.dto.settings import AppSettingResponse, AppSettingUpdate, AppSettingsResponse
 from src.models.orm.user import User
 from src.services import settings_service
 
 router = APIRouter(prefix="/settings", tags=["admin-settings"])
 
 
-@router.get("")
+@router.get("", response_model=AppSettingsResponse)
 async def get_settings(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
@@ -20,7 +21,7 @@ async def get_settings(
     return {"settings": settings}
 
 
-@router.put("/{key}")
+@router.put("/{key}", response_model=AppSettingResponse)
 async def update_setting(
     key: str,
     body: AppSettingUpdate,
@@ -28,6 +29,9 @@ async def update_setting(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
+    if key not in settings_service.DEFAULT_SETTINGS:
+        raise BadRequestError(f"Unknown setting key: {key}")
+
     old_value = settings_service.get_setting(key)
     await settings_service.update_setting(db, key, body.value, admin.id)
 

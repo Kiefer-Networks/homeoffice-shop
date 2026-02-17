@@ -9,14 +9,15 @@ from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import NotFoundError
-from src.models.dto.category import CategoryCreate, CategoryUpdate
+from src.models.dto import DetailResponse
+from src.models.dto.category import CategoryCreate, CategoryResponse, CategoryUpdate
 from src.models.orm.category import Category
 from src.models.orm.user import User
 
 router = APIRouter(prefix="/categories", tags=["admin-categories"])
 
 
-@router.get("")
+@router.get("", response_model=list[CategoryResponse])
 async def list_categories(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
@@ -27,7 +28,7 @@ async def list_categories(
     return list(result.scalars().all())
 
 
-@router.post("")
+@router.post("", response_model=CategoryResponse)
 async def create_category(
     body: CategoryCreate,
     request: Request,
@@ -53,7 +54,7 @@ async def create_category(
     return category
 
 
-@router.put("/{category_id}")
+@router.put("/{category_id}", response_model=CategoryResponse)
 async def update_category(
     category_id: UUID,
     body: CategoryUpdate,
@@ -86,7 +87,7 @@ class ReorderItem(BaseModel):
     sort_order: int
 
 
-@router.put("/reorder")
+@router.put("/reorder", response_model=DetailResponse)
 async def reorder_categories(
     items: list[ReorderItem],
     request: Request,
@@ -95,8 +96,9 @@ async def reorder_categories(
 ):
     for item in items:
         category = await db.get(Category, item.id)
-        if category:
-            category.sort_order = item.sort_order
+        if not category:
+            raise NotFoundError(f"Category {item.id} not found")
+        category.sort_order = item.sort_order
     await db.flush()
 
     ip = request.client.host if request.client else None
@@ -108,7 +110,7 @@ async def reorder_categories(
     return {"detail": "Categories reordered"}
 
 
-@router.delete("/{category_id}")
+@router.delete("/{category_id}", response_model=DetailResponse)
 async def delete_category(
     category_id: UUID,
     request: Request,

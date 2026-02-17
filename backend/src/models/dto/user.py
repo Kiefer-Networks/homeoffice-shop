@@ -1,7 +1,8 @@
 from datetime import date, datetime
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 
 class UserResponse(BaseModel):
@@ -33,8 +34,15 @@ class UserAdminResponse(UserResponse):
     updated_at: datetime
 
 
+class UserAdminListResponse(BaseModel):
+    items: list[UserAdminResponse]
+    total: int
+    page: int
+    per_page: int
+
+
 class UserRoleUpdate(BaseModel):
-    role: str
+    role: Literal["employee", "admin"]
 
 
 class UserProbationOverride(BaseModel):

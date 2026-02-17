@@ -3,11 +3,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies.auth import get_current_user
+from src.api.dependencies.auth import get_current_user, require_admin
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import NotFoundError
 from src.integrations.amazon.client import AmazonClient
+from src.models.dto.product import ProductListResponse, ProductResponse
 from src.models.orm.product import Product
 from src.models.orm.user import User
 from src.services import product_service
@@ -15,9 +16,9 @@ from src.services import product_service
 router = APIRouter(prefix="/products", tags=["products"])
 
 
-@router.get("")
+@router.get("", response_model=ProductListResponse)
 async def list_products(
-    q: str | None = None,
+    q: str | None = Query(None, max_length=200),
     category: UUID | None = None,
     brand: str | None = None,
     price_min: int | None = None,
@@ -65,7 +66,7 @@ async def list_products(
     return result
 
 
-@router.get("/{product_id}")
+@router.get("/{product_id}", response_model=ProductResponse)
 async def get_product(
     product_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -81,7 +82,7 @@ async def get_product(
 async def trigger_price_refresh(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
 ):
     client = AmazonClient()
     result = await product_service.refresh_all_prices(db, client)

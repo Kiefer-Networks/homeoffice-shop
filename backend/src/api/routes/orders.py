@@ -7,7 +7,7 @@ from src.api.dependencies.auth import get_current_user
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import NotFoundError
-from src.models.dto.order import OrderCreate
+from src.models.dto.order import OrderCreate, OrderListResponse, OrderResponse
 from src.models.orm.user import User
 from src.notifications.service import notify_admins_email, notify_admins_slack
 from src.services import order_service
@@ -15,7 +15,7 @@ from src.services import order_service
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 
-@router.get("")
+@router.get("", response_model=OrderListResponse)
 async def list_my_orders(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -28,7 +28,7 @@ async def list_my_orders(
     return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
-@router.get("/{order_id}")
+@router.get("/{order_id}", response_model=OrderResponse)
 async def get_my_order(
     order_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -40,7 +40,7 @@ async def get_my_order(
     return order_data
 
 
-@router.post("")
+@router.post("", response_model=OrderResponse)
 async def create_order(
     body: OrderCreate,
     request: Request,
