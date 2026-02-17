@@ -191,6 +191,7 @@ async def get_orders(
         conditions.append(Order.status == status)
 
     from sqlalchemy import and_
+    from sqlalchemy.orm import selectinload
     where = and_(*conditions) if conditions else True
 
     count_result = await db.execute(
@@ -200,27 +201,73 @@ async def get_orders(
 
     result = await db.execute(
         select(Order)
+        .options(selectinload(Order.items))
         .where(where)
         .order_by(Order.created_at.desc())
         .offset((page - 1) * per_page)
         .limit(per_page)
     )
-    orders = result.scalars().all()
+    orders = result.scalars().unique().all()
+
+    # Batch-fetch product names and user info
+    order_user_ids = {o.user_id for o in orders}
+    product_ids = {item.product_id for o in orders for item in o.items}
+
+    users_map: dict[UUID, User] = {}
+    if order_user_ids:
+        users_result = await db.execute(
+            select(User).where(User.id.in_(order_user_ids))
+        )
+        users_map = {u.id: u for u in users_result.scalars().all()}
+
+    product_names: dict[UUID, str] = {}
+    if product_ids:
+        prod_result = await db.execute(
+            select(Product.id, Product.name).where(Product.id.in_(product_ids))
+        )
+        product_names = {pid: pname for pid, pname in prod_result.all()}
 
     items = []
     for order in orders:
-        order_data = await get_order_with_items(db, order.id)
-        if order_data:
-            items.append(order_data)
+        user = users_map.get(order.user_id)
+        order_items = []
+        for item in order.items:
+            order_items.append({
+                "id": item.id,
+                "product_id": item.product_id,
+                "product_name": product_names.get(item.product_id),
+                "quantity": item.quantity,
+                "price_cents": item.price_cents,
+                "external_url": item.external_url,
+                "vendor_ordered": item.vendor_ordered,
+            })
+        items.append({
+            "id": order.id,
+            "user_id": order.user_id,
+            "user_email": user.email if user else None,
+            "user_display_name": user.display_name if user else None,
+            "status": order.status,
+            "total_cents": order.total_cents,
+            "delivery_note": order.delivery_note,
+            "admin_note": order.admin_note,
+            "reviewed_by": order.reviewed_by,
+            "reviewed_at": order.reviewed_at,
+            "items": order_items,
+            "created_at": order.created_at,
+            "updated_at": order.updated_at,
+        })
 
     return items, total
 
 
 async def update_order_item_check(
-    db: AsyncSession, order_item_id: UUID, vendor_ordered: bool
+    db: AsyncSession, order_id: UUID, order_item_id: UUID, vendor_ordered: bool
 ) -> OrderItem | None:
     result = await db.execute(
-        select(OrderItem).where(OrderItem.id == order_item_id)
+        select(OrderItem).where(
+            OrderItem.id == order_item_id,
+            OrderItem.order_id == order_id,
+        )
     )
     item = result.scalar_one_or_none()
     if item:

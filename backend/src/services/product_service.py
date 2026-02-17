@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy import select, func, text, and_, or_
@@ -9,11 +8,6 @@ from src.models.orm.product import Product
 from src.models.orm.category import Category
 
 logger = logging.getLogger(__name__)
-
-UPLOAD_DIR = Path("/app/uploads")
-if not UPLOAD_DIR.exists():
-    UPLOAD_DIR = Path("uploads")
-    UPLOAD_DIR.mkdir(exist_ok=True)
 
 
 async def search_products(

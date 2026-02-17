@@ -53,6 +53,7 @@ class TestSyncEmployees:
         mock_budget.return_value = 75000
         mock_user_repo.get_by_hibob_id = AsyncMock(return_value=None)
         mock_user_repo.get_by_email = AsyncMock(return_value=None)
+        mock_user_repo.get_all_with_hibob_id = AsyncMock(return_value=[])
 
         employees = [
             HiBobEmployee(
@@ -78,6 +79,7 @@ class TestSyncEmployees:
         mock_budget.return_value = 100000
         existing_user = make_user(email="existing@example.com", display_name="Old Name")
         mock_user_repo.get_by_hibob_id = AsyncMock(return_value=existing_user)
+        mock_user_repo.get_all_with_hibob_id = AsyncMock(return_value=[existing_user])
 
         employees = [
             HiBobEmployee(
@@ -143,6 +145,7 @@ class TestSyncEmployees:
         mock_budget.return_value = 75000
         mock_user_repo.get_by_hibob_id = AsyncMock(return_value=None)
         mock_user_repo.get_by_email = AsyncMock(return_value=None)
+        mock_user_repo.get_all_with_hibob_id = AsyncMock(return_value=[])
 
         employees = [
             HiBobEmployee(
@@ -194,6 +197,7 @@ class TestSyncEmployees:
         existing = make_user(email="match@example.com")
         mock_user_repo.get_by_hibob_id = AsyncMock(return_value=None)
         mock_user_repo.get_by_email = AsyncMock(return_value=existing)
+        mock_user_repo.get_all_with_hibob_id = AsyncMock(return_value=[])
 
         employees = [
             HiBobEmployee(id="new-hibob-id", email="match@example.com", display_name="Matched"),

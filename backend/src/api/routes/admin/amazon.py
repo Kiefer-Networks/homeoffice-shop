@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,14 +12,8 @@ from src.models.dto.product import (
     AmazonSearchResponse,
 )
 from src.models.orm.user import User
-from src.services.image_service import download_and_store_product_images
 
 router = APIRouter(prefix="/amazon", tags=["admin-amazon"])
-
-UPLOAD_DIR = Path("/app/uploads")
-if not UPLOAD_DIR.exists():
-    UPLOAD_DIR = Path("uploads")
-    UPLOAD_DIR.mkdir(exist_ok=True)
 
 
 @router.post("/search", response_model=list[AmazonSearchResponse])

@@ -21,6 +21,13 @@ async def get_by_hibob_id(db: AsyncSession, hibob_id: str) -> User | None:
     return result.scalar_one_or_none()
 
 
+async def get_all_with_hibob_id(db: AsyncSession) -> list[User]:
+    result = await db.execute(
+        select(User).where(User.hibob_id.isnot(None))
+    )
+    return list(result.scalars().all())
+
+
 async def get_all_active(db: AsyncSession) -> list[User]:
     result = await db.execute(
         select(User).where(User.is_active == True).order_by(User.display_name)

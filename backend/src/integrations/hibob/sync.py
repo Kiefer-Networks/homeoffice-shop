@@ -82,6 +82,17 @@ async def sync_employees(
 
         await db.flush()
 
+        # Deactivate users not present in HiBob response
+        if hibob_ids:
+            all_hibob_users = await user_repo.get_all_with_hibob_id(db)
+            for user in all_hibob_users:
+                if user.hibob_id not in hibob_ids and user.is_active:
+                    user.is_active = False
+                    deactivated += 1
+
+            if deactivated > 0:
+                await db.flush()
+
         log.status = "completed"
         log.employees_synced = len(employees)
         log.employees_created = created

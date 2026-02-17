@@ -1,11 +1,43 @@
 import hashlib
+import ipaddress
 import logging
+import socket
 from pathlib import Path
+from urllib.parse import urlparse
 from uuid import UUID
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+ALLOWED_IMAGE_HOSTS = {
+    "m.media-amazon.com",
+    "images-na.ssl-images-amazon.com",
+    "images-eu.ssl-images-amazon.com",
+    "ecx.images-amazon.com",
+    "images-fe.ssl-images-amazon.com",
+    "ws-eu.amazon-adsystem.com",
+}
+
+
+def _validate_image_url(url: str) -> None:
+    """Validate URL to prevent SSRF attacks."""
+    parsed = urlparse(url)
+    if parsed.scheme not in ("https",):
+        raise ValueError(f"Only HTTPS URLs allowed, got {parsed.scheme}")
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError("URL has no hostname")
+    if hostname in ALLOWED_IMAGE_HOSTS:
+        return
+    try:
+        resolved = socket.getaddrinfo(hostname, None)
+        for _, _, _, _, sockaddr in resolved:
+            ip = ipaddress.ip_address(sockaddr[0])
+            if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_link_local:
+                raise ValueError(f"URL resolves to private/reserved IP: {ip}")
+    except socket.gaierror:
+        raise ValueError(f"Cannot resolve hostname: {hostname}")
 
 
 class ImagePaths:
@@ -43,6 +75,7 @@ async def download_and_store_product_images(
     async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
         if main_image_url:
             try:
+                _validate_image_url(main_image_url)
                 resp = await client.get(main_image_url)
                 resp.raise_for_status()
                 ext = _get_extension(main_image_url, resp.headers.get("content-type", ""))
@@ -62,6 +95,7 @@ async def download_and_store_product_images(
 
         for i, url in enumerate(gallery_urls):
             try:
+                _validate_image_url(url)
                 resp = await client.get(url)
                 resp.raise_for_status()
                 ext = _get_extension(url, resp.headers.get("content-type", ""))

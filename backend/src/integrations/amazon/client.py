@@ -64,13 +64,15 @@ class AmazonClient:
             resp.raise_for_status()
             data = resp.json()
 
+        logger.info("ScraperAPI search returned %d results for query=%r", len(data.get("results", [])), query)
+
         results = []
         for item in data.get("results", []):
             url = item.get("url", "")
             asin = _extract_asin(url) or item.get("asin", "")
             if not asin:
                 continue
-            price_str = item.get("price_string") or item.get("price") or ""
+            price_str = item.get("price_string") or item.get("price") or item.get("pricing") or ""
             results.append(AmazonSearchResult(
                 name=item.get("name", ""),
                 asin=asin,
@@ -95,9 +97,31 @@ class AmazonClient:
             data = resp.json()
 
         if not data:
+            logger.warning("ScraperAPI returned empty data for ASIN %s", asin)
             return None
 
-        price_str = data.get("price_string") or data.get("price") or ""
+        logger.info(
+            "ScraperAPI raw data for ASIN %s: price=%r, price_string=%r, "
+            "pricing=%r, price_upper=%r, name=%r, brand=%r, "
+            "images_count=%d, specs_count=%d, bullets_count=%d",
+            asin,
+            data.get("price"),
+            data.get("price_string"),
+            data.get("pricing"),
+            data.get("price_upper"),
+            data.get("name"),
+            data.get("brand"),
+            len(data.get("images", [])),
+            len(data.get("specifications", [])),
+            len(data.get("feature_bullets", [])),
+        )
+
+        price_str = (
+            data.get("price_string")
+            or data.get("price")
+            or (data.get("pricing") or "")
+            or ""
+        )
         images = data.get("images", [])
         if isinstance(images, list):
             images = [img for img in images if isinstance(img, str)]
@@ -112,12 +136,18 @@ class AmazonClient:
                 if key:
                     specs[key] = val
 
+        parsed_price = _parse_price_cents(str(price_str)) if price_str else 0
+        logger.info(
+            "ScraperAPI ASIN %s: price_str=%r -> parsed_price_cents=%d",
+            asin, price_str, parsed_price,
+        )
+
         return AmazonProduct(
             name=data.get("name", ""),
             description=data.get("description"),
             brand=data.get("brand"),
             images=images,
-            price_cents=_parse_price_cents(str(price_str)) if price_str else 0,
+            price_cents=parsed_price,
             specifications=specs or None,
             feature_bullets=data.get("feature_bullets", []),
             url=f"https://www.amazon.{settings.amazon_tld}/dp/{asin}",
