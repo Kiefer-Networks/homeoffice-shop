@@ -1,6 +1,6 @@
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -16,11 +16,11 @@ from src.models.orm.budget_adjustment import BudgetAdjustment
 # ── Patch settings before any other import ──────────────────────────────────
 @pytest.fixture(autouse=True)
 def _patch_settings(monkeypatch):
-    monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-key-for-unit-tests")
+    monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-key-for-unit-tests-must-be-32-chars")
     monkeypatch.setenv("ALLOWED_EMAIL_DOMAINS", "example.com,test.com")
     monkeypatch.setenv("INITIAL_ADMIN_EMAILS", "admin@example.com")
     from src.core.config import settings
-    monkeypatch.setattr(settings, "jwt_secret_key", "test-secret-key-for-unit-tests")
+    monkeypatch.setattr(settings, "jwt_secret_key", "test-secret-key-for-unit-tests-must-be-32-chars")
     monkeypatch.setattr(settings, "jwt_access_token_expire_minutes", 15)
     monkeypatch.setattr(settings, "jwt_refresh_token_expire_days", 7)
     monkeypatch.setattr(settings, "allowed_email_domains", "example.com,test.com")

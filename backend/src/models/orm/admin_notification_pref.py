@@ -21,11 +21,11 @@ class AdminNotificationPref(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False
     )
     slack_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    slack_events: Mapped[dict] = mapped_column(
+    slack_events: Mapped[list] = mapped_column(
         JSONB, nullable=False, default=list(DEFAULT_SLACK_EVENTS)
     )
     email_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    email_events: Mapped[dict] = mapped_column(
+    email_events: Mapped[list] = mapped_column(
         JSONB, nullable=False, default=list(DEFAULT_EMAIL_EVENTS)
     )
     created_at: Mapped[datetime] = mapped_column(

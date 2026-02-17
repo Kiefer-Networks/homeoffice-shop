@@ -25,7 +25,7 @@ class TestCreateAccessToken:
     def test_creates_valid_jwt(self):
         user_id = str(uuid.uuid4())
         token = create_access_token(user_id, "user@example.com", "employee")
-        payload = jwt.decode(token, "test-secret-key-for-unit-tests", **JWT_DECODE_OPTS)
+        payload = jwt.decode(token, "test-secret-key-for-unit-tests-must-be-32-chars", **JWT_DECODE_OPTS)
         assert payload["sub"] == user_id
         assert payload["email"] == "user@example.com"
         assert payload["role"] == "employee"
@@ -33,7 +33,7 @@ class TestCreateAccessToken:
 
     def test_includes_jti(self):
         token = create_access_token(str(uuid.uuid4()), "u@x.com", "admin")
-        payload = jwt.decode(token, "test-secret-key-for-unit-tests", **JWT_DECODE_OPTS)
+        payload = jwt.decode(token, "test-secret-key-for-unit-tests-must-be-32-chars", **JWT_DECODE_OPTS)
         assert "jti" in payload
         uuid.UUID(payload["jti"])  # must be valid UUID
 
@@ -42,20 +42,20 @@ class TestCreateAccessToken:
             str(uuid.uuid4()), "u@x.com", "employee",
             expires_delta=timedelta(minutes=5),
         )
-        payload = jwt.decode(token, "test-secret-key-for-unit-tests", **JWT_DECODE_OPTS)
+        payload = jwt.decode(token, "test-secret-key-for-unit-tests-must-be-32-chars", **JWT_DECODE_OPTS)
         assert payload["exp"] is not None
 
     def test_unique_jti_per_call(self):
         uid = str(uuid.uuid4())
         t1 = create_access_token(uid, "u@x.com", "employee")
         t2 = create_access_token(uid, "u@x.com", "employee")
-        p1 = jwt.decode(t1, "test-secret-key-for-unit-tests", **JWT_DECODE_OPTS)
-        p2 = jwt.decode(t2, "test-secret-key-for-unit-tests", **JWT_DECODE_OPTS)
+        p1 = jwt.decode(t1, "test-secret-key-for-unit-tests-must-be-32-chars", **JWT_DECODE_OPTS)
+        p2 = jwt.decode(t2, "test-secret-key-for-unit-tests-must-be-32-chars", **JWT_DECODE_OPTS)
         assert p1["jti"] != p2["jti"]
 
     def test_includes_iss_and_aud(self):
         token = create_access_token(str(uuid.uuid4()), "u@x.com", "employee")
-        payload = jwt.decode(token, "test-secret-key-for-unit-tests", **JWT_DECODE_OPTS)
+        payload = jwt.decode(token, "test-secret-key-for-unit-tests-must-be-32-chars", **JWT_DECODE_OPTS)
         assert payload["iss"] == "homeoffice-shop"
         assert payload["aud"] == "homeoffice-shop"
 
@@ -71,14 +71,14 @@ class TestCreateRefreshToken:
 
     def test_refresh_type(self):
         token, jti = create_refresh_token(str(uuid.uuid4()), str(uuid.uuid4()))
-        payload = jwt.decode(token, "test-secret-key-for-unit-tests", **JWT_DECODE_OPTS)
+        payload = jwt.decode(token, "test-secret-key-for-unit-tests-must-be-32-chars", **JWT_DECODE_OPTS)
         assert payload["type"] == "refresh"
         assert payload["jti"] == jti
 
     def test_family_embedded(self):
         family = str(uuid.uuid4())
         token, _ = create_refresh_token(str(uuid.uuid4()), family)
-        payload = jwt.decode(token, "test-secret-key-for-unit-tests", **JWT_DECODE_OPTS)
+        payload = jwt.decode(token, "test-secret-key-for-unit-tests-must-be-32-chars", **JWT_DECODE_OPTS)
         assert payload["token_family"] == family
 
 
