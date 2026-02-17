@@ -1,8 +1,11 @@
 import uuid
 from datetime import date
 
+from urllib.parse import urlencode
+
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, Request, Response
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import get_current_user
@@ -122,7 +125,6 @@ async def google_login(request: Request):
 @router.get("/google/callback")
 async def google_callback(
     request: Request,
-    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
     token = await oauth.google.authorize_access_token(request)
@@ -131,9 +133,13 @@ async def google_callback(
     name = userinfo.get("name", email)
     sub = userinfo.get("sub", "")
 
-    return await _handle_oauth_callback(
+    response = RedirectResponse(url=settings.frontend_url)
+    token_response = await _handle_oauth_callback(
         request, response, db, "google", email, name, sub
     )
+    redirect_url = f"{settings.frontend_url}/callback?{urlencode({'access_token': token_response.access_token})}"
+    response.headers["location"] = redirect_url
+    return response
 
 
 @router.post("/refresh", response_model=TokenResponse)
