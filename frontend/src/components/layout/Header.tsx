@@ -1,4 +1,4 @@
-import { ShoppingCart, User, LogOut, Settings, Menu } from 'lucide-react'
+import { ShoppingCart, User, LogOut, Settings, Menu, ClipboardList } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -47,6 +47,12 @@ export function Header() {
           <div className="hidden sm:block text-sm text-[hsl(var(--muted-foreground))]">
             Budget: <span className="font-semibold text-[hsl(var(--foreground))]">{formatCents(availableBudget)}</span>
           </div>
+
+          <Link to="/orders">
+            <Button variant="ghost" size="icon">
+              <ClipboardList className="h-5 w-5" />
+            </Button>
+          </Link>
 
           <Button variant="ghost" size="icon" className="relative" onClick={() => setCartOpen(true)}>
             <ShoppingCart className="h-5 w-5" />

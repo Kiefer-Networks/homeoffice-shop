@@ -1,17 +1,19 @@
 import { useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { authApi } from '@/services/authApi'
 import { setAccessToken as setGlobalToken } from '@/lib/token'
 
 export function CallbackPage() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const { setAccessToken, setUser } = useAuthStore()
 
   useEffect(() => {
-    const token = searchParams.get('access_token')
+    const hash = window.location.hash.substring(1)
+    const params = new URLSearchParams(hash)
+    const token = params.get('access_token')
     if (token) {
+      window.history.replaceState(null, '', window.location.pathname)
       setGlobalToken(token)
       setAccessToken(token)
       authApi.getMe().then(({ data }) => {
@@ -21,7 +23,7 @@ export function CallbackPage() {
     } else {
       navigate('/login')
     }
-  }, [])
+  }, [navigate, setAccessToken, setUser])
 
   return (
     <div className="min-h-screen flex items-center justify-center">

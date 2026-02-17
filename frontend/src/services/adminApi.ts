@@ -10,6 +10,7 @@ export const adminApi = {
   updateProduct: (id: string, data: Partial<Product>) => api.put<Product>(`/api/admin/products/${id}`, data),
   activateProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/activate`),
   deactivateProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/deactivate`),
+  deleteProduct: (id: string) => api.delete(`/api/admin/products/${id}`),
   redownloadImages: (id: string) => api.post(`/api/admin/products/${id}/redownload-images`),
   amazonSearch: (query: string) => api.post('/api/admin/amazon/search', { query }),
   amazonProduct: (asin: string) => api.post('/api/admin/amazon/product', { asin }),

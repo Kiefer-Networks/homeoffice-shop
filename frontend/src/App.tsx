@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import React, { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { useBrandingStore } from '@/stores/brandingStore'
@@ -27,6 +27,37 @@ interface Toast {
   title: string
   description?: string
   variant?: 'default' | 'destructive'
+}
+
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-lg font-medium">Ein unerwarteter Fehler ist aufgetreten.</p>
+            <button
+              className="mt-4 px-4 py-2 bg-[hsl(var(--primary))] text-white rounded-md"
+              onClick={() => window.location.reload()}
+            >
+              Seite neu laden
+            </button>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
 }
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -85,7 +116,7 @@ function ToastContainer() {
   const { toasts, removeToast } = useUiStore()
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 space-y-2">
+    <div className="fixed bottom-4 right-4 z-50 space-y-2" role="region" aria-live="polite" aria-label="Benachrichtigungen">
       {toasts.map((toast: Toast) => (
         <div
           key={toast.id}
@@ -106,6 +137,7 @@ function ToastContainer() {
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <BrowserRouter>
       <AppInit>
         <Routes>
@@ -136,5 +168,6 @@ export default function App() {
         <ToastContainer />
       </AppInit>
     </BrowserRouter>
+    </ErrorBoundary>
   )
 }

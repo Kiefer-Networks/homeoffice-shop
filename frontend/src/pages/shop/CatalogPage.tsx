@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ProductCard } from '@/components/shop/ProductCard'
+import { ProductDetailModal } from '@/components/shop/ProductDetailModal'
 import { ProductFilters } from '@/components/shop/ProductFilters'
 import { ProductSearch } from '@/components/shop/ProductSearch'
 import { BudgetIndicator } from '@/components/shop/BudgetIndicator'
@@ -28,6 +29,7 @@ export function CatalogPage() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [showPriceAlert, setShowPriceAlert] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
 
   useEffect(() => {
     filterStore.syncFromUrl(searchParams)
@@ -70,9 +72,9 @@ export function CatalogPage() {
       setShowPriceAlert(false)
       setCartOpen(false)
       await refreshCart()
-      addToast({ title: 'Order placed!', description: 'Your order has been submitted for review.' })
+      addToast({ title: 'Bestellung aufgegeben!', description: 'Deine Bestellung wurde zur Prüfung eingereicht.' })
     } catch (err: unknown) {
-      addToast({ title: 'Order failed', description: getErrorMessage(err), variant: 'destructive' })
+      addToast({ title: 'Bestellung fehlgeschlagen', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 
@@ -94,7 +96,7 @@ export function CatalogPage() {
             <ProductSearch />
           </div>
 
-          <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">{total} products found</p>
+          <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">{total} Produkte gefunden</p>
 
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -104,14 +106,19 @@ export function CatalogPage() {
             </div>
           ) : products.length === 0 ? (
             <div className="text-center py-12 text-[hsl(var(--muted-foreground))]">
-              <p className="text-lg">No products found</p>
-              <p className="text-sm">Try adjusting your search or filters.</p>
+              <p className="text-lg">Keine Produkte gefunden</p>
+              <p className="text-sm">Versuche andere Suchbegriffe oder Filter.</p>
             </div>
           ) : (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {products.map((product) => (
-                  <ProductCard key={product.id} product={product} onRefreshCart={refreshCart} />
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onRefreshCart={refreshCart}
+                    onShowDetail={setSelectedProduct}
+                  />
                 ))}
               </div>
 
@@ -120,15 +127,15 @@ export function CatalogPage() {
                   <Button variant="outline" size="sm"
                     disabled={filterStore.page <= 1}
                     onClick={() => filterStore.setFilter('page', filterStore.page - 1)}>
-                    Previous
+                    Zurück
                   </Button>
                   <span className="flex items-center px-3 text-sm">
-                    Page {filterStore.page} of {totalPages}
+                    Seite {filterStore.page} von {totalPages}
                   </span>
                   <Button variant="outline" size="sm"
                     disabled={filterStore.page >= totalPages}
                     onClick={() => filterStore.setFilter('page', filterStore.page + 1)}>
-                    Next
+                    Weiter
                   </Button>
                 </div>
               )}
@@ -138,6 +145,13 @@ export function CatalogPage() {
       </div>
 
       <CartDrawer onRefreshCart={refreshCart} onCheckout={handleCheckout} />
+
+      <ProductDetailModal
+        product={selectedProduct}
+        open={!!selectedProduct}
+        onClose={() => setSelectedProduct(null)}
+        onRefreshCart={refreshCart}
+      />
 
       {cart && showPriceAlert && (
         <CartPriceAlert

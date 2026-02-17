@@ -1,7 +1,6 @@
 import { ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { formatCents } from '@/lib/utils'
 import { useCartStore } from '@/stores/cartStore'
 import { useUiStore } from '@/stores/uiStore'
@@ -12,19 +11,21 @@ import type { Product } from '@/types'
 interface Props {
   product: Product
   onRefreshCart: () => void
+  onShowDetail: (product: Product) => void
 }
 
-export function ProductCard({ product, onRefreshCart }: Props) {
+export function ProductCard({ product, onRefreshCart, onShowDetail }: Props) {
   const { addToast } = useUiStore()
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.stopPropagation()
     try {
       await cartApi.addItem(product.id)
       onRefreshCart()
       useCartStore.getState().setOpen(true)
-      addToast({ title: 'Added to cart', description: product.name })
+      addToast({ title: 'In den Warenkorb gelegt', description: product.name })
     } catch (err: unknown) {
-      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+      addToast({ title: 'Fehler', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 
@@ -33,7 +34,7 @@ export function ProductCard({ product, onRefreshCart }: Props) {
     : null
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => onShowDetail(product)}>
       <div className="aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
         {imageUrl ? (
           <img src={imageUrl} alt={product.name} className="h-full w-full object-contain p-4" />

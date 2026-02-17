@@ -53,7 +53,7 @@ export function AdminOrdersPage() {
   }
 
   const openAllLinks = (order: Order) => {
-    order.items.forEach((item) => { window.open(item.external_url, '_blank') })
+    order.items.forEach((item) => { window.open(item.external_url, '_blank', 'noopener,noreferrer') })
   }
 
   const transitions: Record<string, string[]> = {
