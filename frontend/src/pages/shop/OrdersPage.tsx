@@ -9,11 +9,11 @@ import { ChevronRight, Package, AlertTriangle, CheckCircle2, XCircle, Clock, Tru
 import type { Order } from '@/types'
 
 const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'success' | 'destructive' | 'warning'; icon: typeof Clock; label: string }> = {
-  pending: { variant: 'warning', icon: Clock, label: 'Ausstehend' },
-  ordered: { variant: 'default', icon: Package, label: 'Bestellt' },
-  delivered: { variant: 'success', icon: CheckCircle2, label: 'Geliefert' },
-  rejected: { variant: 'destructive', icon: XCircle, label: 'Abgelehnt' },
-  cancelled: { variant: 'secondary', icon: AlertTriangle, label: 'Storniert' },
+  pending: { variant: 'warning', icon: Clock, label: 'Pending' },
+  ordered: { variant: 'default', icon: Package, label: 'Ordered' },
+  delivered: { variant: 'success', icon: CheckCircle2, label: 'Delivered' },
+  rejected: { variant: 'destructive', icon: XCircle, label: 'Rejected' },
+  cancelled: { variant: 'secondary', icon: AlertTriangle, label: 'Cancelled' },
 }
 
 export function OrdersPage() {
@@ -32,12 +32,12 @@ export function OrdersPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Meine Bestellungen</h1>
+      <h1 className="text-2xl font-bold mb-6">My Orders</h1>
 
       {/* Status Filter */}
       <div className="flex flex-wrap gap-2 mb-6">
         <Button size="sm" variant={filter === '' ? 'default' : 'outline'} onClick={() => setFilter('')}>
-          Alle ({orders.length})
+          All ({orders.length})
         </Button>
         {Object.entries(statusConfig).map(([key, cfg]) => {
           const count = orders.filter(o => o.status === key).length
@@ -53,8 +53,8 @@ export function OrdersPage() {
       {filteredOrders.length === 0 ? (
         <div className="text-center py-12 text-[hsl(var(--muted-foreground))]">
           <Package className="h-12 w-12 mx-auto mb-3 opacity-40" />
-          <p className="text-lg">Keine Bestellungen gefunden</p>
-          {!filter && <p className="text-sm">Du hast noch keine Bestellungen aufgegeben.</p>}
+          <p className="text-lg">No orders found</p>
+          {!filter && <p className="text-sm">You haven't placed any orders yet.</p>}
         </div>
       ) : (
         <div className="space-y-3">
@@ -68,9 +68,9 @@ export function OrdersPage() {
                     <div className="flex items-center gap-3">
                       <StatusIcon className="h-5 w-5 text-[hsl(var(--muted-foreground))]" />
                       <div>
-                        <div className="font-medium">Bestellung #{order.id.slice(0, 8)}</div>
+                        <div className="font-medium">Order #{order.id.slice(0, 8)}</div>
                         <div className="text-sm text-[hsl(var(--muted-foreground))]">
-                          {formatDate(order.created_at)} — {order.items.length} {order.items.length === 1 ? 'Artikel' : 'Artikel'}
+                          {formatDate(order.created_at)} — {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
                         </div>
                       </div>
                     </div>
@@ -84,7 +84,7 @@ export function OrdersPage() {
                   </div>
                   {order.status === 'rejected' && order.admin_note && (
                     <div className="mt-3 p-2 rounded bg-red-50 border border-red-200 text-sm text-red-800">
-                      <strong>Ablehnungsgrund:</strong> {order.admin_note}
+                      <strong>Rejection reason:</strong> {order.admin_note}
                     </div>
                   )}
                 </CardContent>
@@ -100,7 +100,7 @@ export function OrdersPage() {
           {selectedOrder && (
             <>
               <DialogHeader>
-                <DialogTitle>Bestellung #{selectedOrder.id.slice(0, 8)}</DialogTitle>
+                <DialogTitle>Order #{selectedOrder.id.slice(0, 8)}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 {/* Status */}
@@ -114,7 +114,7 @@ export function OrdersPage() {
                 {/* Status Timeline */}
                 {selectedOrder.reviewed_at && (
                   <div className="text-sm text-[hsl(var(--muted-foreground))]">
-                    Bearbeitet am {formatDate(selectedOrder.reviewed_at)}
+                    Reviewed on {formatDate(selectedOrder.reviewed_at)}
                   </div>
                 )}
 
@@ -125,20 +125,20 @@ export function OrdersPage() {
                       ? 'bg-red-50 border border-red-200 text-red-800'
                       : 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))]'
                   }`}>
-                    <strong>{selectedOrder.status === 'rejected' ? 'Ablehnungsgrund:' : 'Hinweis:'}</strong>
+                    <strong>{selectedOrder.status === 'rejected' ? 'Rejection reason:' : 'Note:'}</strong>
                     <p className="mt-1">{selectedOrder.admin_note}</p>
                   </div>
                 )}
 
                 {/* Items */}
                 <div>
-                  <h4 className="font-medium mb-2">Artikel</h4>
+                  <h4 className="font-medium mb-2">Items</h4>
                   <div className="space-y-2">
                     {selectedOrder.items.map((item) => (
                       <div key={item.id} className="flex justify-between items-center p-2 rounded bg-[hsl(var(--muted)/0.5)]">
                         <div>
-                          <div className="text-sm font-medium">{item.product_name || 'Produkt'}</div>
-                          <div className="text-xs text-[hsl(var(--muted-foreground))]">Menge: {item.quantity}</div>
+                          <div className="text-sm font-medium">{item.product_name || 'Product'}</div>
+                          <div className="text-xs text-[hsl(var(--muted-foreground))]">Qty: {item.quantity}</div>
                         </div>
                         <div className="text-sm font-medium">{formatCents(item.price_cents * item.quantity)}</div>
                       </div>
@@ -148,21 +148,21 @@ export function OrdersPage() {
 
                 {/* Total */}
                 <div className="flex justify-between items-center border-t pt-3">
-                  <span className="font-bold">Gesamt</span>
+                  <span className="font-bold">Total</span>
                   <span className="text-lg font-bold">{formatCents(selectedOrder.total_cents)}</span>
                 </div>
 
                 {/* Delivery Note */}
                 {selectedOrder.delivery_note && (
                   <div className="p-3 rounded-lg bg-[hsl(var(--muted))] text-sm">
-                    <strong>Lieferhinweis:</strong> {selectedOrder.delivery_note}
+                    <strong>Delivery note:</strong> {selectedOrder.delivery_note}
                   </div>
                 )}
 
                 {/* Vendor Ordered Status */}
                 {selectedOrder.status === 'ordered' && (
                   <div className="space-y-1">
-                    <h4 className="font-medium text-sm">Bestellstatus</h4>
+                    <h4 className="font-medium text-sm">Order status</h4>
                     {selectedOrder.items.map((item) => (
                       <div key={item.id} className="flex items-center gap-2 text-sm">
                         {item.vendor_ordered ? (
@@ -170,7 +170,7 @@ export function OrdersPage() {
                         ) : (
                           <Clock className="h-4 w-4 text-yellow-500" />
                         )}
-                        <span>{item.product_name}: {item.vendor_ordered ? 'Beim Händler bestellt' : 'Wird bestellt'}</span>
+                        <span>{item.product_name}: {item.vendor_ordered ? 'Ordered from vendor' : 'Pending order'}</span>
                       </div>
                     ))}
                   </div>

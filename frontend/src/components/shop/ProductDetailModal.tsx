@@ -35,9 +35,9 @@ export function ProductDetailModal({ product, open, onClose, onRefreshCart }: Pr
       onRefreshCart()
       useCartStore.getState().setOpen(true)
       onClose()
-      addToast({ title: 'In den Warenkorb gelegt', description: product.name })
+      addToast({ title: 'Added to cart', description: product.name })
     } catch (err: unknown) {
-      addToast({ title: 'Fehler', description: getErrorMessage(err), variant: 'destructive' })
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 
@@ -91,13 +91,13 @@ export function ProductDetailModal({ product, open, onClose, onRefreshCart }: Pr
           <div className="flex items-center justify-between">
             <div>
               {product.brand && <p className="text-sm text-[hsl(var(--muted-foreground))]">{product.brand}</p>}
-              {product.model && <p className="text-xs text-[hsl(var(--muted-foreground))]">Modell: {product.model}</p>}
+              {product.model && <p className="text-xs text-[hsl(var(--muted-foreground))]">Model: {product.model}</p>}
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold">{formatCents(product.price_cents)}</div>
               {product.price_min_cents && product.price_max_cents && product.price_min_cents !== product.price_max_cents && (
                 <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                  Preisspanne: {formatCents(product.price_min_cents)} - {formatCents(product.price_max_cents)}
+                  Price range: {formatCents(product.price_min_cents)} - {formatCents(product.price_max_cents)}
                 </p>
               )}
             </div>
@@ -106,7 +106,7 @@ export function ProductDetailModal({ product, open, onClose, onRefreshCart }: Pr
           {/* Description */}
           {product.description && (
             <div>
-              <h4 className="font-medium mb-1">Beschreibung</h4>
+              <h4 className="font-medium mb-1">Description</h4>
               <p className="text-sm text-[hsl(var(--muted-foreground))] whitespace-pre-line">{product.description}</p>
             </div>
           )}
@@ -114,7 +114,7 @@ export function ProductDetailModal({ product, open, onClose, onRefreshCart }: Pr
           {/* Specifications */}
           {product.specifications && Object.keys(product.specifications).length > 0 && (
             <div>
-              <h4 className="font-medium mb-2">Spezifikationen</h4>
+              <h4 className="font-medium mb-2">Specifications</h4>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                 {Object.entries(product.specifications).map(([key, value]) => (
                   <div key={key} className="contents">
@@ -130,7 +130,7 @@ export function ProductDetailModal({ product, open, onClose, onRefreshCart }: Pr
           <div className="flex items-center gap-2 pt-2 border-t">
             <Button onClick={handleAddToCart} disabled={!product.is_active} className="flex-1">
               <ShoppingCart className="h-4 w-4 mr-2" />
-              In den Warenkorb
+              Add to cart
             </Button>
             {product.external_url && (
               <Button variant="outline" asChild>

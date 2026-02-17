@@ -72,9 +72,9 @@ export function CatalogPage() {
       setShowPriceAlert(false)
       setCartOpen(false)
       await refreshCart()
-      addToast({ title: 'Bestellung aufgegeben!', description: 'Deine Bestellung wurde zur Prüfung eingereicht.' })
+      addToast({ title: 'Order placed!', description: 'Your order has been submitted for review.' })
     } catch (err: unknown) {
-      addToast({ title: 'Bestellung fehlgeschlagen', description: getErrorMessage(err), variant: 'destructive' })
+      addToast({ title: 'Order failed', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 
@@ -96,7 +96,7 @@ export function CatalogPage() {
             <ProductSearch />
           </div>
 
-          <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">{total} Produkte gefunden</p>
+          <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">{total} products found</p>
 
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -106,8 +106,8 @@ export function CatalogPage() {
             </div>
           ) : products.length === 0 ? (
             <div className="text-center py-12 text-[hsl(var(--muted-foreground))]">
-              <p className="text-lg">Keine Produkte gefunden</p>
-              <p className="text-sm">Versuche andere Suchbegriffe oder Filter.</p>
+              <p className="text-lg">No products found</p>
+              <p className="text-sm">Try different search terms or filters.</p>
             </div>
           ) : (
             <>
@@ -127,15 +127,15 @@ export function CatalogPage() {
                   <Button variant="outline" size="sm"
                     disabled={filterStore.page <= 1}
                     onClick={() => filterStore.setFilter('page', filterStore.page - 1)}>
-                    Zurück
+                    Previous
                   </Button>
                   <span className="flex items-center px-3 text-sm">
-                    Seite {filterStore.page} von {totalPages}
+                    Page {filterStore.page} of {totalPages}
                   </span>
                   <Button variant="outline" size="sm"
                     disabled={filterStore.page >= totalPages}
                     onClick={() => filterStore.setFilter('page', filterStore.page + 1)}>
-                    Weiter
+                    Next
                   </Button>
                 </div>
               )}

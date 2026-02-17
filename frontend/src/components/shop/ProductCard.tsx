@@ -23,9 +23,9 @@ export function ProductCard({ product, onRefreshCart, onShowDetail }: Props) {
       await cartApi.addItem(product.id)
       onRefreshCart()
       useCartStore.getState().setOpen(true)
-      addToast({ title: 'In den Warenkorb gelegt', description: product.name })
+      addToast({ title: 'Added to cart', description: product.name })
     } catch (err: unknown) {
-      addToast({ title: 'Fehler', description: getErrorMessage(err), variant: 'destructive' })
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 

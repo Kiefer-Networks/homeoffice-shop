@@ -139,9 +139,9 @@ export function AdminProductsPage() {
         amazon_asin: asin,
         external_url: data.url || f.external_url,
       }))
-      addToast({ title: 'Produktdaten geladen' })
+      addToast({ title: 'Product data loaded' })
     } catch {
-      addToast({ title: 'Fehler beim Laden', variant: 'destructive' })
+      addToast({ title: 'Failed to load', variant: 'destructive' })
     } finally {
       setLoadingProduct(false)
     }
@@ -154,9 +154,9 @@ export function AdminProductsPage() {
     try {
       const { data } = await adminApi.amazonSearch(searchQuery)
       setSearchResults(data)
-      if (data.length === 0) addToast({ title: 'Keine Ergebnisse' })
+      if (data.length === 0) addToast({ title: 'No results' })
     } catch {
-      addToast({ title: 'Suche fehlgeschlagen', variant: 'destructive' })
+      addToast({ title: 'Search failed', variant: 'destructive' })
     } finally {
       setSearching(false)
     }
@@ -176,18 +176,18 @@ export function AdminProductsPage() {
         external_url: data.url || result.url || f.external_url,
       }))
       setSearchResults([])
-      addToast({ title: 'Produktdaten geladen' })
+      addToast({ title: 'Product data loaded' })
     } catch {
-      addToast({ title: 'Fehler beim Laden', variant: 'destructive' })
+      addToast({ title: 'Failed to load', variant: 'destructive' })
     } finally {
       setLoadingProduct(false)
     }
   }
 
   const handleCreate = async () => {
-    if (!form.name.trim()) return addToast({ title: 'Name ist erforderlich', variant: 'destructive' })
-    if (!form.category_id) return addToast({ title: 'Kategorie ist erforderlich', variant: 'destructive' })
-    if (!form.external_url.trim()) return addToast({ title: 'URL ist erforderlich', variant: 'destructive' })
+    if (!form.name.trim()) return addToast({ title: 'Name is required', variant: 'destructive' })
+    if (!form.category_id) return addToast({ title: 'Category is required', variant: 'destructive' })
+    if (!form.external_url.trim()) return addToast({ title: 'URL is required', variant: 'destructive' })
     const priceCents = parseEuroToCents(form.price_euro)
     try {
       await adminApi.createProduct({
@@ -203,9 +203,9 @@ export function AdminProductsPage() {
       setSearchQuery('')
       setShowKeywordSearch(false)
       load()
-      addToast({ title: 'Produkt erstellt' })
+      addToast({ title: 'Product created' })
     } catch (err: unknown) {
-      addToast({ title: 'Fehler', description: getErrorMessage(err), variant: 'destructive' })
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 
@@ -224,8 +224,8 @@ export function AdminProductsPage() {
 
   const handleUpdate = async () => {
     if (!editProduct) return
-    if (!editForm.name.trim()) return addToast({ title: 'Name ist erforderlich', variant: 'destructive' })
-    if (!editForm.category_id) return addToast({ title: 'Kategorie ist erforderlich', variant: 'destructive' })
+    if (!editForm.name.trim()) return addToast({ title: 'Name is required', variant: 'destructive' })
+    if (!editForm.category_id) return addToast({ title: 'Category is required', variant: 'destructive' })
     const priceCents = parseEuroToCents(editForm.price_euro)
     try {
       await adminApi.updateProduct(editProduct.id, {
@@ -239,9 +239,9 @@ export function AdminProductsPage() {
       })
       setEditProduct(null)
       load()
-      addToast({ title: 'Produkt aktualisiert' })
+      addToast({ title: 'Product updated' })
     } catch (err: unknown) {
-      addToast({ title: 'Fehler', description: getErrorMessage(err), variant: 'destructive' })
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 
@@ -254,7 +254,7 @@ export function AdminProductsPage() {
       }
       load()
     } catch (err: unknown) {
-      addToast({ title: 'Fehler', description: getErrorMessage(err), variant: 'destructive' })
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 
@@ -264,9 +264,9 @@ export function AdminProductsPage() {
       await adminApi.deleteProduct(deleteConfirm.id)
       setDeleteConfirm(null)
       load()
-      addToast({ title: 'Produkt gelöscht' })
+      addToast({ title: 'Product deleted' })
     } catch (err: unknown) {
-      addToast({ title: 'Fehler', description: getErrorMessage(err), variant: 'destructive' })
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 
@@ -275,9 +275,9 @@ export function AdminProductsPage() {
     try {
       await adminApi.redownloadImages(id)
       load()
-      addToast({ title: 'Bilder neu geladen' })
+      addToast({ title: 'Images reloaded' })
     } catch (err: unknown) {
-      addToast({ title: 'Fehler', description: getErrorMessage(err), variant: 'destructive' })
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 
@@ -287,9 +287,9 @@ export function AdminProductsPage() {
     <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Produkte ({total})</h1>
+        <h1 className="text-2xl font-bold">Products ({total})</h1>
         <Button onClick={() => setShowCreate(true)}>
-          <Plus className="h-4 w-4 mr-1" /> Produkt anlegen
+          <Plus className="h-4 w-4 mr-1" /> Add Product
         </Button>
       </div>
 
@@ -297,7 +297,7 @@ export function AdminProductsPage() {
       <div className="mb-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input placeholder="Suche nach Name, Marke..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 max-w-sm" />
+          <Input placeholder="Search by name, brand..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 max-w-sm" />
         </div>
       </div>
 
@@ -306,16 +306,16 @@ export function AdminProductsPage() {
         {/* Category filter */}
         <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
           className="h-9 rounded-md border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm">
-          <option value="">Alle Kategorien</option>
+          <option value="">All Categories</option>
           {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
 
         {/* Active filter */}
         <div className="flex gap-1">
           {[
-            { label: 'Alle', value: '' },
-            { label: 'Aktiv', value: 'active' },
-            { label: 'Inaktiv', value: 'inactive' },
+            { label: 'All', value: '' },
+            { label: 'Active', value: 'active' },
+            { label: 'Inactive', value: 'inactive' },
           ].map((a) => (
             <Button key={a.value} size="sm" variant={activeFilter === a.value ? 'default' : 'outline'} onClick={() => setActiveFilter(a.value)}>
               {a.label}
@@ -335,12 +335,12 @@ export function AdminProductsPage() {
                   <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
                     <SortHeader label="Name" sortKey="name_asc" currentSort={sort} onSort={setSort} />
                   </th>
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Kategorie</th>
+                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Category</th>
                   <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                    <SortHeader label="Preis" sortKey="price_asc" currentSort={sort} onSort={setSort} />
+                    <SortHeader label="Price" sortKey="price_asc" currentSort={sort} onSort={setSort} />
                   </th>
                   <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Status</th>
-                  <th className="text-right px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Aktionen</th>
+                  <th className="text-right px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -368,7 +368,7 @@ export function AdminProductsPage() {
                       <td className="px-4 py-3 font-medium">{formatCents(p.price_cents)}</td>
                       <td className="px-4 py-3">
                         <Badge variant={p.is_active ? 'success' : 'secondary'}>
-                          {p.is_active ? 'Aktiv' : 'Inaktiv'}
+                          {p.is_active ? 'Active' : 'Inactive'}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -395,7 +395,7 @@ export function AdminProductsPage() {
                 {filteredProducts.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center text-[hsl(var(--muted-foreground))]">
-                      Keine Produkte gefunden.
+                      No products found.
                     </td>
                   </tr>
                 )}
@@ -407,13 +407,13 @@ export function AdminProductsPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-[hsl(var(--border))]">
               <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                Zurück
+                Previous
               </Button>
               <span className="text-sm text-[hsl(var(--muted-foreground))]">
-                Seite {page} von {totalPages}
+                Page {page} of {totalPages}
               </span>
               <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                Weiter
+                Next
               </Button>
             </div>
           )}
@@ -423,24 +423,24 @@ export function AdminProductsPage() {
       {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Produkt anlegen</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Add Product</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="relative">
               <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input placeholder="Amazon URL einfügen" value={amazonUrl}
+              <Input placeholder="Paste Amazon URL" value={amazonUrl}
                 onChange={(e) => handleAmazonUrl(e.target.value)} className="pl-10" />
             </div>
 
             {loadingProduct && (
               <div className="flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))]">
-                <Loader2 className="h-4 w-4 animate-spin" /> Lade Produktdaten...
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading product data...
               </div>
             )}
 
             <button type="button" onClick={() => setShowKeywordSearch(!showKeywordSearch)}
               className="flex items-center gap-1 text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
               {showKeywordSearch ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-              Amazon Keyword-Suche
+              Amazon Keyword Search
             </button>
 
             {showKeywordSearch && (
@@ -449,7 +449,7 @@ export function AdminProductsPage() {
                   <Input placeholder="EAN, Name, etc." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAmazonSearch()} />
                   <Button variant="outline" onClick={handleAmazonSearch} disabled={searching}>
-                    {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Suchen'}
+                    {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
                   </Button>
                 </div>
                 {searchResults.length > 0 && (
@@ -471,21 +471,21 @@ export function AdminProductsPage() {
               </>
             )}
 
-            <Input placeholder="Produktname *" value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />
-            <Input placeholder="Marke" value={form.brand} onChange={(e) => setForm(f => ({ ...f, brand: e.target.value }))} />
+            <Input placeholder="Product name *" value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />
+            <Input placeholder="Brand" value={form.brand} onChange={(e) => setForm(f => ({ ...f, brand: e.target.value }))} />
             <select value={form.category_id} onChange={(e) => setForm(f => ({ ...f, category_id: e.target.value }))}
               className="w-full rounded-md border px-3 py-2 text-sm">
-              <option value="">Kategorie wählen *</option>
+              <option value="">Select category *</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <Input placeholder="Preis in Euro (z.B. 1.299,99)" value={form.price_euro} onChange={(e) => setForm(f => ({ ...f, price_euro: e.target.value }))} />
-            <Input placeholder="Externe URL *" value={form.external_url} onChange={(e) => setForm(f => ({ ...f, external_url: e.target.value }))} />
-            <textarea placeholder="Beschreibung" value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
+            <Input placeholder="Price in EUR (e.g. 1,299.99)" value={form.price_euro} onChange={(e) => setForm(f => ({ ...f, price_euro: e.target.value }))} />
+            <Input placeholder="External URL *" value={form.external_url} onChange={(e) => setForm(f => ({ ...f, external_url: e.target.value }))} />
+            <textarea placeholder="Description" value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
               className="w-full rounded-md border px-3 py-2 text-sm min-h-[80px]" />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreate(false)}>Abbrechen</Button>
-            <Button onClick={handleCreate} disabled={!form.name || !form.category_id || !form.external_url}>Erstellen</Button>
+            <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={!form.name || !form.category_id || !form.external_url}>Create</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -493,23 +493,23 @@ export function AdminProductsPage() {
       {/* Edit Dialog */}
       <Dialog open={!!editProduct} onOpenChange={() => setEditProduct(null)}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Produkt bearbeiten</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Edit Product</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <Input placeholder="Produktname *" value={editForm.name} onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))} />
-            <Input placeholder="Marke" value={editForm.brand} onChange={(e) => setEditForm(f => ({ ...f, brand: e.target.value }))} />
+            <Input placeholder="Product name *" value={editForm.name} onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))} />
+            <Input placeholder="Brand" value={editForm.brand} onChange={(e) => setEditForm(f => ({ ...f, brand: e.target.value }))} />
             <select value={editForm.category_id} onChange={(e) => setEditForm(f => ({ ...f, category_id: e.target.value }))}
               className="w-full rounded-md border px-3 py-2 text-sm">
-              <option value="">Kategorie wählen *</option>
+              <option value="">Select category *</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <Input placeholder="Preis in Euro (z.B. 1.299,99)" value={editForm.price_euro} onChange={(e) => setEditForm(f => ({ ...f, price_euro: e.target.value }))} />
-            <Input placeholder="Externe URL *" value={editForm.external_url} onChange={(e) => setEditForm(f => ({ ...f, external_url: e.target.value }))} />
-            <textarea placeholder="Beschreibung" value={editForm.description} onChange={(e) => setEditForm(f => ({ ...f, description: e.target.value }))}
+            <Input placeholder="Price in EUR (e.g. 1,299.99)" value={editForm.price_euro} onChange={(e) => setEditForm(f => ({ ...f, price_euro: e.target.value }))} />
+            <Input placeholder="External URL *" value={editForm.external_url} onChange={(e) => setEditForm(f => ({ ...f, external_url: e.target.value }))} />
+            <textarea placeholder="Description" value={editForm.description} onChange={(e) => setEditForm(f => ({ ...f, description: e.target.value }))}
               className="w-full rounded-md border px-3 py-2 text-sm min-h-[80px]" />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditProduct(null)}>Abbrechen</Button>
-            <Button onClick={handleUpdate}>Speichern</Button>
+            <Button variant="outline" onClick={() => setEditProduct(null)}>Cancel</Button>
+            <Button onClick={handleUpdate}>Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -517,13 +517,13 @@ export function AdminProductsPage() {
       {/* Delete Confirmation */}
       <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Produkt löschen?</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Delete product?</DialogTitle></DialogHeader>
           <p className="text-sm text-[hsl(var(--muted-foreground))]">
-            Soll <strong>{deleteConfirm?.name}</strong> wirklich gelöscht werden? Diese Aktion kann nicht rückgängig gemacht werden.
+            Are you sure you want to delete <strong>{deleteConfirm?.name}</strong>? This action cannot be undone.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Abbrechen</Button>
-            <Button variant="destructive" onClick={handleDelete}>Löschen</Button>
+            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

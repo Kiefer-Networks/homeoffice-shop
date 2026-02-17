@@ -45,12 +45,12 @@ class ErrorBoundary extends React.Component<
       return (
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
-            <p className="text-lg font-medium">Ein unerwarteter Fehler ist aufgetreten.</p>
+            <p className="text-lg font-medium">An unexpected error occurred.</p>
             <button
               className="mt-4 px-4 py-2 bg-[hsl(var(--primary))] text-white rounded-md"
               onClick={() => window.location.reload()}
             >
-              Seite neu laden
+              Reload page
             </button>
           </div>
         </div>
@@ -116,7 +116,7 @@ function ToastContainer() {
   const { toasts, removeToast } = useUiStore()
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 space-y-2" role="region" aria-live="polite" aria-label="Benachrichtigungen">
+    <div className="fixed bottom-4 right-4 z-50 space-y-2" role="region" aria-live="polite" aria-label="Notifications">
       {toasts.map((toast: Toast) => (
         <div
           key={toast.id}
