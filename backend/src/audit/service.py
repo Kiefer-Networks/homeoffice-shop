@@ -1,0 +1,174 @@
+import csv
+import io
+import logging
+from datetime import datetime, timezone
+from dateutil.relativedelta import relativedelta
+from uuid import UUID
+
+from sqlalchemy import text, func, select, and_
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.audit.models import AuditLog
+from src.models.orm.user import User
+
+logger = logging.getLogger(__name__)
+
+
+async def write_audit_log(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    action: str,
+    resource_type: str,
+    resource_id: UUID | None = None,
+    details: dict | None = None,
+    ip_address: str | None = None,
+    correlation_id: str | None = None,
+) -> None:
+    entry = AuditLog(
+        user_id=user_id,
+        action=action,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        details=details,
+        ip_address=ip_address,
+        correlation_id=correlation_id,
+    )
+    db.add(entry)
+
+
+async def query_audit_logs(
+    db: AsyncSession,
+    *,
+    user_id: UUID | None = None,
+    action: str | None = None,
+    resource_type: str | None = None,
+    resource_id: UUID | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    page: int = 1,
+    per_page: int = 50,
+) -> tuple[list[dict], int]:
+    conditions = []
+
+    if user_id:
+        conditions.append(AuditLog.user_id == user_id)
+    if action:
+        conditions.append(AuditLog.action == action)
+    if resource_type:
+        conditions.append(AuditLog.resource_type == resource_type)
+    if resource_id:
+        conditions.append(AuditLog.resource_id == resource_id)
+    if date_from:
+        conditions.append(AuditLog.created_at >= date_from)
+    if date_to:
+        conditions.append(AuditLog.created_at <= date_to)
+
+    where_clause = and_(*conditions) if conditions else True
+
+    count_stmt = select(func.count()).select_from(AuditLog).where(where_clause)
+    total = (await db.execute(count_stmt)).scalar() or 0
+
+    stmt = (
+        select(AuditLog, User.email)
+        .join(User, AuditLog.user_id == User.id, isouter=True)
+        .where(where_clause)
+        .order_by(AuditLog.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    items = []
+    for audit_entry, user_email in rows:
+        items.append({
+            "id": audit_entry.id,
+            "user_id": audit_entry.user_id,
+            "user_email": user_email,
+            "action": audit_entry.action,
+            "resource_type": audit_entry.resource_type,
+            "resource_id": audit_entry.resource_id,
+            "details": audit_entry.details,
+            "ip_address": str(audit_entry.ip_address) if audit_entry.ip_address else None,
+            "correlation_id": audit_entry.correlation_id,
+            "created_at": audit_entry.created_at,
+        })
+
+    return items, total
+
+
+async def export_audit_csv(
+    db: AsyncSession,
+    *,
+    user_id: UUID | None = None,
+    action: str | None = None,
+    resource_type: str | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+) -> str:
+    items, _ = await query_audit_logs(
+        db,
+        user_id=user_id,
+        action=action,
+        resource_type=resource_type,
+        date_from=date_from,
+        date_to=date_to,
+        page=1,
+        per_page=10000,
+    )
+
+    output = io.StringIO()
+    writer = csv.DictWriter(
+        output,
+        fieldnames=[
+            "id", "user_id", "user_email", "action", "resource_type",
+            "resource_id", "details", "ip_address", "correlation_id", "created_at",
+        ],
+    )
+    writer.writeheader()
+    for item in items:
+        item["details"] = str(item["details"]) if item["details"] else ""
+        writer.writerow(item)
+
+    return output.getvalue()
+
+
+async def ensure_audit_partitions(db: AsyncSession) -> None:
+    """Create partitions for current month + next 2 months.
+    Drop partitions older than 12 months.
+    """
+    now = datetime.now(timezone.utc)
+
+    for i in range(3):
+        month = now + relativedelta(months=i)
+        next_month = month + relativedelta(months=1)
+        partition_name = f"audit_log_{month.year}_{month.month:02d}"
+        start = f"{month.year}-{month.month:02d}-01"
+        end = f"{next_month.year}-{next_month.month:02d}-01"
+
+        check_sql = text(
+            "SELECT 1 FROM pg_tables WHERE tablename = :name"
+        )
+        result = await db.execute(check_sql, {"name": partition_name})
+        if result.scalar() is None:
+            create_sql = text(
+                f"CREATE TABLE {partition_name} PARTITION OF audit_log "
+                f"FOR VALUES FROM ('{start}') TO ('{end}')"
+            )
+            await db.execute(create_sql)
+            logger.info("Created audit partition: %s", partition_name)
+
+    cutoff = now - relativedelta(months=12)
+    for month_offset in range(13, 25):
+        old_month = now - relativedelta(months=month_offset)
+        partition_name = f"audit_log_{old_month.year}_{old_month.month:02d}"
+        check_sql = text(
+            "SELECT 1 FROM pg_tables WHERE tablename = :name"
+        )
+        result = await db.execute(check_sql, {"name": partition_name})
+        if result.scalar() is not None:
+            await db.execute(text(f"DROP TABLE {partition_name}"))
+            logger.info("Dropped old audit partition: %s", partition_name)
+
+    await db.commit()
