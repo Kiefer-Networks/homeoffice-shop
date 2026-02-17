@@ -8,6 +8,7 @@ import { adminApi } from '@/services/adminApi'
 import { formatCents, formatDate } from '@/lib/utils'
 import { useUiStore } from '@/stores/uiStore'
 import { ExternalLink, Check } from 'lucide-react'
+import { getErrorMessage } from '@/lib/error'
 import type { Order } from '@/types'
 
 const statusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning'> = {
@@ -41,8 +42,8 @@ export function AdminOrdersPage() {
       setAdminNote('')
       loadOrders()
       addToast({ title: 'Status updated' })
-    } catch (err: any) {
-      addToast({ title: 'Error', description: err.response?.data?.detail || 'Failed', variant: 'destructive' })
+    } catch (err: unknown) {
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 

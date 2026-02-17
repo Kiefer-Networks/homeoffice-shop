@@ -5,6 +5,7 @@ import { useCartStore } from '@/stores/cartStore'
 import { useUiStore } from '@/stores/uiStore'
 import { cartApi } from '@/services/cartApi'
 import { formatCents } from '@/lib/utils'
+import { getErrorMessage } from '@/lib/error'
 
 interface Props {
   onRefreshCart: () => void
@@ -25,8 +26,8 @@ export function CartDrawer({ onRefreshCart, onCheckout }: Props) {
         await cartApi.updateItem(productId, qty)
       }
       onRefreshCart()
-    } catch (err: any) {
-      addToast({ title: 'Error', description: err.response?.data?.detail || 'Failed to update', variant: 'destructive' })
+    } catch (err: unknown) {
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 

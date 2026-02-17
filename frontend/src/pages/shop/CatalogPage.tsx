@@ -13,6 +13,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { productApi } from '@/services/productApi'
 import { cartApi } from '@/services/cartApi'
 import { orderApi } from '@/services/orderApi'
+import { getErrorMessage } from '@/lib/error'
 import type { Product, Category, Facets } from '@/types'
 
 export function CatalogPage() {
@@ -70,8 +71,8 @@ export function CatalogPage() {
       setCartOpen(false)
       await refreshCart()
       addToast({ title: 'Order placed!', description: 'Your order has been submitted for review.' })
-    } catch (err: any) {
-      addToast({ title: 'Order failed', description: err.response?.data?.detail || 'Something went wrong', variant: 'destructive' })
+    } catch (err: unknown) {
+      addToast({ title: 'Order failed', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 

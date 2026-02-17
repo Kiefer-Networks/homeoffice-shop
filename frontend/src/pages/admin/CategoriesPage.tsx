@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { getErrorMessage } from '@/lib/error'
 import type { Category } from '@/types'
 
 export function AdminCategoriesPage() {
@@ -30,13 +31,13 @@ export function AdminCategoriesPage() {
       }
       setShowDialog(false); load()
       addToast({ title: editing ? 'Category updated' : 'Category created' })
-    } catch (err: any) { addToast({ title: 'Error', description: err.response?.data?.detail, variant: 'destructive' }) }
+    } catch (err: unknown) { addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' }) }
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this category?')) return
     try { await adminApi.deleteCategory(id); load(); addToast({ title: 'Category deleted' }) }
-    catch (err: any) { addToast({ title: 'Error', description: err.response?.data?.detail, variant: 'destructive' }) }
+    catch (err: unknown) { addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' }) }
   }
 
   return (

@@ -6,6 +6,7 @@ import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate } from '@/lib/utils'
 import { RefreshCcw, Shield, ShieldOff } from 'lucide-react'
+import { getErrorMessage } from '@/lib/error'
 import type { UserAdmin } from '@/types'
 
 export function AdminEmployeesPage() {
@@ -20,20 +21,20 @@ export function AdminEmployeesPage() {
   const handleSync = async () => {
     setSyncing(true)
     try { await adminApi.triggerSync(); load(); addToast({ title: 'Sync complete' }) }
-    catch (err: any) { addToast({ title: 'Sync failed', description: err.response?.data?.detail, variant: 'destructive' }) }
+    catch (err: unknown) { addToast({ title: 'Sync failed', description: getErrorMessage(err), variant: 'destructive' }) }
     finally { setSyncing(false) }
   }
 
   const toggleRole = async (user: UserAdmin) => {
     const newRole = user.role === 'admin' ? 'employee' : 'admin'
     try { await adminApi.updateUserRole(user.id, newRole); load(); addToast({ title: `Role changed to ${newRole}` }) }
-    catch (err: any) { addToast({ title: 'Error', description: err.response?.data?.detail, variant: 'destructive' }) }
+    catch (err: unknown) { addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' }) }
   }
 
   const toggleProbation = async (user: UserAdmin) => {
     try { await adminApi.updateProbationOverride(user.id, !user.probation_override); load()
       addToast({ title: user.probation_override ? 'Early access revoked' : 'Early access granted' })
-    } catch (err: any) { addToast({ title: 'Error', description: err.response?.data?.detail, variant: 'destructive' }) }
+    } catch (err: unknown) { addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' }) }
   }
 
   return (

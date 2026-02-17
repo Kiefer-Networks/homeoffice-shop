@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { Save } from 'lucide-react'
+import { getErrorMessage } from '@/lib/error'
 
 const settingLabels: Record<string, { label: string; description: string }> = {
   budget_initial_cents: { label: 'Initial Budget (cents)', description: 'First-year budget in cents (e.g. 75000 = 750 EUR)' },
@@ -35,7 +36,7 @@ export function AdminSettingsPage() {
       }
       setDirty(new Set())
       addToast({ title: 'Settings saved' })
-    } catch (err: any) { addToast({ title: 'Error', description: err.response?.data?.detail, variant: 'destructive' }) }
+    } catch (err: unknown) { addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' }) }
   }
 
   return (

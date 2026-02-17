@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { authApi } from '@/services/authApi'
+import { setAccessToken as setGlobalToken } from '@/lib/token'
 
 export function CallbackPage() {
   const navigate = useNavigate()
@@ -11,7 +12,7 @@ export function CallbackPage() {
   useEffect(() => {
     const token = searchParams.get('access_token')
     if (token) {
-      ;(window as any).__accessToken = token
+      setGlobalToken(token)
       setAccessToken(token)
       authApi.getMe().then(({ data }) => {
         setUser(data)

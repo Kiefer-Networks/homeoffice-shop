@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { authApi } from '@/services/authApi'
+import { setAccessToken } from '@/lib/token'
 import { ShopLayout } from '@/components/layout/ShopLayout'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { LoginPage } from '@/pages/auth/LoginPage'
@@ -19,6 +20,13 @@ import { AdminSettingsPage } from '@/pages/admin/SettingsPage'
 import { AdminAuditLogPage } from '@/pages/admin/AuditLogPage'
 import { AdminSyncLogPage } from '@/pages/admin/SyncLogPage'
 import { useUiStore } from '@/stores/uiStore'
+
+interface Toast {
+  id: string
+  title: string
+  description?: string
+  variant?: 'default' | 'destructive'
+}
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuthStore()
@@ -49,14 +57,14 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
 }
 
 function AppInit({ children }: { children: React.ReactNode }) {
-  const { setAccessToken, setUser, logout } = useAuthStore()
+  const { setAccessToken: setStoreToken, setUser, logout } = useAuthStore()
 
   useEffect(() => {
     authApi.refresh()
       .then(({ data }) => {
         const token = data.access_token
-        ;(window as any).__accessToken = token
         setAccessToken(token)
+        setStoreToken(token)
         return authApi.getMe()
       })
       .then(({ data }) => {
@@ -75,7 +83,7 @@ function ToastContainer() {
 
   return (
     <div className="fixed bottom-4 right-4 z-50 space-y-2">
-      {toasts.map((toast: any) => (
+      {toasts.map((toast: Toast) => (
         <div
           key={toast.id}
           className={`rounded-lg shadow-lg p-4 max-w-sm border ${

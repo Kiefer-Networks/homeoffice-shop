@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getAccessToken, setAccessToken } from '@/lib/token'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
@@ -6,8 +7,7 @@ const api = axios.create({
 })
 
 api.interceptors.request.use((config) => {
-  // Dynamic import to avoid circular deps
-  const token = (window as any).__accessToken
+  const token = getAccessToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -25,11 +25,11 @@ api.interceptors.response.use(
           {},
           { withCredentials: true }
         )
-        ;(window as any).__accessToken = data.access_token
+        setAccessToken(data.access_token)
         error.config.headers.Authorization = `Bearer ${data.access_token}`
         return api(error.config)
       } catch {
-        ;(window as any).__accessToken = null
+        setAccessToken(null)
         window.location.href = '/login'
       }
     }

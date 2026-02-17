@@ -7,6 +7,7 @@ import { useCartStore } from '@/stores/cartStore'
 import { useUiStore } from '@/stores/uiStore'
 import { formatCents } from '@/lib/utils'
 import { authApi } from '@/services/authApi'
+import { setAccessToken } from '@/lib/token'
 
 export function Header() {
   const { user, logout: logoutStore } = useAuthStore()
@@ -22,7 +23,7 @@ export function Header() {
       await authApi.logout()
     } catch {}
     logoutStore()
-    ;(window as any).__accessToken = null
+    setAccessToken(null)
     navigate('/login')
   }
 

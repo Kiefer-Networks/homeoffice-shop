@@ -6,6 +6,7 @@ import { formatCents } from '@/lib/utils'
 import { useCartStore } from '@/stores/cartStore'
 import { useUiStore } from '@/stores/uiStore'
 import { cartApi } from '@/services/cartApi'
+import { getErrorMessage } from '@/lib/error'
 import type { Product } from '@/types'
 
 interface Props {
@@ -22,8 +23,8 @@ export function ProductCard({ product, onRefreshCart }: Props) {
       onRefreshCart()
       useCartStore.getState().setOpen(true)
       addToast({ title: 'Added to cart', description: product.name })
-    } catch (err: any) {
-      addToast({ title: 'Error', description: err.response?.data?.detail || 'Failed to add to cart', variant: 'destructive' })
+    } catch (err: unknown) {
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 

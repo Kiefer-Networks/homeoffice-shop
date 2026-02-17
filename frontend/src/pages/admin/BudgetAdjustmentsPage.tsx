@@ -7,6 +7,7 @@ import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate } from '@/lib/utils'
 import { Plus } from 'lucide-react'
+import { getErrorMessage } from '@/lib/error'
 import type { BudgetAdjustment, UserAdmin } from '@/types'
 
 export function AdminBudgetAdjustmentsPage() {
@@ -24,7 +25,7 @@ export function AdminBudgetAdjustmentsPage() {
       await adminApi.createAdjustment({ user_id: form.user_id, amount_cents: Number(form.amount_cents), reason: form.reason })
       setShowDialog(false); setForm({ user_id: '', amount_cents: 0, reason: '' }); load()
       addToast({ title: 'Adjustment created' })
-    } catch (err: any) { addToast({ title: 'Error', description: err.response?.data?.detail, variant: 'destructive' }) }
+    } catch (err: unknown) { addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' }) }
   }
 
   return (

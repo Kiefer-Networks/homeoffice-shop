@@ -9,6 +9,7 @@ import { adminApi } from '@/services/adminApi'
 import { productApi } from '@/services/productApi'
 import { formatCents } from '@/lib/utils'
 import { Plus, Search, RefreshCcw } from 'lucide-react'
+import { getErrorMessage } from '@/lib/error'
 import type { Product, Category } from '@/types'
 
 export function AdminProductsPage() {
@@ -53,14 +54,14 @@ export function AdminProductsPage() {
         category_id: form.category_id,
         price_cents: Number(form.price_cents),
         icecat_gtin: form.icecat_gtin || undefined,
-      } as any)
+      })
       setShowCreate(false)
       setForm({ name: '', category_id: '', price_cents: 0, external_url: '', icecat_gtin: '', brand: '', description: '' })
       const params = new URLSearchParams(); params.set('per_page', '100')
       productApi.search(params).then(({ data }) => setProducts(data.items))
       addToast({ title: 'Product created' })
-    } catch (err: any) {
-      addToast({ title: 'Error', description: err.response?.data?.detail, variant: 'destructive' })
+    } catch (err: unknown) {
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 
@@ -72,8 +73,8 @@ export function AdminProductsPage() {
         await adminApi.activateProduct(product.id)
       }
       setProducts(prev => prev.map(p => p.id === product.id ? { ...p, is_active: !p.is_active } : p))
-    } catch (err: any) {
-      addToast({ title: 'Error', description: err.response?.data?.detail, variant: 'destructive' })
+    } catch (err: unknown) {
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 
@@ -81,8 +82,8 @@ export function AdminProductsPage() {
     try {
       await adminApi.redownloadImages(id)
       addToast({ title: 'Images re-downloaded' })
-    } catch (err: any) {
-      addToast({ title: 'Error', description: err.response?.data?.detail, variant: 'destructive' })
+    } catch (err: unknown) {
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 
