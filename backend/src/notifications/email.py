@@ -1,0 +1,49 @@
+import logging
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from pathlib import Path
+
+import aiosmtplib
+from jinja2 import Environment, FileSystemLoader
+
+from src.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+_template_dir = Path(__file__).parent / "templates"
+_jinja_env = Environment(loader=FileSystemLoader(str(_template_dir)), autoescape=True)
+
+
+async def send_email(
+    to: str,
+    subject: str,
+    template_name: str,
+    context: dict,
+) -> bool:
+    if not settings.smtp_host:
+        logger.debug("SMTP not configured, skipping email to %s", to)
+        return False
+
+    try:
+        template = _jinja_env.get_template(template_name)
+        html_body = template.render(**context)
+
+        message = MIMEMultipart("alternative")
+        message["From"] = f"{settings.smtp_from_name} <{settings.smtp_from_address}>"
+        message["To"] = to
+        message["Subject"] = subject
+        message.attach(MIMEText(html_body, "html"))
+
+        await aiosmtplib.send(
+            message,
+            hostname=settings.smtp_host,
+            port=settings.smtp_port,
+            username=settings.smtp_username or None,
+            password=settings.smtp_password or None,
+            use_tls=settings.smtp_use_tls,
+        )
+        logger.info("Email sent to %s: %s", to, subject)
+        return True
+    except Exception:
+        logger.exception("Failed to send email to %s", to)
+        return False
