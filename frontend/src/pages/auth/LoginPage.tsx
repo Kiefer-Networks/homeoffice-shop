@@ -17,11 +17,6 @@ export function LoginPage() {
               Sign in with Google
             </a>
           </Button>
-          <Button className="w-full" variant="outline" asChild>
-            <a href={`${API_URL}/api/auth/microsoft/login`}>
-              Sign in with Microsoft
-            </a>
-          </Button>
         </CardContent>
       </Card>
     </div>

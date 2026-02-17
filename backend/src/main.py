@@ -5,6 +5,7 @@ from collections.abc import AsyncIterator
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 from pathlib import Path
 
 from src.core.logging import setup_logging
@@ -29,6 +30,7 @@ from src.api.routes.admin import (
     users as admin_users,
 )
 from src.audit.service import ensure_audit_partitions
+from src.core.config import settings
 from src.services.settings_service import load_settings
 
 logger = logging.getLogger(__name__)
@@ -60,6 +62,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     )
 
 setup_cors(app)
+app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(RequestIdMiddleware)
 

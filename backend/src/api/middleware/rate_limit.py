@@ -36,13 +36,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         client_ip = request.client.host if request.client else "unknown"
         path = request.url.path
 
+        if path == "/api/health":
+            return await call_next(request)
+
         if path.startswith("/api/auth"):
             allowed, retry_after = _limiter.is_allowed(
-                f"auth:{client_ip}", limit=20, window_seconds=60
+                f"auth:{client_ip}", limit=60, window_seconds=60
             )
         else:
             allowed, retry_after = _limiter.is_allowed(
-                f"global:{client_ip}", limit=200, window_seconds=60
+                f"global:{client_ip}", limit=300, window_seconds=60
             )
 
         if not allowed:

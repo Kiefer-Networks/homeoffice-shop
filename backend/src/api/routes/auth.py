@@ -30,14 +30,6 @@ if settings.google_client_id:
         client_kwargs={"scope": "openid email profile"},
     )
 
-if settings.microsoft_client_id:
-    oauth.register(
-        name="microsoft",
-        client_id=settings.microsoft_client_id,
-        client_secret=settings.microsoft_client_secret,
-        server_metadata_url=f"https://login.microsoftonline.com/{settings.microsoft_tenant_id}/v2.0/.well-known/openid-configuration",
-        client_kwargs={"scope": "openid email profile"},
-    )
 
 
 def _is_probation_passed(start_date: date | None) -> bool:
@@ -123,7 +115,7 @@ async def _handle_oauth_callback(
 async def google_login(request: Request):
     if not settings.google_client_id:
         raise BadRequestError("Google OAuth not configured")
-    redirect_uri = f"{settings.backend_url}/api/auth/google/callback"
+    redirect_uri = settings.google_redirect_uri or f"{settings.backend_url}/api/auth/google/callback"
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
@@ -141,31 +133,6 @@ async def google_callback(
 
     return await _handle_oauth_callback(
         request, response, db, "google", email, name, sub
-    )
-
-
-@router.get("/microsoft/login")
-async def microsoft_login(request: Request):
-    if not settings.microsoft_client_id:
-        raise BadRequestError("Microsoft OAuth not configured")
-    redirect_uri = f"{settings.backend_url}/api/auth/microsoft/callback"
-    return await oauth.microsoft.authorize_redirect(request, redirect_uri)
-
-
-@router.get("/microsoft/callback")
-async def microsoft_callback(
-    request: Request,
-    response: Response,
-    db: AsyncSession = Depends(get_db),
-):
-    token = await oauth.microsoft.authorize_access_token(request)
-    userinfo = token.get("userinfo", {})
-    email = userinfo.get("email") or userinfo.get("preferred_username", "")
-    name = userinfo.get("name", email)
-    sub = userinfo.get("sub", "")
-
-    return await _handle_oauth_callback(
-        request, response, db, "microsoft", email, name, sub
     )
 
 

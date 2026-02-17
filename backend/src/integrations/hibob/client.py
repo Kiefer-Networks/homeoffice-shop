@@ -20,7 +20,7 @@ class HiBobClientProtocol(Protocol):
 class HiBobClient:
     def __init__(self):
         self._headers = {
-            "Authorization": settings.hibob_service_user_token,
+            "Authorization": f"Basic {settings.hibob_api_key}",
             "Accept": "application/json",
         }
 

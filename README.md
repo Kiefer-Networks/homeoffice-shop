@@ -7,7 +7,7 @@ Internal home office equipment shop for employees. Employees receive a configura
 - **Frontend:** React 18, TypeScript, Vite, TailwindCSS, shadcn/ui, zustand
 - **Backend:** Python 3.12, FastAPI, SQLAlchemy 2.x (async), Alembic
 - **Database:** PostgreSQL 16
-- **Auth:** Google OAuth 2.0 + Microsoft Entra ID, JWT (Access + Refresh tokens)
+- **Auth:** Google OAuth 2.0, JWT (Access + Refresh tokens)
 - **Integrations:** HiBob (HRIS), Icecat Open Catalog (product data)
 - **Notifications:** SMTP email + Slack webhooks
 

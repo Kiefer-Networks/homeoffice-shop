@@ -16,20 +16,15 @@ class Settings(BaseSettings):
     # Auth - Google OAuth
     google_client_id: str = ""
     google_client_secret: str = ""
-
-    # Auth - Microsoft Entra ID
-    microsoft_client_id: str = ""
-    microsoft_client_secret: str = ""
-    microsoft_tenant_id: str = ""
+    google_redirect_uri: str = ""
 
     # JWT
     jwt_secret_key: str = "CHANGE_ME"
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 7
 
-    # HiBob HRIS
-    hibob_service_user_id: str = ""
-    hibob_service_user_token: str = ""
+    # HiBob HRIS (base64-encoded "user:token" string)
+    hibob_api_key: str = ""
     hibob_sync_interval_hours: int = 6
 
     # Icecat Open Catalog

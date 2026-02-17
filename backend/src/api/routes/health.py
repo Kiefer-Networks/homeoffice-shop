@@ -22,7 +22,7 @@ async def _check_database(db: AsyncSession) -> dict:
 
 
 async def _check_hibob() -> dict:
-    if not settings.hibob_service_user_id:
+    if not settings.hibob_api_key:
         return {"status": "not_configured"}
     try:
         start = time.monotonic()
@@ -30,7 +30,7 @@ async def _check_hibob() -> dict:
             resp = await client.get(
                 "https://api.hibob.com/v1/company/people",
                 headers={
-                    "Authorization": settings.hibob_service_user_token,
+                    "Authorization": f"Basic {settings.hibob_api_key}",
                     "Accept": "application/json",
                 },
                 params={"showInactive": "false"},
