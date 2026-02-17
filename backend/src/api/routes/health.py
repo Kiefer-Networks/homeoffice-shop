@@ -1,7 +1,9 @@
+import os
 import time
 
 import httpx
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +11,8 @@ from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.core.config import settings
 from src.models.orm.user import User
+
+APP_VERSION = os.environ.get("APP_VERSION", "dev")
 
 router = APIRouter(tags=["health"])
 
@@ -105,7 +109,6 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     overall = "healthy" if db_status["status"] == "up" else "unhealthy"
     status_code = 200 if overall == "healthy" else 503
 
-    from fastapi.responses import JSONResponse
     return JSONResponse(
         content={"status": overall},
         status_code=status_code,
@@ -128,6 +131,6 @@ async def health_check_detailed(
 
     return {
         "status": overall,
-        "version": "1.0.0",
+        "version": APP_VERSION,
         "checks": checks,
     }

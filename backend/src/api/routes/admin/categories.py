@@ -1,7 +1,6 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, Response
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,7 +9,7 @@ from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import NotFoundError
 from src.models.dto import DetailResponse
-from src.models.dto.category import CategoryCreate, CategoryResponse, CategoryUpdate
+from src.models.dto.category import CategoryCreate, CategoryReorderItem, CategoryResponse, CategoryUpdate
 from src.models.orm.category import Category
 from src.models.orm.user import User
 
@@ -82,14 +81,9 @@ async def update_category(
     return category
 
 
-class ReorderItem(BaseModel):
-    id: UUID
-    sort_order: int
-
-
 @router.put("/reorder", response_model=DetailResponse)
 async def reorder_categories(
-    items: list[ReorderItem],
+    items: list[CategoryReorderItem],
     request: Request,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),

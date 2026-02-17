@@ -8,7 +8,7 @@ import pytest
 from src.core.exceptions import UnauthorizedError
 from src.core.security import create_refresh_token
 from src.services.auth_service import TokenPair, issue_tokens, logout, refresh_tokens
-from tests.conftest import make_refresh_token, make_user
+from tests.factories import make_refresh_token, make_user
 
 
 class TestIssueTokens:

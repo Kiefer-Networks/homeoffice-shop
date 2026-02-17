@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 from src.core.exceptions import ForbiddenError, UnauthorizedError
 from src.core.security import create_access_token
-from tests.conftest import make_user
+from tests.factories import make_user
 
 
 class TestGetCurrentUser:

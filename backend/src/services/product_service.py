@@ -172,16 +172,28 @@ async def refresh_all_prices(
 
     updated = 0
     errors = 0
+    sem = asyncio.Semaphore(5)
 
-    for product in products:
-        try:
-            new_price = await amazon_client.get_current_price(product.amazon_asin)
-            if new_price and new_price != product.price_cents:
-                product.price_cents = new_price
-                updated += 1
-        except Exception:
+    async def _refresh_one(product: Product) -> bool:
+        async with sem:
+            try:
+                new_price = await amazon_client.get_current_price(product.amazon_asin)
+                if new_price and new_price != product.price_cents:
+                    product.price_cents = new_price
+                    return True
+            except Exception:
+                logger.exception("Failed to refresh price for product %s", product.id)
+                raise
+            return False
+
+    results = await asyncio.gather(
+        *[_refresh_one(p) for p in products], return_exceptions=True,
+    )
+    for r in results:
+        if isinstance(r, Exception):
             errors += 1
-            logger.exception("Failed to refresh price for product %s", product.id)
+        elif r:
+            updated += 1
 
     await db.flush()
     return {"total": len(products), "updated": updated, "errors": errors}

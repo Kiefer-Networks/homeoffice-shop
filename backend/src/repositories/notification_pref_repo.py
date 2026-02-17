@@ -24,15 +24,28 @@ async def get_all(db: AsyncSession) -> dict[UUID, AdminNotificationPref]:
 
 
 async def upsert(
-    db: AsyncSession, user_id: UUID, **kwargs
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    slack_enabled: bool | None = None,
+    slack_events: list[str] | None = None,
+    email_enabled: bool | None = None,
+    email_events: list[str] | None = None,
 ) -> AdminNotificationPref:
+    fields = {
+        "slack_enabled": slack_enabled,
+        "slack_events": slack_events,
+        "email_enabled": email_enabled,
+        "email_events": email_events,
+    }
     pref = await get_by_user_id(db, user_id)
     if pref:
-        for key, value in kwargs.items():
+        for key, value in fields.items():
             if value is not None:
                 setattr(pref, key, value)
     else:
-        pref = AdminNotificationPref(user_id=user_id, **kwargs)
+        init_fields = {k: v for k, v in fields.items() if v is not None}
+        pref = AdminNotificationPref(user_id=user_id, **init_fields)
         db.add(pref)
     await db.flush()
     return pref

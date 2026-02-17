@@ -60,7 +60,7 @@ export function AdminSidebar() {
       {/* Mobile sidebar */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
+          <div className="fixed inset-0 bg-black/50" aria-label="Close sidebar" role="button" tabIndex={0} onClick={() => setSidebarOpen(false)} onKeyDown={(e) => e.key === 'Enter' && setSidebarOpen(false)} />
           <aside className="fixed left-0 top-0 bottom-0 w-64 bg-white shadow-xl">
             <div className="flex items-center justify-between p-4 border-b">
               <span className="font-semibold">Admin Menu</span>

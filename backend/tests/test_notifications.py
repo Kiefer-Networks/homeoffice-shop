@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.notifications.service import notify_admins_email, notify_admins_slack
-from tests.conftest import make_user
+from tests.factories import make_user
 
 
 def make_pref(*, slack_enabled=True, slack_events=None, email_enabled=True, email_events=None):

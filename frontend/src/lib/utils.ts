@@ -1,19 +1,21 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 
+const LOCALE = 'de-DE'
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
 export function formatCents(cents: number): string {
-  return new Intl.NumberFormat('de-DE', {
+  return new Intl.NumberFormat(LOCALE, {
     style: 'currency',
     currency: 'EUR',
   }).format(cents / 100)
 }
 
 export function formatDate(date: string | Date): string {
-  return new Intl.DateTimeFormat('de-DE', {
+  return new Intl.DateTimeFormat(LOCALE, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -36,7 +38,7 @@ export function parseEuroToCents(value: string): number {
 /** Format cents to Euro input value like "1.299,99" */
 export function centsToEuroInput(cents: number): string {
   if (!cents) return ''
-  return new Intl.NumberFormat('de-DE', {
+  return new Intl.NumberFormat(LOCALE, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(cents / 100)

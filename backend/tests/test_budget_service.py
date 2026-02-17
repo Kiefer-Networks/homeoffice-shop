@@ -13,7 +13,7 @@ from src.services.budget_service import (
     get_live_spent_cents,
     refresh_budget_cache,
 )
-from tests.conftest import make_user
+from tests.factories import make_user
 
 
 class TestCalculateTotalBudget:

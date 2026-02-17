@@ -8,7 +8,7 @@ import pytest
 from src.integrations.hibob.client import FakeHiBobClient, HiBobClientProtocol
 from src.integrations.hibob.models import HiBobEmployee
 from src.integrations.hibob.sync import sync_employees
-from tests.conftest import make_user
+from tests.factories import make_user
 
 
 class TestFakeHiBobClient:

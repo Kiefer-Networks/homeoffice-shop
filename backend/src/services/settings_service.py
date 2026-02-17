@@ -63,7 +63,7 @@ async def update_setting(
 
     async with _cache_lock:
         _cache[key] = value
-    logger.info("Setting '%s' updated to '%s'", key, value)
+    logger.info("Setting '%s' updated", key)
 
 
 async def get_all_settings(db: AsyncSession) -> dict[str, str]:

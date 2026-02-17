@@ -20,6 +20,11 @@ class CategoryUpdate(BaseModel):
     sort_order: int | None = None
 
 
+class CategoryReorderItem(BaseModel):
+    id: UUID
+    sort_order: int
+
+
 class CategoryResponse(BaseModel):
     id: UUID
     name: str

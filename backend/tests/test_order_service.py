@@ -11,7 +11,7 @@ from src.services.order_service import (
     create_order_from_cart,
     transition_order,
 )
-from tests.conftest import make_cart_item, make_order, make_product, make_user
+from tests.factories import make_cart_item, make_order, make_product, make_user
 
 
 class TestValidTransitions:

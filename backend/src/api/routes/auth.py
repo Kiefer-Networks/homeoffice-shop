@@ -3,6 +3,7 @@ from datetime import date
 from email.utils import parseaddr
 
 from authlib.integrations.starlette_client import OAuth
+from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +16,7 @@ from src.core.exceptions import BadRequestError, UnauthorizedError
 from src.models.dto.auth import TokenResponse
 from src.models.orm.user import User
 from src.repositories import user_repo
+from src.core.security import decode_token
 from src.services.auth_service import issue_tokens, logout, refresh_tokens
 from src.services.budget_service import calculate_total_budget_cents
 from src.services.settings_service import get_setting_int
@@ -37,7 +39,6 @@ if settings.google_client_id:
 def _is_probation_passed(start_date: date | None) -> bool:
     if start_date is None:
         return False
-    from dateutil.relativedelta import relativedelta
     probation_months = get_setting_int("probation_months")
     probation_end = start_date + relativedelta(months=probation_months)
     return date.today() >= probation_end
@@ -155,7 +156,6 @@ async def refresh_token(
     ip = request.client.host if request.client else None
     payload = {}
     try:
-        from src.core.security import decode_token
         payload = decode_token(tokens.access_token)
     except Exception:
         pass

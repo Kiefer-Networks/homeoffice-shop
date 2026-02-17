@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 from src.core.exceptions import BadRequestError
 from src.services.cart_service import add_to_cart, get_cart, remove_from_cart, update_cart_item
-from tests.conftest import make_cart_item, make_product, make_user
+from tests.factories import make_cart_item, make_product, make_user
 
 
 class TestGetCart:
