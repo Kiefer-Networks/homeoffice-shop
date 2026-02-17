@@ -23,9 +23,11 @@ export function Header() {
   const handleLogout = async () => {
     try {
       await authApi.logout()
-    } catch {}
-    logoutStore()
+    } catch {
+      // Server-side cleanup may fail, but we still logout locally
+    }
     setAccessToken(null)
+    logoutStore()
     navigate('/login')
   }
 
@@ -49,12 +51,12 @@ export function Header() {
           </div>
 
           <Link to="/orders">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" aria-label="My orders">
               <ClipboardList className="h-5 w-5" />
             </Button>
           </Link>
 
-          <Button variant="ghost" size="icon" className="relative" onClick={() => setCartOpen(true)}>
+          <Button variant="ghost" size="icon" className="relative" onClick={() => setCartOpen(true)} aria-label={`Shopping cart${cartItemCount > 0 ? ` (${cartItemCount} items)` : ''}`}>
             <ShoppingCart className="h-5 w-5" />
             {cartItemCount > 0 && (
               <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px]">
@@ -65,7 +67,7 @@ export function Header() {
 
           {user?.role === 'admin' && (
             <Link to="/admin">
-              <Button variant="ghost" size="icon"><Settings className="h-5 w-5" /></Button>
+              <Button variant="ghost" size="icon" aria-label="Admin settings"><Settings className="h-5 w-5" /></Button>
             </Link>
           )}
 
@@ -74,7 +76,7 @@ export function Header() {
               <div className="font-medium">{user?.display_name}</div>
               <div className="text-xs text-[hsl(var(--muted-foreground))]">{user?.department}</div>
             </div>
-            <Button variant="ghost" size="icon" onClick={handleLogout}>
+            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Log out">
               <LogOut className="h-4 w-4" />
             </Button>
           </div>

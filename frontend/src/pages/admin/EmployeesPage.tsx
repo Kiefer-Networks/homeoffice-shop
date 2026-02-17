@@ -207,6 +207,7 @@ export function AdminEmployeesPage() {
           value={departmentFilter}
           onChange={(e) => setDepartmentFilter(e.target.value)}
           className="h-9 rounded-md border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm"
+          aria-label="Filter by department"
         >
           <option value="">All Departments</option>
           {departments.map((d) => (

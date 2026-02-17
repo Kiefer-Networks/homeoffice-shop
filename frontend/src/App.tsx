@@ -120,12 +120,15 @@ function ToastContainer() {
       {toasts.map((toast: Toast) => (
         <div
           key={toast.id}
-          className={`rounded-lg shadow-lg p-4 max-w-sm border ${
+          role="alert"
+          className={`rounded-lg shadow-lg p-4 max-w-sm border cursor-pointer ${
             toast.variant === 'destructive'
               ? 'bg-red-50 border-red-200 text-red-800'
               : 'bg-white border-gray-200'
           }`}
           onClick={() => removeToast(toast.id)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') removeToast(toast.id) }}
+          tabIndex={0}
         >
           <p className="font-medium text-sm">{toast.title}</p>
           {toast.description && <p className="text-xs mt-1 opacity-75">{toast.description}</p>}

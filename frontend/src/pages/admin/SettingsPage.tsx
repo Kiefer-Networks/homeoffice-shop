@@ -20,9 +20,15 @@ const settingLabels: Record<string, { label: string; description: string }> = {
 export function AdminSettingsPage() {
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [dirty, setDirty] = useState<Set<string>>(new Set())
+  const [loading, setLoading] = useState(true)
   const { addToast } = useUiStore()
 
-  useEffect(() => { adminApi.getSettings().then(({ data }) => setSettings(data.settings)) }, [])
+  useEffect(() => {
+    adminApi.getSettings()
+      .then(({ data }) => setSettings(data.settings))
+      .catch(() => addToast({ title: 'Failed to load settings', variant: 'destructive' }))
+      .finally(() => setLoading(false))
+  }, [])
 
   const handleChange = (key: string, value: string) => {
     setSettings(s => ({ ...s, [key]: value }))
@@ -47,13 +53,19 @@ export function AdminSettingsPage() {
       </div>
       <Card>
         <CardContent className="space-y-4 pt-6">
-          {Object.entries(settingLabels).map(([key, { label, description }]) => (
-            <div key={key}>
-              <label className="text-sm font-medium">{label}</label>
-              <p className="text-xs text-[hsl(var(--muted-foreground))] mb-1">{description}</p>
-              <Input value={settings[key] || ''} onChange={(e) => handleChange(key, e.target.value)} />
+          {loading ? (
+            <div className="space-y-4">
+              {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded animate-pulse" />)}
             </div>
-          ))}
+          ) : (
+            Object.entries(settingLabels).map(([key, { label, description }]) => (
+              <div key={key}>
+                <label className="text-sm font-medium">{label}</label>
+                <p className="text-xs text-[hsl(var(--muted-foreground))] mb-1">{description}</p>
+                <Input value={settings[key] || ''} onChange={(e) => handleChange(key, e.target.value)} />
+              </div>
+            ))
+          )}
         </CardContent>
       </Card>
     </div>

@@ -71,6 +71,7 @@ export function AdminCategoriesPage() {
   const [showDialog, setShowDialog] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)
   const [form, setForm] = useState({ name: '', slug: '', description: '', icon: '', sort_order: 0 })
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const { addToast } = useUiStore()
 
   const sensors = useSensors(
@@ -115,9 +116,14 @@ export function AdminCategoriesPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this category?')) return
-    try { await adminApi.deleteCategory(id); load(); addToast({ title: 'Category deleted' }) }
+    setDeleteTarget(id)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    try { await adminApi.deleteCategory(deleteTarget); load(); addToast({ title: 'Category deleted' }) }
     catch (err: unknown) { addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' }) }
+    finally { setDeleteTarget(null) }
   }
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -165,6 +171,17 @@ export function AdminCategoriesPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
             <Button onClick={handleSave} disabled={!form.name || !form.slug}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Delete Category</DialogTitle></DialogHeader>
+          <p className="text-sm text-[hsl(var(--muted-foreground))]">Are you sure you want to delete this category? This action cannot be undone.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -19,6 +19,7 @@ export function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
   const [selected, setSelected] = useState<Order | null>(null)
   const [showStatusDialog, setShowStatusDialog] = useState(false)
@@ -27,9 +28,13 @@ export function AdminOrdersPage() {
   const { addToast } = useUiStore()
 
   const loadOrders = () => {
+    setLoading(true)
     const params: Record<string, string | number> = { page, per_page: 20 }
     if (statusFilter) params.status = statusFilter
-    adminApi.listOrders(params).then(({ data }) => { setOrders(data.items); setTotal(data.total) })
+    adminApi.listOrders(params)
+      .then(({ data }) => { setOrders(data.items); setTotal(data.total) })
+      .catch((err: unknown) => addToast({ title: 'Error loading orders', description: getErrorMessage(err), variant: 'destructive' }))
+      .finally(() => setLoading(false))
   }
 
   useEffect(() => { loadOrders() }, [page, statusFilter])
@@ -48,8 +53,12 @@ export function AdminOrdersPage() {
   }
 
   const handleItemCheck = async (orderId: string, itemId: string, checked: boolean) => {
-    await adminApi.checkOrderItem(orderId, itemId, checked)
-    loadOrders()
+    try {
+      await adminApi.checkOrderItem(orderId, itemId, checked)
+      loadOrders()
+    } catch (err: unknown) {
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+    }
   }
 
   const openAllLinks = (order: Order) => {
@@ -74,6 +83,9 @@ export function AdminOrdersPage() {
       </div>
 
       <div className="space-y-4">
+        {loading && orders.length === 0 ? (
+          [...Array(3)].map((_, i) => <div key={i} className="h-40 bg-gray-100 rounded-xl animate-pulse" />)
+        ) : null}
         {orders.map((order) => (
           <Card key={order.id}>
             <CardHeader className="flex flex-row items-start justify-between pb-2">
@@ -124,6 +136,14 @@ export function AdminOrdersPage() {
           </Card>
         ))}
       </div>
+
+      {total > 20 && (
+        <div className="flex justify-center gap-2 mt-6">
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
+          <span className="flex items-center px-3 text-sm">Page {page} of {Math.ceil(total / 20)}</span>
+          <Button variant="outline" size="sm" disabled={page >= Math.ceil(total / 20)} onClick={() => setPage(p => p + 1)}>Next</Button>
+        </div>
+      )}
 
       <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
         <DialogContent>

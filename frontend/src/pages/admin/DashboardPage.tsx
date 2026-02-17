@@ -5,6 +5,7 @@ import { adminApi } from '@/services/adminApi'
 
 export function DashboardPage() {
   const [stats, setStats] = useState({ orders: 0, pending: 0, users: 0, products: 0 })
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     Promise.all([
@@ -18,7 +19,9 @@ export function DashboardPage() {
         users: users.data.total,
         products: 0,
       })
-    })
+    }).catch(() => {
+      // Stats may fail to load if APIs are temporarily unavailable
+    }).finally(() => setLoading(false))
   }, [])
 
   const cards = [
@@ -38,7 +41,11 @@ export function DashboardPage() {
               <card.icon className={`h-5 w-5 ${card.color}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{card.value}</div>
+              {loading ? (
+                <div className="h-9 w-16 bg-gray-100 rounded animate-pulse" />
+              ) : (
+                <div className="text-3xl font-bold">{card.value}</div>
+              )}
             </CardContent>
           </Card>
         ))}
