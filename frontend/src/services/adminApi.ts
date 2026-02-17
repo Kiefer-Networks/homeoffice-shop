@@ -18,6 +18,8 @@ export const adminApi = {
   createCategory: (data: Partial<Category>) => api.post<Category>('/api/admin/categories', data),
   updateCategory: (id: string, data: Partial<Category>) => api.put<Category>(`/api/admin/categories/${id}`, data),
   deleteCategory: (id: string) => api.delete(`/api/admin/categories/${id}`),
+  reorderCategories: (items: { id: string; sort_order: number }[]) =>
+    api.put('/api/admin/categories/reorder', items),
 
   // Orders
   listOrders: (params?: Record<string, string | number>) =>

@@ -40,17 +40,35 @@ class HiBobClient:
                 )
             data = resp.json()
 
+        # HiBob search API may return employees under different keys
+        raw_employees = data.get("employees", [])
+        if not raw_employees and isinstance(data, list):
+            raw_employees = data
+        logger.info(
+            "HiBob API returned %d employees (response keys: %s)",
+            len(raw_employees),
+            list(data.keys()) if isinstance(data, dict) else type(data).__name__,
+        )
+
         employees = []
-        for emp in data.get("employees", []):
+        for emp in raw_employees:
             try:
                 work = emp.get("work", {})
-                personal = emp.get("personal", {})
 
                 start_date = None
                 raw_start = work.get("startDate")
                 if raw_start:
                     from datetime import date as date_type
-                    start_date = date_type.fromisoformat(raw_start)
+                    try:
+                        start_date = date_type.fromisoformat(raw_start)
+                    except ValueError:
+                        from datetime import datetime as dt_type
+                        for fmt in ("%d/%m/%Y", "%m/%d/%Y", "%Y-%m-%d"):
+                            try:
+                                start_date = dt_type.strptime(raw_start, fmt).date()
+                                break
+                            except ValueError:
+                                continue
 
                 manager_email = None
                 manager_name = None
@@ -59,11 +77,14 @@ class HiBobClient:
                     manager_email = manager_ref.get("email")
                     manager_name = manager_ref.get("displayName")
 
+                first_name = emp.get("firstName", "")
+                surname = emp.get("surname", "")
+                display_name = f"{first_name} {surname}".strip() or emp.get("displayName", emp.get("email", ""))
+
                 employees.append(HiBobEmployee(
                     id=str(emp["id"]),
                     email=emp.get("email", ""),
-                    display_name=f"{personal.get('firstName', '')} {personal.get('surname', '')}".strip()
-                    or emp.get("displayName", emp.get("email", "")),
+                    display_name=display_name,
                     department=work.get("department"),
                     manager_email=manager_email,
                     manager_name=manager_name,

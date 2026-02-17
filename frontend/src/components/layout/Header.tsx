@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { useAuthStore } from '@/stores/authStore'
 import { useCartStore } from '@/stores/cartStore'
 import { useUiStore } from '@/stores/uiStore'
+import { useBrandingStore } from '@/stores/brandingStore'
 import { formatCents } from '@/lib/utils'
 import { authApi } from '@/services/authApi'
 import { setAccessToken } from '@/lib/token'
@@ -13,6 +14,7 @@ export function Header() {
   const { user, logout: logoutStore } = useAuthStore()
   const { cart, setOpen: setCartOpen } = useCartStore()
   const { setSidebarOpen } = useUiStore()
+  const { companyName } = useBrandingStore()
   const navigate = useNavigate()
 
   const cartItemCount = cart?.items.length || 0
@@ -36,8 +38,8 @@ export function Header() {
               <Menu className="h-5 w-5" />
             </Button>
           )}
-          <Link to="/" className="text-xl font-bold text-[hsl(var(--primary))]">
-            Home Office Shop
+          <Link to="/" className="flex items-center gap-2">
+            <img src="/logo-dark.svg" alt={companyName} className="h-8" />
           </Link>
         </div>
 

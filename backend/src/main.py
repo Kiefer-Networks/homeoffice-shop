@@ -16,7 +16,7 @@ from src.api.dependencies.database import async_session_factory
 from src.api.middleware.cors import setup_cors
 from src.api.middleware.rate_limit import RateLimitMiddleware
 from src.api.middleware.request_id import RequestIdMiddleware
-from src.api.routes import auth, avatars, cart, categories, health, orders, products, users
+from src.api.routes import auth, avatars, branding, cart, categories, health, orders, products, users
 from src.api.routes.admin import (
     audit as admin_audit,
     budgets as admin_budgets,
@@ -73,6 +73,7 @@ app.add_middleware(RequestIdMiddleware)
 
 # Public routes
 app.include_router(health.router, prefix="/api")
+app.include_router(branding.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(avatars.router, prefix="/api")

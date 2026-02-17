@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -78,6 +79,33 @@ async def update_category(
         details=changes, ip_address=ip,
     )
     return category
+
+
+class ReorderItem(BaseModel):
+    id: UUID
+    sort_order: int
+
+
+@router.put("/reorder")
+async def reorder_categories(
+    items: list[ReorderItem],
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    for item in items:
+        category = await db.get(Category, item.id)
+        if category:
+            category.sort_order = item.sort_order
+    await db.flush()
+
+    ip = request.client.host if request.client else None
+    await write_audit_log(
+        db, user_id=admin.id, action="admin.category.reordered",
+        resource_type="category",
+        details={"count": len(items)}, ip_address=ip,
+    )
+    return {"detail": "Categories reordered"}
 
 
 @router.delete("/{category_id}")

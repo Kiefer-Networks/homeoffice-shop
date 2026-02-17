@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
+import { useBrandingStore } from '@/stores/brandingStore'
 import { authApi } from '@/services/authApi'
 import { setAccessToken } from '@/lib/token'
 import { ShopLayout } from '@/components/layout/ShopLayout'
@@ -58,8 +59,10 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
 
 function AppInit({ children }: { children: React.ReactNode }) {
   const { setAccessToken: setStoreToken, setUser, logout } = useAuthStore()
+  const { fetchBranding } = useBrandingStore()
 
   useEffect(() => {
+    fetchBranding()
     authApi.refresh()
       .then(({ data }) => {
         const token = data.access_token

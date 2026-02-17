@@ -36,7 +36,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         client_ip = request.client.host if request.client else "unknown"
         path = request.url.path
 
-        if path == "/api/health":
+        if path in ("/api/health", "/api/branding"):
             return await call_next(request)
 
         if path.startswith("/api/auth"):
