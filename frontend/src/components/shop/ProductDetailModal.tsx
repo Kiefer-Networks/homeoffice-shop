@@ -87,11 +87,15 @@ export function ProductDetailModal({ product, open, onClose, onRefreshCart }: Pr
             </div>
           )}
 
-          {/* Brand + Price */}
+          {/* Brand + Product Info + Price */}
           <div className="flex items-center justify-between">
             <div>
               {product.brand && <p className="text-sm text-[hsl(var(--muted-foreground))]">{product.brand}</p>}
               {product.model && <p className="text-xs text-[hsl(var(--muted-foreground))]">Model: {product.model}</p>}
+              {product.color && <p className="text-xs text-[hsl(var(--muted-foreground))]">Color: {product.color}</p>}
+              {product.material && <p className="text-xs text-[hsl(var(--muted-foreground))]">Material: {product.material}</p>}
+              {product.product_dimensions && <p className="text-xs text-[hsl(var(--muted-foreground))]">Dimensions: {product.product_dimensions}</p>}
+              {product.item_weight && <p className="text-xs text-[hsl(var(--muted-foreground))]">Weight: {product.item_weight}</p>}
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold">{formatCents(product.price_cents)}</div>

@@ -38,6 +38,12 @@ export interface Product {
   price_cents: number
   price_min_cents: number | null
   price_max_cents: number | null
+  color: string | null
+  material: string | null
+  product_dimensions: string | null
+  item_weight: string | null
+  item_model_number: string | null
+  product_information: Record<string, unknown> | null
   amazon_asin: string | null
   external_url: string
   is_active: boolean
@@ -151,6 +157,8 @@ export interface PaginatedResponse<T> {
 export interface Facets {
   brands: { value: string; count: number }[]
   categories: { id: string; slug: string; name: string; count: number }[]
+  colors: { value: string; count: number }[]
+  materials: { value: string; count: number }[]
   price_range: { min_cents: number; max_cents: number }
 }
 

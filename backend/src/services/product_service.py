@@ -16,6 +16,8 @@ async def search_products(
     q: str | None = None,
     category_id: UUID | None = None,
     brand: str | None = None,
+    color: str | None = None,
+    material: str | None = None,
     price_min: int | None = None,
     price_max: int | None = None,
     is_active: bool = True,
@@ -32,6 +34,12 @@ async def search_products(
     if brand:
         brands = [b.strip() for b in brand.split(",")]
         conditions.append(Product.brand.in_(brands))
+    if color:
+        colors = [c.strip() for c in color.split(",")]
+        conditions.append(Product.color.in_(colors))
+    if material:
+        materials = [m.strip() for m in material.split(",")]
+        conditions.append(Product.material.in_(materials))
     if price_min is not None:
         conditions.append(Product.price_cents >= price_min * 100)
     if price_max is not None:
@@ -99,6 +107,26 @@ async def search_products(
         for cid, slug, name, cnt in cat_facets.all()
     ]
 
+    color_facets = await db.execute(
+        select(Product.color, func.count())
+        .where(active_condition)
+        .where(Product.color.isnot(None))
+        .group_by(Product.color)
+        .order_by(func.count().desc())
+        .limit(20)
+    )
+    colors = [{"value": c, "count": cnt} for c, cnt in color_facets.all()]
+
+    material_facets = await db.execute(
+        select(Product.material, func.count())
+        .where(active_condition)
+        .where(Product.material.isnot(None))
+        .group_by(Product.material)
+        .order_by(func.count().desc())
+        .limit(20)
+    )
+    materials = [{"value": m, "count": cnt} for m, cnt in material_facets.all()]
+
     price_result = await db.execute(
         select(func.min(Product.price_cents), func.max(Product.price_cents)).where(
             active_condition
@@ -118,6 +146,8 @@ async def search_products(
         "facets": {
             "brands": brands,
             "categories": categories,
+            "colors": colors,
+            "materials": materials,
             "price_range": price_range,
         },
     }

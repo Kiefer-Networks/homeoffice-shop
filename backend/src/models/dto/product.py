@@ -43,6 +43,12 @@ class ProductResponse(BaseModel):
     price_cents: int
     price_min_cents: int | None = None
     price_max_cents: int | None = None
+    color: str | None = None
+    material: str | None = None
+    product_dimensions: str | None = None
+    item_weight: str | None = None
+    item_model_number: str | None = None
+    product_information: dict | None = None
     amazon_asin: str | None = None
     external_url: str
     is_active: bool
@@ -88,3 +94,9 @@ class AmazonProductResponse(BaseModel):
     specifications: dict | None = None
     feature_bullets: list[str] = []
     url: str | None = None
+    color: str | None = None
+    material: str | None = None
+    product_dimensions: str | None = None
+    item_weight: str | None = None
+    item_model_number: str | None = None
+    product_information: dict | None = None

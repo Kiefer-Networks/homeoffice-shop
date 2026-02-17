@@ -20,3 +20,9 @@ class AmazonProduct(BaseModel):
     specifications: dict | None = None
     feature_bullets: list[str] = []
     url: str | None = None
+    color: str | None = None
+    material: str | None = None
+    product_dimensions: str | None = None
+    item_weight: str | None = None
+    item_model_number: str | None = None
+    product_information: dict | None = None

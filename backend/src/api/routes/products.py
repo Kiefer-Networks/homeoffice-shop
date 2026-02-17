@@ -6,7 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import get_current_user, require_admin
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
-from src.core.exceptions import NotFoundError
+from src.core.exceptions import BadRequestError, NotFoundError
+
+VALID_SORTS = {"relevance", "price_asc", "price_desc", "name_asc", "name_desc", "newest"}
 from src.integrations.amazon.client import AmazonClient
 from src.models.dto.product import ProductListResponse, ProductResponse
 from src.models.orm.product import Product
@@ -21,6 +23,8 @@ async def list_products(
     q: str | None = Query(None, max_length=200),
     category: UUID | None = None,
     brand: str | None = None,
+    color: str | None = None,
+    material: str | None = None,
     price_min: int | None = None,
     price_max: int | None = None,
     sort: str = "relevance",
@@ -29,11 +33,15 @@ async def list_products(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    if sort not in VALID_SORTS:
+        raise BadRequestError(f"Invalid sort. Must be one of: {', '.join(sorted(VALID_SORTS))}")
     result = await product_service.search_products(
         db,
         q=q,
         category_id=category,
         brand=brand,
+        color=color,
+        material=material,
         price_min=price_min,
         price_max=price_max,
         sort=sort,
@@ -55,6 +63,12 @@ async def list_products(
             "price_cents": p.price_cents,
             "price_min_cents": p.price_min_cents,
             "price_max_cents": p.price_max_cents,
+            "color": p.color,
+            "material": p.material,
+            "product_dimensions": p.product_dimensions,
+            "item_weight": p.item_weight,
+            "item_model_number": p.item_model_number,
+            "product_information": p.product_information,
             "amazon_asin": p.amazon_asin,
             "external_url": p.external_url,
             "is_active": p.is_active,

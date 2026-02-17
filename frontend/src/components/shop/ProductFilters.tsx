@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function ProductFilters({ facets, categories }: Props) {
-  const { category, brand, priceMin, priceMax, sort, setFilter, resetFilters } = useFilterStore()
+  const { category, brand, color, material, priceMin, priceMax, sort, setFilter, resetFilters } = useFilterStore()
 
   return (
     <div className="space-y-6">
@@ -56,6 +56,52 @@ export function ProductFilters({ facets, categories }: Props) {
                 className={`block w-full text-left px-2 py-1 rounded text-sm ${brand === b.value ? 'bg-[hsl(var(--primary))] text-white' : 'hover:bg-gray-100'}`}
               >
                 {b.value} <span className="text-xs opacity-60">({b.count})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {facets?.colors && facets.colors.length > 0 && (
+        <div>
+          <h3 className="font-semibold mb-2 text-sm">Color</h3>
+          <div className="space-y-1 max-h-40 overflow-y-auto">
+            <button
+              onClick={() => setFilter('color', '')}
+              className={`block w-full text-left px-2 py-1 rounded text-sm ${!color ? 'font-medium' : 'hover:bg-gray-100'}`}
+            >
+              All Colors
+            </button>
+            {facets.colors.map((c) => (
+              <button
+                key={c.value}
+                onClick={() => setFilter('color', c.value)}
+                className={`block w-full text-left px-2 py-1 rounded text-sm ${color === c.value ? 'bg-[hsl(var(--primary))] text-white' : 'hover:bg-gray-100'}`}
+              >
+                {c.value} <span className="text-xs opacity-60">({c.count})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {facets?.materials && facets.materials.length > 0 && (
+        <div>
+          <h3 className="font-semibold mb-2 text-sm">Material</h3>
+          <div className="space-y-1 max-h-40 overflow-y-auto">
+            <button
+              onClick={() => setFilter('material', '')}
+              className={`block w-full text-left px-2 py-1 rounded text-sm ${!material ? 'font-medium' : 'hover:bg-gray-100'}`}
+            >
+              All Materials
+            </button>
+            {facets.materials.map((m) => (
+              <button
+                key={m.value}
+                onClick={() => setFilter('material', m.value)}
+                className={`block w-full text-left px-2 py-1 rounded text-sm ${material === m.value ? 'bg-[hsl(var(--primary))] text-white' : 'hover:bg-gray-100'}`}
+              >
+                {m.value} <span className="text-xs opacity-60">({m.count})</span>
               </button>
             ))}
           </div>
