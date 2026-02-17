@@ -1,62 +1,122 @@
-"""Tests for Icecat integration: fake client + image downloader."""
+"""Tests for Amazon/ScraperAPI integration: fake client + image service."""
 import uuid
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.integrations.icecat.client import FakeIcecatClient, IcecatClientProtocol
-from src.integrations.icecat.image_downloader import (
+from src.integrations.amazon.client import (
+    AmazonClientProtocol,
+    FakeAmazonClient,
+    _extract_asin,
+    _parse_price_cents,
+)
+from src.integrations.amazon.models import AmazonProduct, AmazonSearchResult
+from src.services.image_service import (
     ImagePaths,
     _generate_placeholder_svg,
     _get_extension,
     download_and_store_product_images,
 )
-from src.integrations.icecat.models import IcecatProduct
 
 
-class TestFakeIcecatClient:
+class TestExtractAsin:
+    def test_dp_url(self):
+        assert _extract_asin("https://www.amazon.de/dp/B08N5WRWNW") == "B08N5WRWNW"
+
+    def test_gp_product_url(self):
+        assert _extract_asin("https://www.amazon.de/gp/product/B08N5WRWNW") == "B08N5WRWNW"
+
+    def test_complex_url(self):
+        assert _extract_asin("https://www.amazon.de/Some-Product/dp/B08N5WRWNW/ref=sr_1_1") == "B08N5WRWNW"
+
+    def test_no_asin(self):
+        assert _extract_asin("https://www.amazon.de/search?q=monitor") is None
+
+
+class TestParsePriceCents:
+    def test_us_format(self):
+        assert _parse_price_cents("$29.99") == 2999
+
+    def test_european_format(self):
+        assert _parse_price_cents("29,99") == 2999
+
+    def test_european_thousands(self):
+        assert _parse_price_cents("1.234,56") == 123456
+
+    def test_empty_string(self):
+        assert _parse_price_cents("") == 0
+
+    def test_none(self):
+        assert _parse_price_cents(None) == 0
+
+    def test_currency_symbol(self):
+        assert _parse_price_cents("EUR 49,99") == 4999
+
+
+class TestFakeAmazonClient:
     @pytest.mark.asyncio
     async def test_implements_protocol(self):
-        client = FakeIcecatClient()
-        assert isinstance(client, IcecatClientProtocol)
+        client = FakeAmazonClient()
+        assert isinstance(client, AmazonClientProtocol)
 
     @pytest.mark.asyncio
-    async def test_returns_product_by_gtin(self):
-        product = IcecatProduct(
-            title="Test Monitor",
+    async def test_search_by_name(self):
+        product = AmazonProduct(name="Test Monitor", price_cents=35000)
+        client = FakeAmazonClient(products={"B08N5WRWNW": product})
+        results = await client.search("monitor")
+        assert len(results) == 1
+        assert results[0].asin == "B08N5WRWNW"
+        assert results[0].name == "Test Monitor"
+
+    @pytest.mark.asyncio
+    async def test_search_by_asin(self):
+        product = AmazonProduct(name="Test Monitor", price_cents=35000)
+        client = FakeAmazonClient(products={"B08N5WRWNW": product})
+        results = await client.search("B08N5WRWNW")
+        assert len(results) == 1
+
+    @pytest.mark.asyncio
+    async def test_search_no_match(self):
+        client = FakeAmazonClient()
+        results = await client.search("nonexistent")
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_get_product(self):
+        product = AmazonProduct(
+            name="Test Monitor",
             brand="TestBrand",
             price_cents=35000,
         )
-        client = FakeIcecatClient(products={"1234567890123": product})
-        result = await client.lookup_by_gtin("1234567890123")
+        client = FakeAmazonClient(products={"B08N5WRWNW": product})
+        result = await client.get_product("B08N5WRWNW")
         assert result is not None
-        assert result.title == "Test Monitor"
+        assert result.name == "Test Monitor"
         assert result.price_cents == 35000
 
     @pytest.mark.asyncio
-    async def test_returns_none_for_unknown_gtin(self):
-        client = FakeIcecatClient()
-        result = await client.lookup_by_gtin("9999999999999")
+    async def test_get_product_unknown(self):
+        client = FakeAmazonClient()
+        result = await client.get_product("UNKNOWN")
         assert result is None
 
     @pytest.mark.asyncio
     async def test_get_current_price(self):
-        product = IcecatProduct(title="Monitor", price_cents=45000)
-        client = FakeIcecatClient(products={"123": product})
-        price = await client.get_current_price("123")
+        product = AmazonProduct(name="Monitor", price_cents=45000)
+        client = FakeAmazonClient(products={"B08N5WRWNW": product})
+        price = await client.get_current_price("B08N5WRWNW")
         assert price == 45000
 
     @pytest.mark.asyncio
     async def test_get_current_price_zero_returns_none(self):
-        product = IcecatProduct(title="Monitor", price_cents=0)
-        client = FakeIcecatClient(products={"123": product})
-        price = await client.get_current_price("123")
+        product = AmazonProduct(name="Monitor", price_cents=0)
+        client = FakeAmazonClient(products={"B08N5WRWNW": product})
+        price = await client.get_current_price("B08N5WRWNW")
         assert price is None
 
     @pytest.mark.asyncio
-    async def test_get_current_price_unknown_gtin(self):
-        client = FakeIcecatClient()
+    async def test_get_current_price_unknown_asin(self):
+        client = FakeAmazonClient()
         price = await client.get_current_price("unknown")
         assert price is None
 
@@ -66,7 +126,7 @@ class TestPlaceholderSvg:
         svg_bytes = _generate_placeholder_svg("Test Product")
         svg = svg_bytes.decode("utf-8")
         assert "<svg" in svg
-        assert "TP" in svg  # initials of Test Product
+        assert "TP" in svg
         assert "400" in svg
 
     def test_single_word(self):
@@ -85,8 +145,6 @@ class TestPlaceholderSvg:
     def test_different_names_different_colors(self):
         svg1 = _generate_placeholder_svg("Product A").decode("utf-8")
         svg2 = _generate_placeholder_svg("Product B").decode("utf-8")
-        # Different products should (likely) have different colors
-        # Extract the fill color
         assert svg1 != svg2
 
 
@@ -121,11 +179,10 @@ class TestDownloadAndStoreProductImages:
         assert "placeholder.svg" in result.main_image
         assert result.gallery == []
 
-        # Verify file exists on disk
         svg_path = tmp_path / "products" / str(product_id) / "placeholder.svg"
         assert svg_path.exists()
         content = svg_path.read_text()
-        assert "TP" in content  # initials
+        assert "TP" in content
 
     @pytest.mark.asyncio
     async def test_creates_placeholder_on_download_failure(self, tmp_path):
@@ -150,7 +207,7 @@ class TestDownloadAndStoreProductImages:
             tmp_path,
             "Product",
         )
-        assert result.gallery == []  # both failed, none stored
+        assert result.gallery == []
 
     @pytest.mark.asyncio
     async def test_creates_product_directory(self, tmp_path):

@@ -11,7 +11,7 @@ class ProductCreate(BaseModel):
     brand: str | None = None
     model: str | None = None
     price_cents: int
-    icecat_gtin: str | None = None
+    amazon_asin: str | None = None
     external_url: str
     is_active: bool = True
     max_quantity_per_user: int = 1
@@ -24,7 +24,7 @@ class ProductUpdate(BaseModel):
     brand: str | None = None
     model: str | None = None
     price_cents: int | None = None
-    icecat_gtin: str | None = None
+    amazon_asin: str | None = None
     external_url: str | None = None
     is_active: bool | None = None
     max_quantity_per_user: int | None = None
@@ -43,7 +43,7 @@ class ProductResponse(BaseModel):
     price_cents: int
     price_min_cents: int | None = None
     price_max_cents: int | None = None
-    icecat_gtin: str | None = None
+    amazon_asin: str | None = None
     external_url: str
     is_active: bool
     max_quantity_per_user: int = 1
@@ -61,16 +61,30 @@ class ProductListResponse(BaseModel):
     facets: dict | None = None
 
 
-class IcecatLookupRequest(BaseModel):
-    gtin: str
+class AmazonSearchRequest(BaseModel):
+    query: str
 
 
-class IcecatLookupResponse(BaseModel):
-    name: str | None = None
+class AmazonSearchResponse(BaseModel):
+    name: str
+    asin: str
+    price_cents: int = 0
+    image_url: str | None = None
+    url: str | None = None
+    rating: float | None = None
+    reviews: int | None = None
+
+
+class AmazonProductRequest(BaseModel):
+    asin: str
+
+
+class AmazonProductResponse(BaseModel):
+    name: str
     description: str | None = None
     brand: str | None = None
-    model: str | None = None
-    main_image_url: str | None = None
-    gallery_urls: list[str] = []
-    specifications: dict | None = None
+    images: list[str] = []
     price_cents: int = 0
+    specifications: dict | None = None
+    feature_bullets: list[str] = []
+    url: str | None = None

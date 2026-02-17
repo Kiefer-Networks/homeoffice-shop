@@ -27,9 +27,10 @@ class Settings(BaseSettings):
     hibob_api_key: str = ""
     hibob_sync_interval_hours: int = 6
 
-    # Icecat Open Catalog
-    icecat_api_token: str = ""
-    icecat_language: str = "EN"
+    # ScraperAPI (Amazon)
+    scraperapi_api_key: str = ""
+    amazon_tld: str = "de"
+    amazon_country_code: str = "de"
 
     # SMTP
     smtp_host: str = ""

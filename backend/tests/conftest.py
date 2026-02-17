@@ -87,7 +87,7 @@ def make_product(
         price_cents=price_cents,
         price_min_cents=None,
         price_max_cents=None,
-        icecat_gtin=None,
+        amazon_asin=None,
         external_url="https://example.com/product",
         is_active=is_active,
         max_quantity_per_user=max_quantity_per_user,

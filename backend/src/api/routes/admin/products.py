@@ -8,10 +8,8 @@ from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import BadRequestError, NotFoundError
-from src.integrations.icecat.client import IcecatClient
-from src.integrations.icecat.image_downloader import (
-    download_and_store_product_images,
-)
+from src.integrations.amazon.client import AmazonClient
+from src.services.image_service import download_and_store_product_images
 from src.models.dto.product import ProductCreate, ProductUpdate
 from src.models.orm.product import Product
 from src.models.orm.user import User
@@ -41,7 +39,7 @@ async def create_product(
         brand=body.brand,
         model=body.model,
         price_cents=body.price_cents,
-        icecat_gtin=body.icecat_gtin,
+        amazon_asin=body.amazon_asin,
         external_url=body.external_url,
         is_active=body.is_active,
         max_quantity_per_user=body.max_quantity_per_user,
@@ -148,18 +146,21 @@ async def redownload_images(
     product = await db.get(Product, product_id)
     if not product:
         raise NotFoundError("Product not found")
-    if not product.icecat_gtin:
-        raise BadRequestError("Product has no Icecat GTIN")
+    if not product.amazon_asin:
+        raise BadRequestError("Product has no Amazon ASIN")
 
-    client = IcecatClient()
-    icecat_data = await client.lookup_by_gtin(product.icecat_gtin)
-    if not icecat_data:
-        raise BadRequestError("Icecat lookup returned no data")
+    client = AmazonClient()
+    amazon_data = await client.get_product(product.amazon_asin)
+    if not amazon_data:
+        raise BadRequestError("Amazon lookup returned no data")
+
+    main_image = amazon_data.images[0] if amazon_data.images else None
+    gallery = amazon_data.images[1:] if len(amazon_data.images) > 1 else []
 
     paths = await download_and_store_product_images(
         product.id,
-        icecat_data.main_image_url,
-        icecat_data.gallery_urls,
+        main_image,
+        gallery,
         UPLOAD_DIR,
         product.name,
     )

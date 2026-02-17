@@ -43,16 +43,15 @@ async def _check_hibob() -> dict:
         return {"status": "down"}
 
 
-async def _check_icecat() -> dict:
-    if not settings.icecat_api_token:
+async def _check_amazon() -> dict:
+    if not settings.scraperapi_api_key:
         return {"status": "not_configured"}
     try:
         start = time.monotonic()
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(
-                "https://live.icecat.biz/api/",
-                params={"Language": "en"},
-                headers={"api-token": settings.icecat_api_token},
+                "https://api.scraperapi.com/account",
+                params={"api_key": settings.scraperapi_api_key},
             )
             resp.raise_for_status()
         latency_ms = round((time.monotonic() - start) * 1000)

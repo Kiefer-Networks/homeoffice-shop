@@ -22,7 +22,7 @@ from src.api.routes.admin import (
     budgets as admin_budgets,
     categories as admin_categories,
     hibob as admin_hibob,
-    icecat as admin_icecat,
+    amazon as admin_amazon,
     notifications as admin_notifications,
     orders as admin_orders,
     products as admin_products,
@@ -92,7 +92,7 @@ app.include_router(admin_settings.router, prefix="/api/admin")
 app.include_router(admin_notifications.router, prefix="/api/admin")
 app.include_router(admin_audit.router, prefix="/api/admin")
 app.include_router(admin_hibob.router, prefix="/api/admin")
-app.include_router(admin_icecat.router, prefix="/api/admin")
+app.include_router(admin_amazon.router, prefix="/api/admin")
 
 # Static files for uploaded images
 uploads_path = Path("/app/uploads")

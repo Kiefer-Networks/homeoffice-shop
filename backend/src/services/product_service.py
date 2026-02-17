@@ -130,11 +130,11 @@ async def search_products(
 
 
 async def refresh_all_prices(
-    db: AsyncSession, icecat_client
+    db: AsyncSession, amazon_client
 ) -> dict:
-    """Refresh prices for all products with icecat_gtin."""
+    """Refresh prices for all products with amazon_asin."""
     result = await db.execute(
-        select(Product).where(Product.icecat_gtin.isnot(None))
+        select(Product).where(Product.amazon_asin.isnot(None))
     )
     products = list(result.scalars().all())
 
@@ -143,7 +143,7 @@ async def refresh_all_prices(
 
     for product in products:
         try:
-            new_price = await icecat_client.get_current_price(product.icecat_gtin)
+            new_price = await amazon_client.get_current_price(product.amazon_asin)
             if new_price and new_price != product.price_cents:
                 product.price_cents = new_price
                 updated += 1

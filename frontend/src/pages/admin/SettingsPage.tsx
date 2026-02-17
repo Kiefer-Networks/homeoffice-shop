@@ -12,7 +12,7 @@ const settingLabels: Record<string, { label: string; description: string }> = {
   budget_yearly_increment_cents: { label: 'Yearly Increment (cents)', description: 'Annual budget increase in cents' },
   probation_months: { label: 'Probation Period (months)', description: 'Months before employee can order' },
   price_refresh_cooldown_minutes: { label: 'Price Refresh Cooldown (min)', description: 'Minutes between global price refreshes' },
-  price_refresh_rate_limit_per_minute: { label: 'Price Refresh Rate Limit', description: 'Max Icecat calls per minute' },
+  price_refresh_rate_limit_per_minute: { label: 'Price Refresh Rate Limit', description: 'Max Amazon price lookups per minute' },
   company_name: { label: 'Company Name', description: 'Displayed in emails and UI' },
   cart_stale_days: { label: 'Cart Stale Days', description: 'Auto-cleanup cart items older than this' },
 }

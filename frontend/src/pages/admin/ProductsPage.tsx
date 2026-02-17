@@ -8,17 +8,30 @@ import { useUiStore } from '@/stores/uiStore'
 import { adminApi } from '@/services/adminApi'
 import { productApi } from '@/services/productApi'
 import { formatCents } from '@/lib/utils'
-import { Plus, Search, RefreshCcw } from 'lucide-react'
+import { Plus, Search, RefreshCcw, Loader2 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import type { Product, Category } from '@/types'
+
+interface AmazonSearchResult {
+  name: string
+  asin: string
+  price_cents: number
+  image_url: string | null
+  url: string | null
+  rating: number | null
+  reviews: number | null
+}
 
 export function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [search, setSearch] = useState('')
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ name: '', category_id: '', price_cents: 0, external_url: '', icecat_gtin: '', brand: '', description: '' })
-  const [lookupGtin, setLookupGtin] = useState('')
+  const [form, setForm] = useState({ name: '', category_id: '', price_cents: 0, external_url: '', amazon_asin: '', brand: '', description: '' })
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<AmazonSearchResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [loadingProduct, setLoadingProduct] = useState(false)
   const { addToast } = useUiStore()
 
   useEffect(() => {
@@ -29,21 +42,42 @@ export function AdminProductsPage() {
     productApi.getCategories().then(({ data }) => setCategories(data))
   }, [search])
 
-  const handleIcecatLookup = async () => {
-    if (!lookupGtin) return
+  const handleAmazonSearch = async () => {
+    if (!searchQuery) return
+    setSearching(true)
+    setSearchResults([])
     try {
-      const { data } = await adminApi.icecatLookup(lookupGtin)
+      const { data } = await adminApi.amazonSearch(searchQuery)
+      setSearchResults(data)
+      if (data.length === 0) {
+        addToast({ title: 'No results found' })
+      }
+    } catch {
+      addToast({ title: 'Search failed', variant: 'destructive' })
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  const handleSelectResult = async (result: AmazonSearchResult) => {
+    setLoadingProduct(true)
+    try {
+      const { data } = await adminApi.amazonProduct(result.asin)
       setForm(f => ({
         ...f,
-        name: data.name || f.name,
+        name: data.name || result.name || f.name,
         brand: data.brand || f.brand,
-        description: data.description || f.description,
-        price_cents: data.price_cents || f.price_cents,
-        icecat_gtin: lookupGtin,
+        description: data.description || (data.feature_bullets?.length ? data.feature_bullets.join('\n') : '') || f.description,
+        price_cents: data.price_cents || result.price_cents || f.price_cents,
+        amazon_asin: result.asin,
+        external_url: data.url || result.url || f.external_url,
       }))
-      addToast({ title: 'Icecat data loaded' })
+      setSearchResults([])
+      addToast({ title: 'Product data loaded' })
     } catch {
-      addToast({ title: 'Lookup failed', variant: 'destructive' })
+      addToast({ title: 'Failed to load product details', variant: 'destructive' })
+    } finally {
+      setLoadingProduct(false)
     }
   }
 
@@ -53,10 +87,12 @@ export function AdminProductsPage() {
         ...form,
         category_id: form.category_id,
         price_cents: Number(form.price_cents),
-        icecat_gtin: form.icecat_gtin || undefined,
+        amazon_asin: form.amazon_asin || undefined,
       })
       setShowCreate(false)
-      setForm({ name: '', category_id: '', price_cents: 0, external_url: '', icecat_gtin: '', brand: '', description: '' })
+      setForm({ name: '', category_id: '', price_cents: 0, external_url: '', amazon_asin: '', brand: '', description: '' })
+      setSearchResults([])
+      setSearchQuery('')
       const params = new URLSearchParams(); params.set('per_page', '100')
       productApi.search(params).then(({ data }) => setProducts(data.items))
       addToast({ title: 'Product created' })
@@ -105,7 +141,7 @@ export function AdminProductsPage() {
             <CardContent className="flex items-center justify-between p-4">
               <div>
                 <div className="font-medium">{p.name}</div>
-                <div className="text-sm text-[hsl(var(--muted-foreground))]">{p.brand} {p.icecat_gtin && `(${p.icecat_gtin})`}</div>
+                <div className="text-sm text-[hsl(var(--muted-foreground))]">{p.brand} {p.amazon_asin && `(${p.amazon_asin})`}</div>
               </div>
               <div className="flex items-center gap-3">
                 <span className="font-bold">{formatCents(p.price_cents)}</span>
@@ -113,7 +149,7 @@ export function AdminProductsPage() {
                 <Button size="sm" variant="outline" onClick={() => toggleActive(p)}>
                   {p.is_active ? 'Deactivate' : 'Activate'}
                 </Button>
-                {p.icecat_gtin && (
+                {p.amazon_asin && (
                   <Button size="sm" variant="ghost" onClick={() => redownloadImages(p.id)}>
                     <RefreshCcw className="h-3 w-3" />
                   </Button>
@@ -129,9 +165,37 @@ export function AdminProductsPage() {
           <DialogHeader><DialogTitle>Add Product</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="flex gap-2">
-              <Input placeholder="EAN/GTIN" value={lookupGtin} onChange={(e) => setLookupGtin(e.target.value)} />
-              <Button variant="outline" onClick={handleIcecatLookup}>Lookup</Button>
+              <Input placeholder="Search Amazon (EAN, name, etc.)" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAmazonSearch()} />
+              <Button variant="outline" onClick={handleAmazonSearch} disabled={searching}>
+                {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
+              </Button>
             </div>
+
+            {searchResults.length > 0 && (
+              <div className="border rounded-md max-h-48 overflow-y-auto">
+                {searchResults.map((r) => (
+                  <button key={r.asin} onClick={() => handleSelectResult(r)} disabled={loadingProduct}
+                    className="w-full flex items-center gap-3 p-2 hover:bg-[hsl(var(--muted))] text-left border-b last:border-b-0">
+                    {r.image_url && <img src={r.image_url} alt="" className="w-10 h-10 object-contain shrink-0" />}
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium truncate">{r.name}</div>
+                      <div className="text-xs text-[hsl(var(--muted-foreground))]">
+                        ASIN: {r.asin} {r.price_cents > 0 && `| ${formatCents(r.price_cents)}`}
+                        {r.rating && ` | ${r.rating}*`}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {loadingProduct && (
+              <div className="flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))]">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading product details...
+              </div>
+            )}
+
             <Input placeholder="Product Name *" value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />
             <Input placeholder="Brand" value={form.brand} onChange={(e) => setForm(f => ({ ...f, brand: e.target.value }))} />
             <select value={form.category_id} onChange={(e) => setForm(f => ({ ...f, category_id: e.target.value }))}

@@ -11,7 +11,8 @@ export const adminApi = {
   activateProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/activate`),
   deactivateProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/deactivate`),
   redownloadImages: (id: string) => api.post(`/api/admin/products/${id}/redownload-images`),
-  icecatLookup: (gtin: string) => api.post('/api/admin/icecat/lookup', { gtin }),
+  amazonSearch: (query: string) => api.post('/api/admin/amazon/search', { query }),
+  amazonProduct: (asin: string) => api.post('/api/admin/amazon/product', { asin }),
 
   // Categories
   listCategories: () => api.get<Category[]>('/api/admin/categories'),

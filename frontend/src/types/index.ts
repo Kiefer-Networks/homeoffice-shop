@@ -38,7 +38,7 @@ export interface Product {
   price_cents: number
   price_min_cents: number | null
   price_max_cents: number | null
-  icecat_gtin: string | null
+  amazon_asin: string | null
   external_url: string
   is_active: boolean
   max_quantity_per_user: number

@@ -27,7 +27,7 @@ class Product(Base):
     price_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     price_min_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     price_max_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    icecat_gtin: Mapped[str | None] = mapped_column(String(14), nullable=True)
+    amazon_asin: Mapped[str | None] = mapped_column(String(20), nullable=True)
     external_url: Mapped[str] = mapped_column(Text, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     max_quantity_per_user: Mapped[int] = mapped_column(

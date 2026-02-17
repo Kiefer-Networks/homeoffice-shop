@@ -7,7 +7,7 @@ from src.api.dependencies.auth import get_current_user
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import NotFoundError
-from src.integrations.icecat.client import IcecatClient
+from src.integrations.amazon.client import AmazonClient
 from src.models.orm.product import Product
 from src.models.orm.user import User
 from src.services import product_service
@@ -54,7 +54,7 @@ async def list_products(
             "price_cents": p.price_cents,
             "price_min_cents": p.price_min_cents,
             "price_max_cents": p.price_max_cents,
-            "icecat_gtin": p.icecat_gtin,
+            "amazon_asin": p.amazon_asin,
             "external_url": p.external_url,
             "is_active": p.is_active,
             "max_quantity_per_user": p.max_quantity_per_user,
@@ -83,7 +83,7 @@ async def trigger_price_refresh(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    client = IcecatClient()
+    client = AmazonClient()
     result = await product_service.refresh_all_prices(db, client)
 
     ip = request.client.host if request.client else None
