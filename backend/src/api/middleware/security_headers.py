@@ -28,7 +28,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-        response.headers["Cache-Control"] = "no-store"
-        if request.url.scheme == "https":
+        response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+
+        path = request.url.path
+        if path.startswith("/uploads/"):
+            response.headers["Cache-Control"] = "public, max-age=86400, immutable"
+        else:
+            response.headers["Cache-Control"] = "no-store"
+
+        is_https = (
+            request.url.scheme == "https"
+            or request.headers.get("x-forwarded-proto") == "https"
+        )
+        if is_https:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response

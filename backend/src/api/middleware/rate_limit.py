@@ -12,7 +12,7 @@ class SlidingWindowCounter:
     def __init__(self):
         self._windows: dict[str, list[float]] = defaultdict(list)
 
-    def is_allowed(self, key: str, limit: int, window_seconds: int) -> tuple[bool, int]:
+    def is_allowed(self, key: str, limit: int, window_seconds: int) -> tuple[bool, int, int]:
         now = time.monotonic()
         cutoff = now - window_seconds
         requests = self._windows[key]
@@ -20,10 +20,11 @@ class SlidingWindowCounter:
 
         if len(self._windows[key]) >= limit:
             retry_after = int(self._windows[key][0] - cutoff) + 1
-            return False, max(retry_after, 1)
+            return False, max(retry_after, 1), 0
 
         self._windows[key].append(now)
-        return True, 0
+        remaining = limit - len(self._windows[key])
+        return True, 0, remaining
 
 
 _limiter = SlidingWindowCounter()
@@ -40,23 +41,33 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         if path.startswith("/api/auth"):
-            allowed, retry_after = _limiter.is_allowed(
-                f"auth:{client_ip}", limit=10, window_seconds=300
+            limit = 10
+            allowed, retry_after, remaining = _limiter.is_allowed(
+                f"auth:{client_ip}", limit=limit, window_seconds=300
             )
         elif path.startswith("/api/admin"):
-            allowed, retry_after = _limiter.is_allowed(
-                f"admin:{client_ip}", limit=120, window_seconds=60
+            limit = 120
+            allowed, retry_after, remaining = _limiter.is_allowed(
+                f"admin:{client_ip}", limit=limit, window_seconds=60
             )
         else:
-            allowed, retry_after = _limiter.is_allowed(
-                f"global:{client_ip}", limit=300, window_seconds=60
+            limit = 300
+            allowed, retry_after, remaining = _limiter.is_allowed(
+                f"global:{client_ip}", limit=limit, window_seconds=60
             )
 
         if not allowed:
             return JSONResponse(
                 status_code=429,
                 content={"detail": "Rate limit exceeded"},
-                headers={"Retry-After": str(retry_after)},
+                headers={
+                    "Retry-After": str(retry_after),
+                    "X-RateLimit-Limit": str(limit),
+                    "X-RateLimit-Remaining": "0",
+                },
             )
 
-        return await call_next(request)
+        response = await call_next(request)
+        response.headers["X-RateLimit-Limit"] = str(limit)
+        response.headers["X-RateLimit-Remaining"] = str(remaining)
+        return response
