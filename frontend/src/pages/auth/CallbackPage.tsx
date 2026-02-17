@@ -9,20 +9,19 @@ export function CallbackPage() {
   const { setAccessToken, setUser } = useAuthStore()
 
   useEffect(() => {
-    const hash = window.location.hash.substring(1)
-    const params = new URLSearchParams(hash)
-    const token = params.get('access_token')
-    if (token) {
-      window.history.replaceState(null, '', window.location.pathname)
-      setGlobalToken(token)
-      setAccessToken(token)
-      authApi.getMe().then(({ data }) => {
+    // Exchange refresh token cookie for access token via API
+    authApi.refresh()
+      .then(({ data }) => {
+        const token = data.access_token
+        setGlobalToken(token)
+        setAccessToken(token)
+        return authApi.getMe()
+      })
+      .then(({ data }) => {
         setUser(data)
         navigate('/')
-      }).catch(() => navigate('/login'))
-    } else {
-      navigate('/login')
-    }
+      })
+      .catch(() => navigate('/login'))
   }, [navigate, setAccessToken, setUser])
 
   return (

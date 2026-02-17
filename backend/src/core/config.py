@@ -89,6 +89,10 @@ class Settings(BaseSettings):
         defaults = {"CHANGE_ME"}
         if self.jwt_secret_key in defaults:
             raise ValueError("jwt_secret_key must be changed from default")
+        if len(self.jwt_secret_key) < 32:
+            raise ValueError(
+                "jwt_secret_key must be at least 32 characters (256 bits) per RFC 7518 Section 3.2"
+            )
         if self.secret_key in defaults:
             raise ValueError("secret_key must be changed from default")
         if self.db_password in defaults:

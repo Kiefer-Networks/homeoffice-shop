@@ -15,6 +15,7 @@ from src.models.orm.user import User
 logger = logging.getLogger(__name__)
 
 _PARTITION_NAME_RE = re.compile(r"^audit_log_\d{4}_\d{2}$")
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 async def write_audit_log(
@@ -157,13 +158,16 @@ async def ensure_audit_partitions(db: AsyncSession) -> None:
         if not _PARTITION_NAME_RE.match(partition_name):
             logger.error("Invalid partition name: %s", partition_name)
             continue
+        if not _DATE_RE.match(start) or not _DATE_RE.match(end):
+            logger.error("Invalid date format: start=%s end=%s", start, end)
+            continue
 
         check_sql = text(
             "SELECT 1 FROM pg_tables WHERE tablename = :name"
         )
         result = await db.execute(check_sql, {"name": partition_name})
         if result.scalar() is None:
-            # partition_name is validated by regex above (digits only)
+            # partition_name and dates are validated by regex above
             create_sql = text(
                 f"CREATE TABLE {partition_name} PARTITION OF audit_log "
                 f"FOR VALUES FROM ('{start}') TO ('{end}')"

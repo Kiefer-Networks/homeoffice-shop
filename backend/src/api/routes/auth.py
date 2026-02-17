@@ -132,12 +132,10 @@ async def google_callback(
     name = userinfo.get("name", email)
     sub = userinfo.get("sub", "")
 
-    response = RedirectResponse(url=settings.frontend_url)
-    token_response = await _handle_oauth_callback(
+    response = RedirectResponse(url=f"{settings.frontend_url}/callback")
+    await _handle_oauth_callback(
         request, response, db, "google", email, name, sub
     )
-    redirect_url = f"{settings.frontend_url}/callback#access_token={token_response.access_token}"
-    response.headers["location"] = redirect_url
     return response
 
 
