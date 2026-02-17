@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ProductCreate(BaseModel):
@@ -16,6 +16,13 @@ class ProductCreate(BaseModel):
     is_active: bool = True
     max_quantity_per_user: int = Field(default=1, ge=1, le=100)
 
+    @field_validator("external_url")
+    @classmethod
+    def validate_url_scheme(cls, v: str) -> str:
+        if not v.startswith(("https://", "http://")):
+            raise ValueError("URL must start with https:// or http://")
+        return v
+
 
 class ProductUpdate(BaseModel):
     category_id: UUID | None = None
@@ -28,6 +35,13 @@ class ProductUpdate(BaseModel):
     external_url: str | None = None
     is_active: bool | None = None
     max_quantity_per_user: int | None = Field(default=None, ge=1, le=100)
+
+    @field_validator("external_url")
+    @classmethod
+    def validate_url_scheme(cls, v: str | None) -> str | None:
+        if v is not None and not v.startswith(("https://", "http://")):
+            raise ValueError("URL must start with https:// or http://")
+        return v
 
 
 class ProductResponse(BaseModel):
@@ -67,10 +81,6 @@ class ProductListResponse(BaseModel):
     facets: dict | None = None
 
 
-class AmazonSearchRequest(BaseModel):
-    query: str
-
-
 class AmazonSearchResponse(BaseModel):
     name: str
     asin: str
@@ -79,10 +89,6 @@ class AmazonSearchResponse(BaseModel):
     url: str | None = None
     rating: float | None = None
     reviews: int | None = None
-
-
-class AmazonProductRequest(BaseModel):
-    asin: str
 
 
 class AmazonProductResponse(BaseModel):

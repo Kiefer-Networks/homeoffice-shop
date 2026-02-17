@@ -1,5 +1,6 @@
 import uuid
 from datetime import date
+from email.utils import parseaddr
 
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, Request, Response
@@ -11,7 +12,6 @@ from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.config import settings
 from src.core.exceptions import BadRequestError, UnauthorizedError
-from src.models.dto import DetailResponse
 from src.models.dto.auth import TokenResponse
 from src.models.orm.user import User
 from src.repositories import user_repo
@@ -56,7 +56,8 @@ async def _handle_oauth_callback(
 
     _generic_auth_error = "Authentication failed. Please contact your administrator."
 
-    domain = email.split("@")[-1] if "@" in email else ""
+    _, parsed_email = parseaddr(email)
+    domain = parsed_email.rsplit("@", 1)[-1] if "@" in parsed_email else ""
     if domain not in settings.allowed_domains_list:
         await write_audit_log(
             db, user_id=uuid.UUID(int=0), action="auth.login_blocked_domain",
@@ -179,10 +180,9 @@ async def refresh_token(
     return TokenResponse(access_token=tokens.access_token)
 
 
-@router.post("/logout", response_model=DetailResponse)
+@router.post("/logout", status_code=204)
 async def logout_user(
     request: Request,
-    response: Response,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -194,5 +194,6 @@ async def logout_user(
         resource_type="user", ip_address=ip,
     )
 
+    response = Response(status_code=204)
     response.delete_cookie(key="refresh_token", path="/api/auth")
-    return {"detail": "Logged out"}
+    return response

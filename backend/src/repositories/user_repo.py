@@ -30,14 +30,14 @@ async def get_all_with_hibob_id(db: AsyncSession) -> list[User]:
 
 async def get_all_active(db: AsyncSession) -> list[User]:
     result = await db.execute(
-        select(User).where(User.is_active == True).order_by(User.display_name)
+        select(User).where(User.is_active.is_(True)).order_by(User.display_name)
     )
     return list(result.scalars().all())
 
 
 async def get_active_admins(db: AsyncSession) -> list[User]:
     result = await db.execute(
-        select(User).where(User.is_active == True, User.role == "admin")
+        select(User).where(User.is_active.is_(True), User.role == "admin")
     )
     return list(result.scalars().all())
 
@@ -58,7 +58,8 @@ async def get_all(
     base = select(User)
 
     if q:
-        pattern = f"%{q}%"
+        escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
         base = base.where(
             or_(User.display_name.ilike(pattern), User.email.ilike(pattern))
         )

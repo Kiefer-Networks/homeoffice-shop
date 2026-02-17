@@ -54,8 +54,10 @@ async def send_email(
             start_tls=settings.smtp_use_tls if settings.smtp_port == 587 else False,
             use_tls=settings.smtp_use_tls if settings.smtp_port != 587 else False,
         )
-        logger.info("Email sent to %s: %s", to, subject)
+        masked = to.split("@")[0][:2] + "***@" + to.split("@")[-1] if "@" in to else "***"
+        logger.info("Email sent to %s: %s", masked, subject)
         return True
     except Exception:
-        logger.exception("Failed to send email to %s", to)
+        masked = to.split("@")[0][:2] + "***@" + to.split("@")[-1] if "@" in to else "***"
+        logger.exception("Failed to send email to %s", masked)
         return False

@@ -1,5 +1,7 @@
 from uuid import UUID
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +16,8 @@ from src.repositories import user_repo
 
 router = APIRouter(prefix="/users", tags=["admin-users"])
 
+VALID_SORTS = {"name_asc", "name_desc", "department", "start_date", "budget"}
+
 
 @router.get("", response_model=UserAdminListResponse)
 async def list_users(
@@ -23,7 +27,7 @@ async def list_users(
     department: str | None = Query(None),
     role: str | None = Query(None),
     is_active: bool | None = Query(None),
-    sort: str = Query("name_asc"),
+    sort: Literal["name_asc", "name_desc", "department", "start_date", "budget"] = Query("name_asc"),
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):

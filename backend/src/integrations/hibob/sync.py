@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+from email.utils import parseaddr
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,7 +36,8 @@ async def sync_employees(
             if not emp.email:
                 continue
 
-            domain = emp.email.split("@")[-1] if "@" in emp.email else ""
+            _, parsed_email = parseaddr(emp.email)
+            domain = parsed_email.rsplit("@", 1)[-1] if "@" in parsed_email else ""
             if domain not in settings.allowed_domains_list:
                 continue
 

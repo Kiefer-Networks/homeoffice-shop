@@ -6,6 +6,7 @@ import socket
 from pathlib import Path
 from urllib.parse import urlparse
 from uuid import UUID
+from xml.sax.saxutils import escape as xml_escape
 
 import httpx
 
@@ -55,7 +56,7 @@ class ImagePaths:
 def _generate_placeholder_svg(product_name: str) -> bytes:
     """Generate SVG placeholder with product name initials."""
     words = product_name.split()[:2]
-    initials = "".join(w[0].upper() for w in words if w) or "?"
+    initials = xml_escape("".join(w[0].upper() for w in words if w) or "?")
     color_hash = hashlib.sha256(product_name.encode()).hexdigest()[:6]
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
   <rect width="400" height="400" fill="#{color_hash}"/>
