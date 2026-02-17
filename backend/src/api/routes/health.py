@@ -44,15 +44,15 @@ async def _check_hibob() -> dict:
 
 
 async def _check_icecat() -> dict:
-    if not settings.icecat_username:
+    if not settings.icecat_api_token:
         return {"status": "not_configured"}
     try:
         start = time.monotonic()
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(
                 "https://live.icecat.biz/api/",
-                params={"UserName": settings.icecat_username, "Language": "en"},
-                auth=(settings.icecat_username, settings.icecat_password),
+                params={"Language": "en"},
+                headers={"api-token": settings.icecat_api_token},
             )
             resp.raise_for_status()
         latency_ms = round((time.monotonic() - start) * 1000)

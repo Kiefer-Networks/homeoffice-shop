@@ -28,8 +28,7 @@ class Settings(BaseSettings):
     hibob_sync_interval_hours: int = 6
 
     # Icecat Open Catalog
-    icecat_username: str = ""
-    icecat_password: str = ""
+    icecat_api_token: str = ""
     icecat_language: str = "EN"
 
     # SMTP

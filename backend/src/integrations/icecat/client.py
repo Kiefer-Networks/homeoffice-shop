@@ -18,20 +18,16 @@ class IcecatClientProtocol(Protocol):
 
 
 class IcecatClient:
-    def __init__(self):
-        self._auth = (settings.icecat_username, settings.icecat_password)
-
     async def lookup_by_gtin(self, gtin: str) -> IcecatProduct | None:
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 resp = await client.get(
                     ICECAT_API_BASE,
                     params={
-                        "UserName": settings.icecat_username,
                         "Language": settings.icecat_language,
                         "GTIN": gtin,
                     },
-                    auth=self._auth,
+                    headers={"api-token": settings.icecat_api_token},
                 )
                 resp.raise_for_status()
                 data = resp.json()
