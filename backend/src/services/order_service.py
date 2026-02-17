@@ -1,8 +1,10 @@
 import logging
+from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import select, func
+from sqlalchemy import and_, delete, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.core.exceptions import (
     BadRequestError,
@@ -84,7 +86,6 @@ async def create_order_from_cart(
         )
         db.add(order_item)
 
-    from sqlalchemy import delete
     await db.execute(delete(CartItem).where(CartItem.user_id == user_id))
 
     await refresh_budget_cache(db, user_id)
@@ -122,7 +123,6 @@ async def transition_order(
     order.reviewed_by = admin_id
     order.admin_note = admin_note
 
-    from datetime import datetime, timezone
     order.reviewed_at = datetime.now(timezone.utc)
 
     await db.flush()
@@ -190,8 +190,6 @@ async def get_orders(
     if status:
         conditions.append(Order.status == status)
 
-    from sqlalchemy import and_
-    from sqlalchemy.orm import selectinload
     where = and_(*conditions) if conditions else True
 
     count_result = await db.execute(

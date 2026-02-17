@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import ipaddress
 import logging
@@ -24,7 +25,7 @@ MAX_GALLERY_IMAGES = 20
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"}
 
 
-def _validate_image_url(url: str) -> None:
+async def _validate_image_url(url: str) -> None:
     """Validate URL to prevent SSRF attacks."""
     parsed = urlparse(url)
     if parsed.scheme not in ("https",):
@@ -35,7 +36,8 @@ def _validate_image_url(url: str) -> None:
     if hostname in ALLOWED_IMAGE_HOSTS:
         return
     try:
-        resolved = socket.getaddrinfo(hostname, None)
+        loop = asyncio.get_running_loop()
+        resolved = await loop.getaddrinfo(hostname, None)
         for _, _, _, _, sockaddr in resolved:
             ip = ipaddress.ip_address(sockaddr[0])
             if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_link_local:
@@ -54,7 +56,7 @@ def _generate_placeholder_svg(product_name: str) -> bytes:
     """Generate SVG placeholder with product name initials."""
     words = product_name.split()[:2]
     initials = "".join(w[0].upper() for w in words if w) or "?"
-    color_hash = hashlib.md5(product_name.encode()).hexdigest()[:6]
+    color_hash = hashlib.sha256(product_name.encode()).hexdigest()[:6]
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
   <rect width="400" height="400" fill="#{color_hash}"/>
   <text x="200" y="220" text-anchor="middle" font-family="Arial,sans-serif"
@@ -82,7 +84,7 @@ async def download_and_store_product_images(
     async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
         if main_image_url:
             try:
-                _validate_image_url(main_image_url)
+                await _validate_image_url(main_image_url)
                 resp = await client.get(main_image_url)
                 resp.raise_for_status()
                 content_type = resp.headers.get("content-type", "").split(";")[0].strip()
@@ -93,7 +95,7 @@ async def download_and_store_product_images(
                 ext = _get_extension(main_image_url, resp.headers.get("content-type", ""))
                 filename = f"main{ext}"
                 filepath = product_dir / filename
-                filepath.write_bytes(resp.content)
+                await asyncio.to_thread(filepath.write_bytes, resp.content)
                 main_image_path = f"/uploads/products/{product_id}/{filename}"
                 logger.info("Downloaded main image for product %s", product_id)
             except Exception:
@@ -102,12 +104,12 @@ async def download_and_store_product_images(
         if not main_image_path:
             svg_data = _generate_placeholder_svg(product_name)
             filepath = product_dir / "placeholder.svg"
-            filepath.write_bytes(svg_data)
+            await asyncio.to_thread(filepath.write_bytes, svg_data)
             main_image_path = f"/uploads/products/{product_id}/placeholder.svg"
 
         for i, url in enumerate(gallery_urls):
             try:
-                _validate_image_url(url)
+                await _validate_image_url(url)
                 resp = await client.get(url)
                 resp.raise_for_status()
                 content_type = resp.headers.get("content-type", "").split(";")[0].strip()
@@ -118,7 +120,7 @@ async def download_and_store_product_images(
                 ext = _get_extension(url, resp.headers.get("content-type", ""))
                 filename = f"gallery_{i}{ext}"
                 filepath = product_dir / filename
-                filepath.write_bytes(resp.content)
+                await asyncio.to_thread(filepath.write_bytes, resp.content)
                 gallery_paths.append(f"/uploads/products/{product_id}/{filename}")
             except Exception:
                 logger.warning(

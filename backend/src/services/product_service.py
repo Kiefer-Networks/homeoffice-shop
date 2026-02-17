@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from uuid import UUID
 
@@ -83,60 +84,67 @@ async def search_products(
     result = await db.execute(query)
     products = list(result.scalars().all())
 
-    # Build facets
-    active_condition = Product.is_active == True
-    brand_facets = await db.execute(
-        select(Product.brand, func.count())
-        .where(active_condition)
-        .where(Product.brand.isnot(None))
-        .group_by(Product.brand)
-        .order_by(func.count().desc())
-        .limit(20)
-    )
-    brands = [{"value": b, "count": c} for b, c in brand_facets.all()]
+    # Build facets concurrently
+    active_condition = Product.is_active.is_(True)
 
-    cat_facets = await db.execute(
-        select(Category.id, Category.slug, Category.name, func.count(Product.id))
-        .join(Product, Product.category_id == Category.id)
-        .where(active_condition)
-        .group_by(Category.id, Category.slug, Category.name)
-        .order_by(func.count(Product.id).desc())
-    )
-    categories = [
-        {"id": str(cid), "slug": slug, "name": name, "count": cnt}
-        for cid, slug, name, cnt in cat_facets.all()
-    ]
-
-    color_facets = await db.execute(
-        select(Product.color, func.count())
-        .where(active_condition)
-        .where(Product.color.isnot(None))
-        .group_by(Product.color)
-        .order_by(func.count().desc())
-        .limit(20)
-    )
-    colors = [{"value": c, "count": cnt} for c, cnt in color_facets.all()]
-
-    material_facets = await db.execute(
-        select(Product.material, func.count())
-        .where(active_condition)
-        .where(Product.material.isnot(None))
-        .group_by(Product.material)
-        .order_by(func.count().desc())
-        .limit(20)
-    )
-    materials = [{"value": m, "count": cnt} for m, cnt in material_facets.all()]
-
-    price_result = await db.execute(
-        select(func.min(Product.price_cents), func.max(Product.price_cents)).where(
-            active_condition
+    async def _brand_facets():
+        r = await db.execute(
+            select(Product.brand, func.count())
+            .where(active_condition)
+            .where(Product.brand.isnot(None))
+            .group_by(Product.brand)
+            .order_by(func.count().desc())
+            .limit(20)
         )
+        return [{"value": b, "count": c} for b, c in r.all()]
+
+    async def _cat_facets():
+        r = await db.execute(
+            select(Category.id, Category.slug, Category.name, func.count(Product.id))
+            .join(Product, Product.category_id == Category.id)
+            .where(active_condition)
+            .group_by(Category.id, Category.slug, Category.name)
+            .order_by(func.count(Product.id).desc())
+        )
+        return [
+            {"id": str(cid), "slug": slug, "name": name, "count": cnt}
+            for cid, slug, name, cnt in r.all()
+        ]
+
+    async def _color_facets():
+        r = await db.execute(
+            select(Product.color, func.count())
+            .where(active_condition)
+            .where(Product.color.isnot(None))
+            .group_by(Product.color)
+            .order_by(func.count().desc())
+            .limit(20)
+        )
+        return [{"value": c, "count": cnt} for c, cnt in r.all()]
+
+    async def _material_facets():
+        r = await db.execute(
+            select(Product.material, func.count())
+            .where(active_condition)
+            .where(Product.material.isnot(None))
+            .group_by(Product.material)
+            .order_by(func.count().desc())
+            .limit(20)
+        )
+        return [{"value": m, "count": cnt} for m, cnt in r.all()]
+
+    async def _price_range():
+        r = await db.execute(
+            select(func.min(Product.price_cents), func.max(Product.price_cents)).where(
+                active_condition
+            )
+        )
+        row = r.one_or_none()
+        return {"min_cents": row[0] or 0, "max_cents": row[1] or 0} if row else {"min_cents": 0, "max_cents": 0}
+
+    brands, categories, colors, materials, price_range = await asyncio.gather(
+        _brand_facets(), _cat_facets(), _color_facets(), _material_facets(), _price_range()
     )
-    price_row = price_result.one_or_none()
-    price_range = {
-        "min_cents": price_row[0] or 0,
-        "max_cents": price_row[1] or 0,
-    } if price_row else {"min_cents": 0, "max_cents": 0}
 
     return {
         "items": products,

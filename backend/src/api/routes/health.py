@@ -5,8 +5,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.core.config import settings
+from src.models.orm.user import User
 
 router = APIRouter(tags=["health"])
 
@@ -73,6 +75,7 @@ async def _check_slack() -> dict:
 
 
 async def _check_disk() -> dict:
+    import asyncio
     import shutil
     from pathlib import Path
 
@@ -81,24 +84,39 @@ async def _check_disk() -> dict:
         uploads_path = Path("uploads")
         uploads_path.mkdir(exist_ok=True)
 
-    try:
+    def _sync_disk_check():
         usage = shutil.disk_usage(uploads_path)
         uploads_mb = 0
         if uploads_path.exists():
             uploads_mb = sum(
                 f.stat().st_size for f in uploads_path.rglob("*") if f.is_file()
             ) // (1024 * 1024)
-        return {
-            "status": "ok",
-            "uploads_mb": uploads_mb,
-            "free_mb": usage.free // (1024 * 1024),
-        }
+        return {"status": "ok", "uploads_mb": uploads_mb, "free_mb": usage.free // (1024 * 1024)}
+
+    try:
+        return await asyncio.to_thread(_sync_disk_check)
     except Exception:
         return {"status": "error"}
 
 
 @router.get("/health")
 async def health_check(db: AsyncSession = Depends(get_db)):
+    db_status = await _check_database(db)
+    overall = "healthy" if db_status["status"] == "up" else "unhealthy"
+    status_code = 200 if overall == "healthy" else 503
+
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        content={"status": overall},
+        status_code=status_code,
+    )
+
+
+@router.get("/health/detailed")
+async def health_check_detailed(
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
     checks = {
         "database": await _check_database(db),
         "smtp": await _check_smtp(),
