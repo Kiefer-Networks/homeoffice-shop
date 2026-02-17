@@ -17,8 +17,8 @@ async def _check_database(db: AsyncSession) -> dict:
         await db.execute(text("SELECT 1"))
         latency_ms = round((time.monotonic() - start) * 1000)
         return {"status": "up", "latency_ms": latency_ms}
-    except Exception as e:
-        return {"status": "down", "error": str(e)}
+    except Exception:
+        return {"status": "down"}
 
 
 async def _check_hibob() -> dict:
@@ -93,8 +93,8 @@ async def _check_disk() -> dict:
             "uploads_mb": uploads_mb,
             "free_mb": usage.free // (1024 * 1024),
         }
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
+    except Exception:
+        return {"status": "error"}
 
 
 @router.get("/health")

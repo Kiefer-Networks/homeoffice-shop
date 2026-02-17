@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from jose import jwt, JWTError
+import jwt
 
 from src.core.config import settings
 
@@ -23,6 +23,8 @@ def create_access_token(
         "email": email,
         "role": role,
         "exp": expire,
+        "iss": "homeoffice-shop",
+        "aud": "homeoffice-shop",
         "jti": str(uuid.uuid4()),
         "type": "access",
     }
@@ -42,6 +44,8 @@ def create_refresh_token(
     payload = {
         "sub": user_id,
         "exp": expire,
+        "iss": "homeoffice-shop",
+        "aud": "homeoffice-shop",
         "jti": jti,
         "token_family": token_family,
         "type": "refresh",
@@ -51,8 +55,14 @@ def create_refresh_token(
 
 
 def decode_token(token: str) -> dict:
-    """Decode and verify a JWT token. Raises JWTError on failure."""
-    return jwt.decode(token, settings.jwt_secret_key, algorithms=[ALGORITHM])
+    """Decode and verify a JWT token. Raises jwt.PyJWTError on failure."""
+    return jwt.decode(
+        token,
+        settings.jwt_secret_key,
+        algorithms=[ALGORITHM],
+        issuer="homeoffice-shop",
+        audience="homeoffice-shop",
+    )
 
 
 def verify_access_token(token: str) -> dict | None:
@@ -62,7 +72,7 @@ def verify_access_token(token: str) -> dict | None:
         if payload.get("type") != "access":
             return None
         return payload
-    except JWTError:
+    except jwt.PyJWTError:
         return None
 
 
@@ -73,5 +83,5 @@ def verify_refresh_token(token: str) -> dict | None:
         if payload.get("type") != "refresh":
             return None
         return payload
-    except JWTError:
+    except jwt.PyJWTError:
         return None

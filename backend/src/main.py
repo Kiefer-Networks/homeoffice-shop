@@ -6,7 +6,6 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
-from pathlib import Path
 
 from src.core.logging import setup_logging
 
@@ -16,6 +15,7 @@ from src.api.dependencies.database import async_session_factory
 from src.api.middleware.cors import setup_cors
 from src.api.middleware.rate_limit import RateLimitMiddleware
 from src.api.middleware.request_id import RequestIdMiddleware
+from src.api.middleware.security_headers import SecurityHeadersMiddleware
 from src.api.routes import auth, avatars, branding, cart, categories, health, orders, products, users
 from src.api.routes.admin import (
     audit as admin_audit,
@@ -35,6 +35,11 @@ from src.services.settings_service import load_settings
 
 logger = logging.getLogger(__name__)
 
+try:
+    settings.validate_secrets()
+except ValueError as e:
+    logger.warning("Secret validation: %s", e)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -44,6 +49,20 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             await ensure_audit_partitions(db)
         except Exception:
             logger.warning("Could not ensure audit partitions at startup")
+        try:
+            from src.repositories import refresh_token_repo
+            cleaned = await refresh_token_repo.cleanup_expired(db)
+            if cleaned:
+                logger.info("Cleaned up %d expired refresh tokens", cleaned)
+            await db.commit()
+        except Exception:
+            logger.warning("Could not cleanup expired refresh tokens")
+        try:
+            from src.services.cart_service import cleanup_stale_items
+            cleaned = await cleanup_stale_items(db)
+            await db.commit()
+        except Exception:
+            logger.warning("Could not cleanup stale cart items")
     yield
 
 
@@ -68,6 +87,7 @@ app.add_middleware(
     https_only=settings.backend_url.startswith("https"),
     same_site="lax",
 )
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(RequestIdMiddleware)
 
@@ -95,8 +115,4 @@ app.include_router(admin_hibob.router, prefix="/api/admin")
 app.include_router(admin_amazon.router, prefix="/api/admin")
 
 # Static files for uploaded images
-uploads_path = Path("/app/uploads")
-if not uploads_path.exists():
-    uploads_path = Path("uploads")
-    uploads_path.mkdir(exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
+app.mount("/uploads", StaticFiles(directory=str(settings.upload_dir)), name="uploads")

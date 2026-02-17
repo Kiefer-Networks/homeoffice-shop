@@ -1,6 +1,7 @@
 import csv
 import io
 import logging
+import re
 from datetime import datetime, timezone
 from dateutil.relativedelta import relativedelta
 from uuid import UUID
@@ -12,6 +13,8 @@ from src.audit.models import AuditLog
 from src.models.orm.user import User
 
 logger = logging.getLogger(__name__)
+
+_PARTITION_NAME_RE = re.compile(r"^audit_log_\d{4}_\d{2}$")
 
 
 async def write_audit_log(
@@ -115,7 +118,7 @@ async def export_audit_csv(
         date_from=date_from,
         date_to=date_to,
         page=1,
-        per_page=10000,
+        per_page=5000,
     )
 
     output = io.StringIO()
@@ -147,11 +150,16 @@ async def ensure_audit_partitions(db: AsyncSession) -> None:
         start = f"{month.year}-{month.month:02d}-01"
         end = f"{next_month.year}-{next_month.month:02d}-01"
 
+        if not _PARTITION_NAME_RE.match(partition_name):
+            logger.error("Invalid partition name: %s", partition_name)
+            continue
+
         check_sql = text(
             "SELECT 1 FROM pg_tables WHERE tablename = :name"
         )
         result = await db.execute(check_sql, {"name": partition_name})
         if result.scalar() is None:
+            # partition_name is validated by regex above (digits only)
             create_sql = text(
                 f"CREATE TABLE {partition_name} PARTITION OF audit_log "
                 f"FOR VALUES FROM ('{start}') TO ('{end}')"
@@ -159,10 +167,14 @@ async def ensure_audit_partitions(db: AsyncSession) -> None:
             await db.execute(create_sql)
             logger.info("Created audit partition: %s", partition_name)
 
-    cutoff = now - relativedelta(months=12)
     for month_offset in range(13, 25):
         old_month = now - relativedelta(months=month_offset)
         partition_name = f"audit_log_{old_month.year}_{old_month.month:02d}"
+
+        if not _PARTITION_NAME_RE.match(partition_name):
+            logger.error("Invalid partition name: %s", partition_name)
+            continue
+
         check_sql = text(
             "SELECT 1 FROM pg_tables WHERE tablename = :name"
         )

@@ -1,8 +1,6 @@
 import uuid
 from datetime import date
 
-from urllib.parse import urlencode
-
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
@@ -13,6 +11,7 @@ from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.config import settings
 from src.core.exceptions import BadRequestError, UnauthorizedError
+from src.models.dto import DetailResponse
 from src.models.dto.auth import TokenResponse
 from src.models.orm.user import User
 from src.repositories import user_repo
@@ -55,13 +54,15 @@ async def _handle_oauth_callback(
 ) -> TokenResponse:
     ip = request.client.host if request.client else None
 
+    _generic_auth_error = "Authentication failed. Please contact your administrator."
+
     domain = email.split("@")[-1] if "@" in email else ""
     if domain not in settings.allowed_domains_list:
         await write_audit_log(
-            db, user_id=uuid.UUID(int=0), action="auth.login_blocked_unknown",
+            db, user_id=uuid.UUID(int=0), action="auth.login_blocked_domain",
             resource_type="user", details={"email": email}, ip_address=ip,
         )
-        raise UnauthorizedError("Email domain not allowed")
+        raise UnauthorizedError(_generic_auth_error)
 
     user = await user_repo.get_by_email(db, email)
     if not user:
@@ -69,16 +70,14 @@ async def _handle_oauth_callback(
             db, user_id=uuid.UUID(int=0), action="auth.login_blocked_unknown",
             resource_type="user", details={"email": email}, ip_address=ip,
         )
-        raise UnauthorizedError(
-            "User not found. Please contact your administrator."
-        )
+        raise UnauthorizedError(_generic_auth_error)
 
     if not user.is_active:
         await write_audit_log(
             db, user_id=user.id, action="auth.login_blocked_inactive",
             resource_type="user", ip_address=ip,
         )
-        raise UnauthorizedError("Account is inactive")
+        raise UnauthorizedError(_generic_auth_error)
 
     if not user.probation_override and not _is_probation_passed(user.start_date):
         await write_audit_log(
@@ -137,7 +136,7 @@ async def google_callback(
     token_response = await _handle_oauth_callback(
         request, response, db, "google", email, name, sub
     )
-    redirect_url = f"{settings.frontend_url}/callback?{urlencode({'access_token': token_response.access_token})}"
+    redirect_url = f"{settings.frontend_url}/callback#access_token={token_response.access_token}"
     response.headers["location"] = redirect_url
     return response
 
@@ -182,7 +181,7 @@ async def refresh_token(
     return TokenResponse(access_token=tokens.access_token)
 
 
-@router.post("/logout")
+@router.post("/logout", response_model=DetailResponse)
 async def logout_user(
     request: Request,
     response: Response,

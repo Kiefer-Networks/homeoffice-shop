@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from uuid import UUID
 
@@ -19,13 +20,15 @@ DEFAULT_SETTINGS = {
 }
 
 _cache: dict[str, str] = {}
+_cache_lock = asyncio.Lock()
 
 
 async def load_settings(db: AsyncSession) -> dict[str, str]:
     global _cache
     result = await db.execute(select(AppSetting))
     settings = {s.key: s.value for s in result.scalars().all()}
-    _cache = {**DEFAULT_SETTINGS, **settings}
+    async with _cache_lock:
+        _cache = {**DEFAULT_SETTINGS, **settings}
     return _cache
 
 
@@ -58,7 +61,8 @@ async def update_setting(
         db.add(setting)
     await db.flush()
 
-    _cache[key] = value
+    async with _cache_lock:
+        _cache[key] = value
     logger.info("Setting '%s' updated to '%s'", key, value)
 
 

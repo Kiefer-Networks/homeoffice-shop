@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
 from pydantic import Field
 
@@ -21,7 +23,7 @@ class Settings(BaseSettings):
     # JWT
     jwt_secret_key: str = "CHANGE_ME"
     jwt_access_token_expire_minutes: int = 15
-    jwt_refresh_token_expire_days: int = 7
+    jwt_refresh_token_expire_days: int = 2
 
     # HiBob HRIS (base64-encoded "user:token" string)
     hibob_api_key: str = ""
@@ -81,6 +83,25 @@ class Settings(BaseSettings):
         return [e.strip() for e in self.initial_admin_emails.split(",") if e.strip()]
 
     model_config = {"env_file": ".env", "extra": "ignore"}
+
+    def validate_secrets(self) -> None:
+        """Raise if production-critical secrets are still defaults."""
+        defaults = {"CHANGE_ME"}
+        if self.jwt_secret_key in defaults:
+            raise ValueError("jwt_secret_key must be changed from default")
+        if self.secret_key in defaults:
+            raise ValueError("secret_key must be changed from default")
+        if self.db_password in defaults:
+            raise ValueError("db_password must be changed from default")
+
+    @property
+    def upload_dir(self) -> Path:
+        docker_path = Path("/app/uploads")
+        if docker_path.exists():
+            return docker_path
+        local_path = Path("uploads")
+        local_path.mkdir(exist_ok=True)
+        return local_path
 
 
 settings = Settings()
