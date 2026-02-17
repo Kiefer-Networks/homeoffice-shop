@@ -20,14 +20,7 @@ import { AdminBudgetAdjustmentsPage } from '@/pages/admin/BudgetAdjustmentsPage'
 import { AdminSettingsPage } from '@/pages/admin/SettingsPage'
 import { AdminAuditLogPage } from '@/pages/admin/AuditLogPage'
 import { AdminSyncLogPage } from '@/pages/admin/SyncLogPage'
-import { useUiStore } from '@/stores/uiStore'
-
-interface Toast {
-  id: string
-  title: string
-  description?: string
-  variant?: 'default' | 'destructive'
-}
+import { useUiStore, type Toast } from '@/stores/uiStore'
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -39,6 +32,9 @@ class ErrorBoundary extends React.Component<
   }
   static getDerivedStateFromError() {
     return { hasError: true }
+  }
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Uncaught error:', error, errorInfo)
   }
   render() {
     if (this.state.hasError) {

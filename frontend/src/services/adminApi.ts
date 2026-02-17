@@ -1,13 +1,14 @@
 import api from './api'
 import type {
   Product, Category, Order, UserAdmin, BudgetAdjustment,
-  AuditLogEntry, HiBobSyncLog, PaginatedResponse, NotificationPrefs
+  AuditLogEntry, HiBobSyncLog, PaginatedResponse, NotificationPrefs,
+  ProductCreateInput, ProductUpdateInput, CategoryCreateInput, CategoryUpdateInput,
 } from '@/types'
 
 export const adminApi = {
   // Products
-  createProduct: (data: Partial<Product>) => api.post<Product>('/api/admin/products', data),
-  updateProduct: (id: string, data: Partial<Product>) => api.put<Product>(`/api/admin/products/${id}`, data),
+  createProduct: (data: ProductCreateInput) => api.post<Product>('/api/admin/products', data),
+  updateProduct: (id: string, data: ProductUpdateInput) => api.put<Product>(`/api/admin/products/${id}`, data),
   activateProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/activate`),
   deactivateProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/deactivate`),
   deleteProduct: (id: string) => api.delete(`/api/admin/products/${id}`),
@@ -17,8 +18,8 @@ export const adminApi = {
 
   // Categories
   listCategories: () => api.get<Category[]>('/api/admin/categories'),
-  createCategory: (data: Partial<Category>) => api.post<Category>('/api/admin/categories', data),
-  updateCategory: (id: string, data: Partial<Category>) => api.put<Category>(`/api/admin/categories/${id}`, data),
+  createCategory: (data: CategoryCreateInput) => api.post<Category>('/api/admin/categories', data),
+  updateCategory: (id: string, data: CategoryUpdateInput) => api.put<Category>(`/api/admin/categories/${id}`, data),
   deleteCategory: (id: string) => api.delete(`/api/admin/categories/${id}`),
   reorderCategories: (items: { id: string; sort_order: number }[]) =>
     api.put('/api/admin/categories/reorder', items),

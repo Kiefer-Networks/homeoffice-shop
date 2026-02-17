@@ -176,3 +176,44 @@ export interface NotificationPrefs {
   email_enabled: boolean
   email_events: string[]
 }
+
+export interface ProductCreateInput {
+  category_id: string
+  name: string
+  description?: string | null
+  brand?: string | null
+  model?: string | null
+  price_cents: number
+  amazon_asin?: string | null
+  external_url: string
+  is_active?: boolean
+  max_quantity_per_user?: number
+}
+
+export interface ProductUpdateInput {
+  category_id?: string
+  name?: string
+  description?: string | null
+  brand?: string | null
+  model?: string | null
+  price_cents?: number
+  external_url?: string
+  is_active?: boolean
+  max_quantity_per_user?: number
+}
+
+export interface CategoryCreateInput {
+  name: string
+  slug: string
+  description?: string | null
+  icon?: string | null
+  sort_order?: number
+}
+
+export interface CategoryUpdateInput {
+  name?: string
+  slug?: string
+  description?: string | null
+  icon?: string | null
+  sort_order?: number
+}
