@@ -35,16 +35,19 @@ export function CartDrawer({ onRefreshCart, onCheckout }: Props) {
     try {
       await cartApi.removeItem(productId)
       onRefreshCart()
-    } catch {}
+    } catch (err: unknown) {
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+    }
   }
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Shopping cart"
+      onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}>
       <div className="fixed inset-0 bg-black/50" onClick={() => setOpen(false)} />
       <div className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-xl flex flex-col">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold">Shopping Cart</h2>
-          <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
+          <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close cart">
             <X className="h-5 w-5" />
           </Button>
         </div>
@@ -72,17 +75,20 @@ export function CartDrawer({ onRefreshCart, onCheckout }: Props) {
                   )}
                   <div className="flex items-center gap-2 mt-2">
                     <Button variant="outline" size="icon" className="h-7 w-7"
-                      onClick={() => handleUpdateQty(item.product_id, item.quantity - 1)}>
+                      onClick={() => handleUpdateQty(item.product_id, item.quantity - 1)}
+                      aria-label={`Decrease quantity of ${item.product_name}`}>
                       <Minus className="h-3 w-3" />
                     </Button>
-                    <span className="text-sm w-8 text-center">{item.quantity}</span>
+                    <span className="text-sm w-8 text-center" aria-label={`Quantity: ${item.quantity}`}>{item.quantity}</span>
                     <Button variant="outline" size="icon" className="h-7 w-7"
                       onClick={() => handleUpdateQty(item.product_id, item.quantity + 1)}
-                      disabled={item.quantity >= item.max_quantity_per_user}>
+                      disabled={item.quantity >= item.max_quantity_per_user}
+                      aria-label={`Increase quantity of ${item.product_name}`}>
                       <Plus className="h-3 w-3" />
                     </Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto text-red-500"
-                      onClick={() => handleRemove(item.product_id)}>
+                      onClick={() => handleRemove(item.product_id)}
+                      aria-label={`Remove ${item.product_name} from cart`}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>

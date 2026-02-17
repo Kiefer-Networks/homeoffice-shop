@@ -40,7 +40,9 @@ export function CatalogPage() {
     try {
       const { data } = await cartApi.get()
       setCart(data)
-    } catch {}
+    } catch {
+      // Cart may not exist yet for new users - this is expected
+    }
   }, [setCart])
 
   useEffect(() => { refreshCart() }, [refreshCart])
@@ -55,7 +57,7 @@ export function CatalogPage() {
       setTotal(data.total)
       setFacets(data.facets)
     }).finally(() => setLoading(false))
-  }, [filterStore.q, filterStore.category, filterStore.brand, filterStore.priceMin, filterStore.priceMax, filterStore.sort, filterStore.page])
+  }, [filterStore.q, filterStore.category, filterStore.brand, filterStore.color, filterStore.material, filterStore.priceMin, filterStore.priceMax, filterStore.sort, filterStore.page])
 
   const handleCheckout = async () => {
     if (!cart) return

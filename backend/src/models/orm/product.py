@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, VARCHAR, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,11 +22,17 @@ class Product(Base):
     brand: Mapped[str | None] = mapped_column(String(255), nullable=True)
     model: Mapped[str | None] = mapped_column(String(255), nullable=True)
     image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    image_gallery: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    image_gallery: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     specifications: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     price_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     price_min_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     price_max_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    color: Mapped[str | None] = mapped_column(VARCHAR(100), nullable=True)
+    material: Mapped[str | None] = mapped_column(VARCHAR(255), nullable=True)
+    product_dimensions: Mapped[str | None] = mapped_column(VARCHAR(255), nullable=True)
+    item_weight: Mapped[str | None] = mapped_column(VARCHAR(100), nullable=True)
+    item_model_number: Mapped[str | None] = mapped_column(VARCHAR(100), nullable=True)
+    product_information: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     amazon_asin: Mapped[str | None] = mapped_column(String(20), nullable=True)
     external_url: Mapped[str] = mapped_column(Text, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

@@ -80,6 +80,9 @@ export function AdminProductsPage() {
   const [loadingProduct, setLoadingProduct] = useState(false)
   const [showKeywordSearch, setShowKeywordSearch] = useState(false)
 
+  const [creating, setCreating] = useState(false)
+  const [updating, setUpdating] = useState(false)
+
   // Edit form
   const [editForm, setEditForm] = useState({ name: '', category_id: '', price_euro: '', external_url: '', brand: '', description: '', is_active: true })
 
@@ -189,6 +192,7 @@ export function AdminProductsPage() {
     if (!form.category_id) return addToast({ title: 'Category is required', variant: 'destructive' })
     if (!form.external_url.trim()) return addToast({ title: 'URL is required', variant: 'destructive' })
     const priceCents = parseEuroToCents(form.price_euro)
+    setCreating(true)
     try {
       await adminApi.createProduct({
         ...form,
@@ -206,6 +210,8 @@ export function AdminProductsPage() {
       addToast({ title: 'Product created' })
     } catch (err: unknown) {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -227,6 +233,7 @@ export function AdminProductsPage() {
     if (!editForm.name.trim()) return addToast({ title: 'Name is required', variant: 'destructive' })
     if (!editForm.category_id) return addToast({ title: 'Category is required', variant: 'destructive' })
     const priceCents = parseEuroToCents(editForm.price_euro)
+    setUpdating(true)
     try {
       await adminApi.updateProduct(editProduct.id, {
         name: editForm.name,
@@ -242,6 +249,8 @@ export function AdminProductsPage() {
       addToast({ title: 'Product updated' })
     } catch (err: unknown) {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+    } finally {
+      setUpdating(false)
     }
   }
 
@@ -485,7 +494,9 @@ export function AdminProductsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={!form.name || !form.category_id || !form.external_url}>Create</Button>
+            <Button onClick={handleCreate} disabled={creating || !form.name || !form.category_id || !form.external_url}>
+              {creating ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Creating...</> : 'Create'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -509,7 +520,9 @@ export function AdminProductsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditProduct(null)}>Cancel</Button>
-            <Button onClick={handleUpdate}>Save</Button>
+            <Button onClick={handleUpdate} disabled={updating}>
+              {updating ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Saving...</> : 'Save'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

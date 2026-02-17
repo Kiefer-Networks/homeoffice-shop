@@ -62,6 +62,15 @@ async def create_product(
 
                 if amazon_data.specifications:
                     product.specifications = amazon_data.specifications
+                if amazon_data.brand:
+                    product.brand = amazon_data.brand
+
+                product.color = amazon_data.color
+                product.material = amazon_data.material
+                product.product_dimensions = amazon_data.product_dimensions
+                product.item_weight = amazon_data.item_weight
+                product.item_model_number = amazon_data.item_model_number
+                product.product_information = amazon_data.product_information
 
                 await db.flush()
         except Exception:
@@ -180,7 +189,7 @@ async def delete_product(
     return {"detail": "Product deleted"}
 
 
-@router.post("/{product_id}/redownload-images")
+@router.post("/{product_id}/redownload-images", response_model=ProductResponse)
 async def redownload_images(
     product_id: UUID,
     request: Request,
@@ -193,24 +202,43 @@ async def redownload_images(
     if not product.amazon_asin:
         raise BadRequestError("Product has no Amazon ASIN")
 
-    client = AmazonClient()
-    amazon_data = await client.get_product(product.amazon_asin)
+    try:
+        client = AmazonClient()
+        amazon_data = await client.get_product(product.amazon_asin)
+    except Exception:
+        logger.exception("ScraperAPI call failed for ASIN %s", product.amazon_asin)
+        raise BadRequestError("Amazon API request failed. Please try again later.")
+
     if not amazon_data:
         raise BadRequestError("Amazon lookup returned no data")
 
     main_image = amazon_data.images[0] if amazon_data.images else None
     gallery = amazon_data.images[1:] if len(amazon_data.images) > 1 else []
 
-    paths = await download_and_store_product_images(
-        product.id,
-        main_image,
-        gallery,
-        settings.upload_dir,
-        product.name,
-    )
+    try:
+        paths = await download_and_store_product_images(
+            product.id,
+            main_image,
+            gallery,
+            settings.upload_dir,
+            product.name,
+        )
+        product.image_url = paths.main_image
+        product.image_gallery = paths.gallery
+    except Exception:
+        logger.exception("Image download failed for product %s", product.id)
+        raise BadRequestError("Failed to download images. Please try again later.")
 
-    product.image_url = paths.main_image
-    product.image_gallery = paths.gallery
+    # Update product information fields from Amazon data
+    product.color = amazon_data.color
+    product.material = amazon_data.material
+    product.product_dimensions = amazon_data.product_dimensions
+    product.item_weight = amazon_data.item_weight
+    product.item_model_number = amazon_data.item_model_number
+    product.product_information = amazon_data.product_information
+    if amazon_data.brand:
+        product.brand = amazon_data.brand
+
     await db.flush()
 
     ip = request.client.host if request.client else None
@@ -219,4 +247,4 @@ async def redownload_images(
         resource_type="product", resource_id=product.id, ip_address=ip,
     )
 
-    return {"image_url": product.image_url, "image_gallery": product.image_gallery}
+    return product
