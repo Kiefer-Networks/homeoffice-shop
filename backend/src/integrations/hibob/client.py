@@ -26,10 +26,10 @@ class HiBobClient:
 
     async def get_employees(self) -> list[HiBobEmployee]:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.get(
-                f"{HIBOB_API_BASE}/people",
-                headers=self._headers,
-                params={"showInactive": "false", "humanReadable": "REPLACE"},
+            resp = await client.post(
+                f"{HIBOB_API_BASE}/people/search",
+                headers={**self._headers, "Content-Type": "application/json"},
+                json={"showInactive": False, "humanReadable": "REPLACE"},
             )
             resp.raise_for_status()
             content_type = resp.headers.get("content-type", "")

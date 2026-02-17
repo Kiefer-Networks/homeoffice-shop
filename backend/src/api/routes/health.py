@@ -27,13 +27,14 @@ async def _check_hibob() -> dict:
     try:
         start = time.monotonic()
         async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(
-                "https://api.hibob.com/v1/company/people",
+            resp = await client.post(
+                "https://api.hibob.com/v1/people/search",
                 headers={
                     "Authorization": f"Basic {settings.hibob_api_key}",
                     "Accept": "application/json",
+                    "Content-Type": "application/json",
                 },
-                params={"showInactive": "false"},
+                json={"showInactive": False},
             )
             resp.raise_for_status()
         latency_ms = round((time.monotonic() - start) * 1000)
