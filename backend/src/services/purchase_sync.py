@@ -167,13 +167,20 @@ async def sync_purchases(
                     description = str(row.get(col_description, ""))
 
                     # Handle HiBob compound amount fields: {"value": 270, "currency": "EUR"}
-                    raw_amount_field = row.get(col_amount, "0")
+                    raw_amount_field = row.get(col_amount)
                     if isinstance(raw_amount_field, dict):
-                        raw_amount = str(raw_amount_field.get("value", "0"))
-                        currency = str(raw_amount_field.get("currency", "EUR")) or "EUR"
+                        raw_val = raw_amount_field.get("value")
+                        if raw_val is None:
+                            logger.warning("Skipping entry %s: amount value is null", entry_id)
+                            continue
+                        raw_amount = str(raw_val)
+                        currency = str(raw_amount_field.get("currency") or "EUR")
                     else:
+                        if raw_amount_field is None:
+                            logger.warning("Skipping entry %s: amount is null", entry_id)
+                            continue
                         raw_amount = str(raw_amount_field)
-                        currency = str(row.get(col_currency, "EUR")) or "EUR"
+                        currency = str(row.get(col_currency) or "EUR")
                     amount_cents = _parse_amount_cents(raw_amount)
                 except Exception:
                     logger.exception("Failed to parse entry %s", entry_id)
