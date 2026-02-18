@@ -11,6 +11,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/error'
 import { RefreshCcw, Loader2, Link as LinkIcon, Minus, X, ChevronUp, ChevronDown } from 'lucide-react'
+import { EmployeeDetailModal } from './EmployeeDetailModal'
 import type { HiBobPurchaseReview, Order, PaginatedResponse } from '@/types'
 
 const PER_PAGE = 50
@@ -86,6 +87,9 @@ export function PurchaseReviewsPage() {
   const [orderResults, setOrderResults] = useState<Order[]>([])
   const [searchingOrders, setSearchingOrders] = useState(false)
   const [matchingId, setMatchingId] = useState<string | null>(null)
+
+  // Employee detail modal
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
 
   // Action loading
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -267,7 +271,12 @@ export function PurchaseReviewsPage() {
                     <tr key={review.id} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.5)]">
                       <td className="px-4 py-3 whitespace-nowrap">{formatDate(review.entry_date)}</td>
                       <td className="px-4 py-3">
-                        <div className="font-medium">{review.user_display_name || review.hibob_employee_id}</div>
+                        <button
+                          className="font-medium text-left hover:underline hover:text-[hsl(var(--primary))] transition-colors"
+                          onClick={() => setSelectedUserId(review.user_id)}
+                        >
+                          {review.user_display_name || review.hibob_employee_id}
+                        </button>
                       </td>
                       <td className="px-4 py-3 max-w-xs truncate">{review.description}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap font-medium text-red-600">
@@ -419,6 +428,13 @@ export function PurchaseReviewsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {selectedUserId && (
+        <EmployeeDetailModal
+          userId={selectedUserId}
+          onClose={() => setSelectedUserId(null)}
+        />
+      )}
     </div>
   )
 }

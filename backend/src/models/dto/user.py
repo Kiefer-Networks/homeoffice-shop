@@ -65,6 +65,7 @@ class UserDetailResponse(BaseModel):
     budget_summary: BudgetSummary
     budget_timeline: list = []
     budget_overrides: list = []
+    purchase_reviews: list = []
 
 
 class UserRoleUpdate(BaseModel):

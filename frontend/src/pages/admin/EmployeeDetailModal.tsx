@@ -9,7 +9,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/error'
 import { Plus, Pencil, Trash2, Save } from 'lucide-react'
-import type { UserDetailResponse, UserBudgetOverride } from '@/types'
+import type { UserDetailResponse, UserBudgetOverride, UserPurchaseReview } from '@/types'
 
 function EmployeeAvatar({ name, avatarUrl, size = 48 }: { name: string; avatarUrl?: string | null; size?: number }) {
   const [imgError, setImgError] = useState(false)
@@ -56,6 +56,10 @@ function EmployeeAvatar({ name, avatarUrl, size = 48 }: { name: string; avatarUr
 
 const statusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning'> = {
   pending: 'warning', ordered: 'default', delivered: 'success', rejected: 'destructive', cancelled: 'secondary',
+}
+
+const purchaseStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning'> = {
+  pending: 'warning', matched: 'success', adjusted: 'default', dismissed: 'secondary',
 }
 
 interface EmployeeDetailModalProps {
@@ -349,6 +353,45 @@ export function EmployeeDetailModal({ userId, onClose }: EmployeeDetailModalProp
                   </CardContent>
                 </Card>
               ) : null}
+            </div>
+
+            {/* HiBob Purchases */}
+            <div>
+              <h3 className="text-sm font-medium mb-2">HiBob Purchases ({data.purchase_reviews?.length || 0})</h3>
+              {(data.purchase_reviews?.length || 0) === 0 ? (
+                <p className="text-sm text-[hsl(var(--muted-foreground))]">No HiBob purchases synced.</p>
+              ) : (
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
+                            <th className="text-left px-4 py-2 font-medium text-[hsl(var(--muted-foreground))]">Date</th>
+                            <th className="text-left px-4 py-2 font-medium text-[hsl(var(--muted-foreground))]">Description</th>
+                            <th className="text-right px-4 py-2 font-medium text-[hsl(var(--muted-foreground))]">Amount</th>
+                            <th className="text-center px-4 py-2 font-medium text-[hsl(var(--muted-foreground))]">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.purchase_reviews.map((pr: UserPurchaseReview) => (
+                            <tr key={pr.id} className="border-b border-[hsl(var(--border))] last:border-b-0">
+                              <td className="px-4 py-2 whitespace-nowrap">{formatDate(pr.entry_date)}</td>
+                              <td className="px-4 py-2">{pr.description}</td>
+                              <td className="px-4 py-2 text-right whitespace-nowrap font-medium text-red-600">
+                                {formatCents(pr.amount_cents)}
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                <Badge variant={purchaseStatusVariant[pr.status]}>{pr.status}</Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             {/* Orders */}

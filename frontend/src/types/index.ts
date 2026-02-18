@@ -70,6 +70,16 @@ export interface UserBudgetOverride {
   created_at: string
 }
 
+export interface UserPurchaseReview {
+  id: string
+  entry_date: string
+  description: string
+  amount_cents: number
+  currency: string
+  status: 'pending' | 'matched' | 'adjusted' | 'dismissed'
+  matched_order_id: string | null
+}
+
 export interface UserDetailResponse {
   user: UserAdmin
   orders: Order[]
@@ -77,6 +87,7 @@ export interface UserDetailResponse {
   budget_summary: BudgetSummary
   budget_timeline: BudgetTimelineEntry[]
   budget_overrides: UserBudgetOverride[]
+  purchase_reviews: UserPurchaseReview[]
 }
 
 export interface Brand {

@@ -24,6 +24,7 @@ from src.models.dto.user import (
     UserSearchResult,
 )
 from src.models.orm.budget_adjustment import BudgetAdjustment
+from src.models.orm.hibob_purchase_review import HiBobPurchaseReview
 from src.models.orm.user import User
 from src.models.orm.user_budget_override import UserBudgetOverride
 from src.notifications.service import notify_user_email
@@ -130,6 +131,25 @@ async def get_user_detail(
         for o in overrides
     ]
 
+    # Get HiBob purchase reviews
+    pr_result = await db.execute(
+        select(HiBobPurchaseReview)
+        .where(HiBobPurchaseReview.user_id == user_id)
+        .order_by(HiBobPurchaseReview.entry_date.desc())
+    )
+    purchase_reviews = [
+        {
+            "id": pr.id,
+            "entry_date": pr.entry_date,
+            "description": pr.description,
+            "amount_cents": pr.amount_cents,
+            "currency": pr.currency,
+            "status": pr.status,
+            "matched_order_id": pr.matched_order_id,
+        }
+        for pr in pr_result.scalars().all()
+    ]
+
     return {
         "user": target,
         "orders": orders,
@@ -142,6 +162,7 @@ async def get_user_detail(
         },
         "budget_timeline": timeline,
         "budget_overrides": override_dicts,
+        "purchase_reviews": purchase_reviews,
     }
 
 
