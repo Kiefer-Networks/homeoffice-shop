@@ -18,8 +18,12 @@ async def get_settings(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    settings = await settings_service.get_all_settings(db)
-    return {"settings": settings}
+    all_settings = await settings_service.get_all_settings(db)
+    _REDACTED_KEYS = {"smtp_password"}
+    for key in _REDACTED_KEYS:
+        if key in all_settings and all_settings[key]:
+            all_settings[key] = "********"
+    return {"settings": all_settings}
 
 
 @router.put("/{key}", response_model=AppSettingResponse)
@@ -33,6 +37,10 @@ async def update_setting(
     if key not in settings_service.DEFAULT_SETTINGS:
         raise BadRequestError(f"Unknown setting key: {key}")
 
+    # Skip update if the value is the redaction marker (password not changed)
+    if key == "smtp_password" and body.value == "********":
+        return {"key": key, "value": "********"}
+
     old_value = settings_service.get_setting(key)
     await settings_service.update_setting(db, key, body.value, admin.id)
 
@@ -40,7 +48,11 @@ async def update_setting(
     await write_audit_log(
         db, user_id=admin.id, action="admin.settings.updated",
         resource_type="app_setting",
-        details={"key": key, "old_value": old_value, "new_value": body.value},
+        details={
+            "key": key,
+            "old_value": "********" if key == "smtp_password" else old_value,
+            "new_value": "********" if key == "smtp_password" else body.value,
+        },
         ip_address=ip,
     )
 
