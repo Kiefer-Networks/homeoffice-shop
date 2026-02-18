@@ -153,7 +153,7 @@ async def search_products(
             search_conditions.append(Product.category_id.in_(
                 select(Category.id).where(
                     or_(
-                        Category.name.ilike(f"%{q}%"),
+                        Category.name.ilike(f"%{q.replace(chr(92), chr(92)*2).replace('%', chr(92)+'%').replace('_', chr(92)+'_')}%"),
                         func.similarity(Category.name, q) > 0.3,
                     )
                 )

@@ -43,7 +43,8 @@ async def list_reviews(
     if user_id:
         conditions.append(HiBobPurchaseReview.user_id == user_id)
     if q:
-        search = f"%{q}%"
+        escaped_q = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        search = f"%{escaped_q}%"
         conditions.append(
             (UserTarget.display_name.ilike(search))
             | (HiBobPurchaseReview.description.ilike(search))
