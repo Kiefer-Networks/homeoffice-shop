@@ -3,13 +3,11 @@ from uuid import UUID
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin, require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
-from src.core.exceptions import BadRequestError, NotFoundError
 from src.models.dto import DetailResponse
 from src.models.dto.budget import (
     UserBudgetOverrideCreate,
@@ -23,18 +21,12 @@ from src.models.dto.user import (
     UserRoleUpdate,
     UserSearchResult,
 )
-from src.models.orm.budget_adjustment import BudgetAdjustment
-from src.models.orm.hibob_purchase_review import HiBobPurchaseReview
 from src.models.orm.user import User
-from src.models.orm.user_budget_override import UserBudgetOverride
 from src.notifications.service import notify_user_email
 from src.repositories import user_repo
-from src.services import budget_service, order_service
-from src.services.auth_service import logout as revoke_user_sessions
+from src.services import user_service
 
 router = APIRouter(prefix="/users", tags=["admin-users"])
-
-VALID_SORTS = {"name_asc", "name_desc", "department", "start_date", "budget"}
 
 
 @router.get("", response_model=UserAdminListResponse)
@@ -50,14 +42,8 @@ async def list_users(
     admin: User = Depends(require_staff),
 ):
     users, total = await user_repo.get_all(
-        db,
-        page=page,
-        per_page=per_page,
-        q=q,
-        department=department,
-        role=role,
-        is_active=is_active,
-        sort=sort,
+        db, page=page, per_page=per_page, q=q,
+        department=department, role=role, is_active=is_active, sort=sort,
     )
     return {"items": users, "total": total, "page": page, "per_page": per_page}
 
@@ -69,8 +55,7 @@ async def search_users(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):
-    users = await user_repo.search_active(db, q, limit)
-    return users
+    return await user_repo.search_active(db, q, limit)
 
 
 @router.get("/{user_id}", response_model=UserDetailResponse)
@@ -79,94 +64,7 @@ async def get_user_detail(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):
-    target = await user_repo.get_by_id(db, user_id)
-    if not target:
-        raise NotFoundError("User not found")
-
-    # Get orders
-    orders, _ = await order_service.get_orders(db, user_id=user_id, page=1, per_page=100)
-
-    # Get adjustments (exclude HiBob-sourced, shown in purchase_reviews)
-    result = await db.execute(
-        select(BudgetAdjustment)
-        .where(
-            BudgetAdjustment.user_id == user_id,
-            BudgetAdjustment.source != "hibob",
-        )
-        .order_by(BudgetAdjustment.created_at.desc())
-    )
-    adjustments = [
-        {
-            "id": a.id,
-            "user_id": a.user_id,
-            "amount_cents": a.amount_cents,
-            "reason": a.reason,
-            "created_by": a.created_by,
-            "created_at": a.created_at,
-        }
-        for a in result.scalars().all()
-    ]
-
-    # Budget summary
-    spent = await budget_service.get_live_spent_cents(db, user_id)
-    adjustment_total = await budget_service.get_live_adjustment_cents(db, user_id)
-    available = target.total_budget_cents + adjustment_total - spent
-
-    # Budget timeline and overrides
-    rules = await budget_service.get_budget_rules(db)
-    overrides = await budget_service.get_user_overrides(db, user_id)
-    timeline = []
-    if target.start_date:
-        timeline = budget_service.get_budget_timeline(target.start_date, rules, overrides)
-
-    override_dicts = [
-        {
-            "id": o.id,
-            "user_id": o.user_id,
-            "effective_from": o.effective_from,
-            "effective_until": o.effective_until,
-            "initial_cents": o.initial_cents,
-            "yearly_increment_cents": o.yearly_increment_cents,
-            "reason": o.reason,
-            "created_by": o.created_by,
-            "created_at": o.created_at,
-        }
-        for o in overrides
-    ]
-
-    # Get HiBob purchase reviews
-    pr_result = await db.execute(
-        select(HiBobPurchaseReview)
-        .where(HiBobPurchaseReview.user_id == user_id)
-        .order_by(HiBobPurchaseReview.entry_date.desc())
-    )
-    purchase_reviews = [
-        {
-            "id": pr.id,
-            "entry_date": pr.entry_date,
-            "description": pr.description,
-            "amount_cents": pr.amount_cents,
-            "currency": pr.currency,
-            "status": pr.status,
-            "matched_order_id": pr.matched_order_id,
-        }
-        for pr in pr_result.scalars().all()
-    ]
-
-    return {
-        "user": target,
-        "orders": orders,
-        "adjustments": adjustments,
-        "budget_summary": {
-            "total_budget_cents": target.total_budget_cents,
-            "spent_cents": spent,
-            "adjustment_cents": adjustment_total,
-            "available_cents": available,
-        },
-        "budget_timeline": timeline,
-        "budget_overrides": override_dicts,
-        "purchase_reviews": purchase_reviews,
-    }
+    return await user_service.get_user_detail(db, user_id)
 
 
 @router.put("/{user_id}/role", response_model=DetailResponse)
@@ -177,19 +75,7 @@ async def update_user_role(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    if user_id == admin.id:
-        raise BadRequestError("Cannot change your own role")
-
-    target = await user_repo.get_by_id(db, user_id)
-    if not target:
-        raise NotFoundError("User not found")
-
-    old_role = target.role
-    target.role = body.role
-    await db.flush()
-
-    # Invalidate all sessions so the user gets a fresh token with the new role
-    await revoke_user_sessions(db, user_id)
+    target, old_role = await user_service.change_role(db, user_id, body.role, admin.id)
 
     ip = request.client.host if request.client else None
     await write_audit_log(
@@ -217,12 +103,7 @@ async def update_probation_override(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):
-    target = await user_repo.get_by_id(db, user_id)
-    if not target:
-        raise NotFoundError("User not found")
-
-    target.probation_override = body.probation_override
-    await db.flush()
+    await user_service.set_probation_override(db, user_id, body.probation_override)
 
     action = (
         "admin.user.early_access_granted"
@@ -249,12 +130,8 @@ async def create_budget_override(
     db: AsyncSession = Depends(get_db),
     staff: User = Depends(require_staff),
 ):
-    target = await user_repo.get_by_id(db, user_id)
-    if not target:
-        raise NotFoundError("User not found")
-
-    override = UserBudgetOverride(
-        user_id=user_id,
+    override = await user_service.create_budget_override(
+        db, user_id,
         effective_from=body.effective_from,
         effective_until=body.effective_until,
         initial_cents=body.initial_cents,
@@ -262,8 +139,6 @@ async def create_budget_override(
         reason=body.reason,
         created_by=staff.id,
     )
-    db.add(override)
-    await db.flush()
 
     ip = request.client.host if request.client else None
     await write_audit_log(
@@ -272,7 +147,6 @@ async def create_budget_override(
         details={"user_id": str(user_id), "reason": body.reason},
         ip_address=ip,
     )
-
     return override
 
 
@@ -285,30 +159,16 @@ async def update_budget_override(
     db: AsyncSession = Depends(get_db),
     staff: User = Depends(require_staff),
 ):
-    override = await db.get(UserBudgetOverride, override_id)
-    if not override or override.user_id != user_id:
-        raise NotFoundError("Budget override not found")
-
-    if body.effective_from is not None:
-        override.effective_from = body.effective_from
-    if body.effective_until is not None:
-        override.effective_until = body.effective_until
-    if body.initial_cents is not None:
-        override.initial_cents = body.initial_cents
-    if body.yearly_increment_cents is not None:
-        override.yearly_increment_cents = body.yearly_increment_cents
-    if body.reason is not None:
-        override.reason = body.reason
-    await db.flush()
+    data = body.model_dump(exclude_none=True)
+    override = await user_service.update_budget_override(db, user_id, override_id, data)
 
     ip = request.client.host if request.client else None
     await write_audit_log(
         db, user_id=staff.id, action="admin.budget_override.updated",
         resource_type="user_budget_override", resource_id=override_id,
-        details=body.model_dump(exclude_none=True, mode="json"),
+        details={k: (str(v) if hasattr(v, 'isoformat') else v) for k, v in data.items()},
         ip_address=ip,
     )
-
     return override
 
 
@@ -320,12 +180,7 @@ async def delete_budget_override(
     db: AsyncSession = Depends(get_db),
     staff: User = Depends(require_staff),
 ):
-    override = await db.get(UserBudgetOverride, override_id)
-    if not override or override.user_id != user_id:
-        raise NotFoundError("Budget override not found")
-
-    await db.delete(override)
-    await db.flush()
+    await user_service.delete_budget_override(db, user_id, override_id)
 
     ip = request.client.host if request.client else None
     await write_audit_log(
