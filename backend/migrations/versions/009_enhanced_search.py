@@ -34,9 +34,12 @@ def upgrade() -> None:
             SELECT name INTO cat_name FROM categories WHERE id = NEW.category_id;
 
             -- Aggregate all product_information JSONB values into one string
-            SELECT string_agg(value, ' ')
-            INTO info_text
-            FROM jsonb_each_text(COALESCE(NEW.product_information, '{}'::jsonb));
+            -- Only process if product_information is a JSON object (not array/scalar/null)
+            IF jsonb_typeof(COALESCE(NEW.product_information, 'null'::jsonb)) = 'object' THEN
+                SELECT string_agg(value, ' ')
+                INTO info_text
+                FROM jsonb_each_text(NEW.product_information);
+            END IF;
 
             NEW.search_vector :=
                 setweight(to_tsvector('english', coalesce(NEW.name, '')), 'A') ||
