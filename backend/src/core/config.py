@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     db_password: str = "CHANGE_ME"
     db_host: str = "db"
     db_port: int = 5432
+    db_ssl: bool = False
 
     # CORS
     cors_allowed_origins: str = "http://localhost:3000"
@@ -53,17 +54,19 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        return (
+        base = (
             f"postgresql+asyncpg://{self.db_user}:{self.db_password}"
             f"@{self.db_host}:{self.db_port}/{self.db_name}"
         )
+        return f"{base}?ssl=require" if self.db_ssl else base
 
     @property
     def database_url_sync(self) -> str:
-        return (
+        base = (
             f"postgresql://{self.db_user}:{self.db_password}"
             f"@{self.db_host}:{self.db_port}/{self.db_name}"
         )
+        return f"{base}?sslmode=require" if self.db_ssl else base
 
     @property
     def cors_origins_list(self) -> list[str]:
