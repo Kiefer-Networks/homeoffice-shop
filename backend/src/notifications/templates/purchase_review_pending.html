@@ -1,0 +1,9 @@
+{% extends "base_layout.html" %}
+{% block content %}
+    <h2 style="margin: 0 0 16px; font-size: 18px; color: #333;">HiBob Purchases Pending Review</h2>
+    <p style="color: #555;">There {{ "is" if count == 1 else "are" }} <strong>{{ count }}</strong> HiBob purchase{{ "s" if count != 1 else "" }} pending review.</p>
+    <p style="color: #555;">Please review and match to existing orders or create budget adjustments.</p>
+    <p style="margin-top: 16px;">
+        <a href="{{ frontend_url }}/admin/purchase-reviews" style="display: inline-block; padding: 10px 20px; background-color: #333; color: #fff; text-decoration: none; border-radius: 4px;">Review Purchases</a>
+    </p>
+{% endblock %}

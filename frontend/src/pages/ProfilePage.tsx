@@ -13,6 +13,7 @@ const EVENT_LABELS: Record<string, string> = {
   'order.cancelled': 'Order Cancellations',
   'hibob.sync': 'HiBob Sync Complete',
   'hibob.sync_error': 'HiBob Sync Errors',
+  'hibob.purchase_review': 'HiBob Purchase Reviews',
   'price.refresh': 'Price Refresh Complete',
 }
 

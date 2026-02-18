@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
-from src.core.exceptions import NotFoundError
+from src.core.exceptions import BadRequestError, NotFoundError
 from src.models.dto.budget import (
     BudgetAdjustmentCreate,
     BudgetAdjustmentResponse,
@@ -87,6 +87,8 @@ async def list_adjustments(
             "user_id": adj.user_id,
             "amount_cents": adj.amount_cents,
             "reason": adj.reason,
+            "source": adj.source,
+            "hibob_entry_id": adj.hibob_entry_id,
             "created_by": adj.created_by,
             "created_at": adj.created_at,
             "user_display_name": user_name,
@@ -144,6 +146,10 @@ async def update_adjustment(
     adjustment = await db.get(BudgetAdjustment, adjustment_id)
     if not adjustment:
         raise NotFoundError("Adjustment not found")
+    if adjustment.source == "hibob":
+        raise BadRequestError(
+            "Cannot modify HiBob-synced adjustments. Manage via Purchase Reviews."
+        )
 
     old_amount = adjustment.amount_cents
     old_reason = adjustment.reason
@@ -201,6 +207,10 @@ async def delete_adjustment(
     adjustment = await db.get(BudgetAdjustment, adjustment_id)
     if not adjustment:
         raise NotFoundError("Adjustment not found")
+    if adjustment.source == "hibob":
+        raise BadRequestError(
+            "Cannot modify HiBob-synced adjustments. Manage via Purchase Reviews."
+        )
 
     user_id = adjustment.user_id
     details = {

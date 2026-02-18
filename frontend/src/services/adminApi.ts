@@ -1,7 +1,8 @@
 import api from './api'
 import type {
   Product, Category, Order, OrderInvoice, UserAdmin, BudgetAdjustment, Brand,
-  AuditLogEntry, HiBobSyncLog, PaginatedResponse, NotificationPrefs,
+  AuditLogEntry, HiBobSyncLog, HiBobPurchaseSyncLog, HiBobPurchaseReview,
+  PaginatedResponse, NotificationPrefs,
   ProductCreateInput, ProductUpdateInput, CategoryCreateInput, CategoryUpdateInput,
   UserSearchResult, UserDetailResponse, RefreshPreviewResponse,
   AmazonProductDetail, BudgetRule, UserBudgetOverride,
@@ -122,4 +123,21 @@ export const adminApi = {
   triggerSync: () => api.post('/api/admin/hibob/sync'),
   getSyncLogs: (params?: Record<string, string | number>) =>
     api.get<PaginatedResponse<HiBobSyncLog>>('/api/admin/hibob/sync-log', { params }),
+
+  // Purchase Sync
+  triggerPurchaseSync: () => api.post('/api/admin/hibob/purchase-sync'),
+  getPurchaseSyncLogs: (params?: Record<string, string | number>) =>
+    api.get<PaginatedResponse<HiBobPurchaseSyncLog>>('/api/admin/hibob/purchase-sync-log', { params }),
+
+  // Purchase Reviews
+  listPurchaseReviews: (params?: Record<string, string | number>) =>
+    api.get<PaginatedResponse<HiBobPurchaseReview>>('/api/admin/purchase-reviews', { params }),
+  getPendingReviewCount: () =>
+    api.get<{ count: number }>('/api/admin/purchase-reviews/pending-count'),
+  matchReview: (id: string, data: { order_id: string }) =>
+    api.put<HiBobPurchaseReview>(`/api/admin/purchase-reviews/${id}/match`, data),
+  adjustReview: (id: string) =>
+    api.put<HiBobPurchaseReview>(`/api/admin/purchase-reviews/${id}/adjust`),
+  dismissReview: (id: string) =>
+    api.put<HiBobPurchaseReview>(`/api/admin/purchase-reviews/${id}/dismiss`),
 }

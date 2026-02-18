@@ -21,6 +21,7 @@ ALLOWED_TEMPLATES = {
     "hibob_sync_complete.html",
     "hibob_sync_error.html",
     "role_changed.html",
+    "purchase_review_pending.html",
 }
 
 

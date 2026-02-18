@@ -1,11 +1,13 @@
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Package, ShoppingBag, FolderOpen, Users,
-  Wallet, Settings, ScrollText, RefreshCcw, Store, X, Tag
+  Wallet, Settings, ScrollText, RefreshCcw, Store, X, Tag, ClipboardCheck
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
+import { adminApi } from '@/services/adminApi'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -16,6 +18,7 @@ const navItems = [
   { to: '/admin/categories', icon: FolderOpen, label: 'Categories' },
   { to: '/admin/employees', icon: Users, label: 'Employees' },
   { to: '/admin/budgets', icon: Wallet, label: 'Budget Adjustments' },
+  { to: '/admin/purchase-reviews', icon: ClipboardCheck, label: 'Purchase Reviews', badge: true },
   { to: '/admin/settings', icon: Settings, label: 'Settings', adminOnly: true },
   { to: '/admin/audit', icon: ScrollText, label: 'Audit Log', adminOnly: true },
   { to: '/admin/sync-log', icon: RefreshCcw, label: 'Sync Log', adminOnly: true },
@@ -25,6 +28,13 @@ export function AdminSidebar() {
   const location = useLocation()
   const { sidebarOpen, setSidebarOpen } = useUiStore()
   const { user } = useAuthStore()
+  const [pendingCount, setPendingCount] = useState(0)
+
+  useEffect(() => {
+    adminApi.getPendingReviewCount()
+      .then(({ data }) => setPendingCount(data.count))
+      .catch(() => {})
+  }, [location.pathname])
 
   const filteredNavItems = navItems.filter(
     (item) => !item.adminOnly || user?.role === 'admin'
@@ -52,6 +62,11 @@ export function AdminSidebar() {
         >
           <item.icon className="h-4 w-4" />
           {item.label}
+          {item.badge && pendingCount > 0 && (
+            <span className="ml-auto inline-flex items-center justify-center rounded-full bg-red-500 text-white text-xs font-medium h-5 min-w-[20px] px-1.5">
+              {pendingCount}
+            </span>
+          )}
         </Link>
       ))}
     </nav>

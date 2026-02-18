@@ -23,6 +23,11 @@ DEFAULT_SETTINGS = {
     "smtp_password": "",
     "smtp_use_tls": "true",
     "smtp_from_address": "noreply@your-company.com",
+    "hibob_purchase_table_id": "",
+    "hibob_purchase_col_date": "Effective date",
+    "hibob_purchase_col_description": "Description",
+    "hibob_purchase_col_amount": "Amount",
+    "hibob_purchase_col_currency": "Currency",
 }
 
 _cache: dict[str, str] = {}

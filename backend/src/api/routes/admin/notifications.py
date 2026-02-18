@@ -10,11 +10,11 @@ from src.repositories import notification_pref_repo
 
 router = APIRouter(prefix="/notifications", tags=["admin-notifications"])
 
-ADMIN_ONLY_EVENTS = {"hibob.sync", "hibob.sync_error", "price.refresh"}
+ADMIN_ONLY_EVENTS = {"hibob.sync", "hibob.sync_error", "price.refresh", "hibob.purchase_review"}
 ORDER_EVENTS = {"order.created", "order.status_changed", "order.cancelled"}
 
 ALL_SLACK_EVENTS = ORDER_EVENTS | ADMIN_ONLY_EVENTS
-ALL_EMAIL_EVENTS = ORDER_EVENTS | {"hibob.sync_error"}
+ALL_EMAIL_EVENTS = ORDER_EVENTS | {"hibob.sync_error", "hibob.purchase_review"}
 
 
 def _allowed_events(role: str, channel_events: set[str]) -> set[str]:

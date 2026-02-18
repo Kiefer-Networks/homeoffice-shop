@@ -40,6 +40,10 @@ export function AdminSettingsPage() {
   const { user } = useAuthStore()
   const isAdmin = user?.role === 'admin'
 
+  // HiBob Purchase Sync settings
+  const [purchaseDirty, setPurchaseDirty] = useState<Set<string>>(new Set())
+  const [savingPurchase, setSavingPurchase] = useState(false)
+
   // Budget rules state
   const [rules, setRules] = useState<BudgetRule[]>([])
   const [rulesLoading, setRulesLoading] = useState(true)
@@ -257,6 +261,43 @@ export function AdminSettingsPage() {
                     </Button>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* HiBob Purchase Sync (admin only) */}
+          {isAdmin && (
+            <Card>
+              <CardContent className="space-y-4 pt-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">HiBob Purchase Sync</h2>
+                  <Button
+                    size="sm"
+                    onClick={() => saveGroup(purchaseDirty, setPurchaseDirty, setSavingPurchase)}
+                    disabled={purchaseDirty.size === 0 || savingPurchase}
+                  >
+                    <Save className="h-4 w-4 mr-1" /> Save
+                  </Button>
+                </div>
+                {[
+                  { key: 'hibob_purchase_table_id', label: 'Table ID', description: 'HiBob custom table ID for purchases' },
+                  { key: 'hibob_purchase_col_date', label: 'Column: Date', description: 'Column name for purchase date' },
+                  { key: 'hibob_purchase_col_description', label: 'Column: Description', description: 'Column name for description' },
+                  { key: 'hibob_purchase_col_amount', label: 'Column: Amount', description: 'Column name for amount' },
+                  { key: 'hibob_purchase_col_currency', label: 'Column: Currency', description: 'Column name for currency' },
+                ].map(({ key, label, description }) => (
+                  <div key={key}>
+                    <label className="text-sm font-medium">{label}</label>
+                    <p className="text-xs text-[hsl(var(--muted-foreground))] mb-1">{description}</p>
+                    <Input
+                      value={settings[key] || ''}
+                      onChange={(e) => {
+                        setSettings(s => ({ ...s, [key]: e.target.value }))
+                        setPurchaseDirty(d => new Set(d).add(key))
+                      }}
+                    />
+                  </div>
+                ))}
               </CardContent>
             </Card>
           )}

@@ -20,6 +20,8 @@ class BudgetAdjustmentResponse(BaseModel):
     user_id: UUID
     amount_cents: int
     reason: str
+    source: str = "manual"
+    hibob_entry_id: str | None = None
     created_by: UUID
     created_at: datetime
     user_display_name: str | None = None

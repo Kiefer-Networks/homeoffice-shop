@@ -20,6 +20,7 @@ def make_user(
     total_budget_cents=75000,
     cached_spent_cents=0,
     cached_adjustment_cents=0,
+    hibob_id=None,
 ):
     return User(
         id=user_id or uuid.uuid4(),
@@ -32,7 +33,7 @@ def make_user(
         total_budget_cents=total_budget_cents,
         cached_spent_cents=cached_spent_cents,
         cached_adjustment_cents=cached_adjustment_cents,
-        hibob_id=None,
+        hibob_id=hibob_id,
         department="Engineering",
         manager_email=None,
         manager_name=None,

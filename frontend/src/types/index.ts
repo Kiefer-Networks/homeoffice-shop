@@ -214,6 +214,8 @@ export interface BudgetAdjustment {
   user_id: string
   amount_cents: number
   reason: string
+  source?: string
+  hibob_entry_id?: string | null
   created_by: string
   created_at: string
   user_display_name?: string | null
@@ -243,6 +245,36 @@ export interface HiBobSyncLog {
   error_message: string | null
   started_at: string
   completed_at: string | null
+}
+
+export interface HiBobPurchaseSyncLog {
+  id: string
+  status: string
+  entries_found: number
+  matched: number
+  auto_adjusted: number
+  pending_review: number
+  error_message: string | null
+  started_at: string
+  completed_at: string | null
+}
+
+export interface HiBobPurchaseReview {
+  id: string
+  user_id: string
+  user_display_name?: string
+  hibob_employee_id: string
+  hibob_entry_id: string
+  entry_date: string
+  description: string
+  amount_cents: number
+  currency: string
+  status: 'pending' | 'matched' | 'adjusted' | 'dismissed'
+  matched_order_id: string | null
+  adjustment_id: string | null
+  resolved_by: string | null
+  resolved_at: string | null
+  created_at: string
 }
 
 export interface PaginatedResponse<T> {

@@ -21,6 +21,7 @@ import { AdminSettingsPage } from '@/pages/admin/SettingsPage'
 import { AdminAuditLogPage } from '@/pages/admin/AuditLogPage'
 import { AdminSyncLogPage } from '@/pages/admin/SyncLogPage'
 import { AdminBrandsPage } from '@/pages/admin/BrandsPage'
+import { PurchaseReviewsPage } from '@/pages/admin/PurchaseReviewsPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { useUiStore, type Toast } from '@/stores/uiStore'
 
@@ -173,6 +174,7 @@ export default function App() {
             <Route path="/admin/categories" element={<AdminCategoriesPage />} />
             <Route path="/admin/employees" element={<AdminEmployeesPage />} />
             <Route path="/admin/budgets" element={<AdminBudgetAdjustmentsPage />} />
+            <Route path="/admin/purchase-reviews" element={<PurchaseReviewsPage />} />
             <Route path="/admin/settings" element={<AdminOnlyGuard><AdminSettingsPage /></AdminOnlyGuard>} />
             <Route path="/admin/audit" element={<AdminOnlyGuard><AdminAuditLogPage /></AdminOnlyGuard>} />
             <Route path="/admin/sync-log" element={<AdminOnlyGuard><AdminSyncLogPage /></AdminOnlyGuard>} />

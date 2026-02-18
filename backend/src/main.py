@@ -28,6 +28,7 @@ from src.api.routes.admin import (
     notifications as admin_notifications,
     orders as admin_orders,
     products as admin_products,
+    purchase_reviews as admin_purchase_reviews,
     settings as admin_settings,
     users as admin_users,
 )
@@ -120,6 +121,7 @@ app.include_router(admin_audit.router, prefix="/api/admin")
 app.include_router(admin_hibob.router, prefix="/api/admin")
 app.include_router(admin_amazon.router, prefix="/api/admin")
 app.include_router(admin_budget_rules.router, prefix="/api/admin")
+app.include_router(admin_purchase_reviews.router, prefix="/api/admin")
 
 # Static files for uploaded product images only (invoices are served via authenticated endpoint)
 _products_upload_dir = settings.upload_dir / "products"

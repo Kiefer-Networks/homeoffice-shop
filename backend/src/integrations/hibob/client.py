@@ -15,6 +15,7 @@ HIBOB_API_BASE = "https://api.hibob.com/v1"
 class HiBobClientProtocol(Protocol):
     async def get_employees(self) -> list[HiBobEmployee]: ...
     async def get_avatar_url(self, employee_id: str) -> str | None: ...
+    async def get_custom_table(self, employee_id: str, table_id: str) -> list[dict]: ...
 
 
 class HiBobClient:
@@ -106,15 +107,32 @@ class HiBobClient:
                 return str(resp.url)
         return None
 
+    async def get_custom_table(self, employee_id: str, table_id: str) -> list[dict]:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(
+                f"{HIBOB_API_BASE}/people/custom-tables/{employee_id}/{table_id}",
+                headers=self._headers,
+            )
+            resp.raise_for_status()
+            return resp.json().get("values", [])
+
 
 class FakeHiBobClient:
     """Test fake returning predefined data."""
 
-    def __init__(self, employees: list[HiBobEmployee] | None = None):
+    def __init__(
+        self,
+        employees: list[HiBobEmployee] | None = None,
+        custom_tables: dict[tuple[str, str], list[dict]] | None = None,
+    ):
         self.employees = employees or []
+        self.custom_tables = custom_tables or {}
 
     async def get_employees(self) -> list[HiBobEmployee]:
         return self.employees
 
     async def get_avatar_url(self, employee_id: str) -> str | None:
         return None
+
+    async def get_custom_table(self, employee_id: str, table_id: str) -> list[dict]:
+        return self.custom_tables.get((employee_id, table_id), [])
