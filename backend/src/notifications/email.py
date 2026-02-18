@@ -17,6 +17,7 @@ _jinja_env = Environment(loader=FileSystemLoader(str(_template_dir)), autoescape
 ALLOWED_TEMPLATES = {
     "order_status_changed.html",
     "order_created.html",
+    "order_cancelled.html",
     "hibob_sync_complete.html",
 }
 
