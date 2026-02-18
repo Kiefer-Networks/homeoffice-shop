@@ -85,7 +85,7 @@ async def update_budget_rule(
     await write_audit_log(
         db, user_id=staff.id, action="admin.budget_rule.updated",
         resource_type="budget_rule", resource_id=rule.id,
-        details=body.model_dump(exclude_none=True),
+        details=body.model_dump(exclude_none=True, mode="json"),
         ip_address=ip,
     )
 

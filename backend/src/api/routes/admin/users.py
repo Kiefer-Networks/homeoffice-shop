@@ -281,7 +281,7 @@ async def update_budget_override(
     await write_audit_log(
         db, user_id=staff.id, action="admin.budget_override.updated",
         resource_type="user_budget_override", resource_id=override_id,
-        details=body.model_dump(exclude_none=True),
+        details=body.model_dump(exclude_none=True, mode="json"),
         ip_address=ip,
     )
 
