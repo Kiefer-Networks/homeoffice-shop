@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Any
+from urllib.parse import urlparse
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -21,8 +22,9 @@ class ProductCreate(BaseModel):
     @field_validator("external_url")
     @classmethod
     def validate_url_scheme(cls, v: str) -> str:
-        if not v.startswith(("https://", "http://")):
-            raise ValueError("URL must start with https:// or http://")
+        parsed = urlparse(v)
+        if parsed.scheme not in ("https", "http") or not parsed.netloc:
+            raise ValueError("URL must be a valid http:// or https:// URL")
         return v
 
 
@@ -42,8 +44,10 @@ class ProductUpdate(BaseModel):
     @field_validator("external_url")
     @classmethod
     def validate_url_scheme(cls, v: str | None) -> str | None:
-        if v is not None and not v.startswith(("https://", "http://")):
-            raise ValueError("URL must start with https:// or http://")
+        if v is not None:
+            parsed = urlparse(v)
+            if parsed.scheme not in ("https", "http") or not parsed.netloc:
+                raise ValueError("URL must be a valid http:// or https:// URL")
         return v
 
 

@@ -6,15 +6,15 @@ from pydantic import BaseModel, Field
 
 
 class OrderCreate(BaseModel):
-    delivery_note: str | None = None
+    delivery_note: str | None = Field(default=None, max_length=2000)
     confirm_price_changes: bool = False
 
 
 class OrderStatusUpdate(BaseModel):
     status: Literal["ordered", "delivered", "rejected", "cancelled"]
-    admin_note: str | None = None
-    expected_delivery: str | None = None
-    purchase_url: str | None = None
+    admin_note: str | None = Field(default=None, max_length=2000)
+    expected_delivery: str | None = Field(default=None, max_length=255)
+    purchase_url: str | None = Field(default=None, max_length=2048)
 
 
 class OrderCancelRequest(BaseModel):
@@ -22,7 +22,7 @@ class OrderCancelRequest(BaseModel):
 
 
 class OrderPurchaseUrlUpdate(BaseModel):
-    purchase_url: str | None = None
+    purchase_url: str | None = Field(default=None, max_length=2048)
 
 
 class OrderItemResponse(BaseModel):
