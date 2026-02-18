@@ -1,9 +1,6 @@
 import uuid
-from datetime import date
-from email.utils import parseaddr
 
 from authlib.integrations.starlette_client import OAuth
-from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,11 +12,9 @@ from src.core.config import settings
 from src.core.exceptions import BadRequestError, UnauthorizedError
 from src.models.dto.auth import TokenResponse
 from src.models.orm.user import User
-from src.repositories import user_repo
 from src.core.security import decode_token
-from src.services.auth_service import issue_tokens, logout, refresh_tokens
+from src.services.auth_service import issue_tokens, logout, refresh_tokens, validate_oauth_user
 from src.services.budget_service import calculate_total_budget_cents
-from src.services.settings_service import get_setting_int
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -36,14 +31,6 @@ if settings.google_client_id:
 
 
 
-def _is_probation_passed(start_date: date | None) -> bool:
-    if start_date is None:
-        return False
-    probation_months = get_setting_int("probation_months")
-    probation_end = start_date + relativedelta(months=probation_months)
-    return date.today() >= probation_end
-
-
 async def _handle_oauth_callback(
     request: Request,
     response: Response,
@@ -55,42 +42,20 @@ async def _handle_oauth_callback(
 ) -> TokenResponse:
     ip = request.client.host if request.client else None
 
-    _generic_auth_error = "Authentication failed. Please contact your administrator."
-
-    _, parsed_email = parseaddr(email)
-    domain = parsed_email.rsplit("@", 1)[-1] if "@" in parsed_email else ""
-    if domain not in settings.allowed_domains_list:
+    try:
+        user = await validate_oauth_user(db, email, provider, provider_id)
+    except UnauthorizedError:
         await write_audit_log(
-            db, user_id=uuid.UUID(int=0), action="auth.login_blocked_domain",
+            db, user_id=uuid.UUID(int=0), action="auth.login_blocked",
             resource_type="user", details={"email": email}, ip_address=ip,
         )
-        raise UnauthorizedError(_generic_auth_error)
-
-    user = await user_repo.get_by_email(db, email)
-    if not user:
+        raise
+    except BadRequestError:
         await write_audit_log(
-            db, user_id=uuid.UUID(int=0), action="auth.login_blocked_unknown",
+            db, user_id=uuid.UUID(int=0), action="auth.login_blocked_probation",
             resource_type="user", details={"email": email}, ip_address=ip,
         )
-        raise UnauthorizedError(_generic_auth_error)
-
-    if not user.is_active:
-        await write_audit_log(
-            db, user_id=user.id, action="auth.login_blocked_inactive",
-            resource_type="user", ip_address=ip,
-        )
-        raise UnauthorizedError(_generic_auth_error)
-
-    if not user.probation_override and not _is_probation_passed(user.start_date):
-        await write_audit_log(
-            db, user_id=user.id, action="auth.login_blocked_probation",
-            resource_type="user", ip_address=ip,
-        )
-        raise BadRequestError("PROBATION_NOT_PASSED")
-
-    if not user.provider:
-        user.provider = provider
-        user.provider_id = provider_id
+        raise
 
     user.total_budget_cents = calculate_total_budget_cents(user.start_date)
 

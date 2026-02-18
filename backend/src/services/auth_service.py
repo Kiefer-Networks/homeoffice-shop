@@ -1,16 +1,19 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
+from dateutil.relativedelta import relativedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import settings
-from src.core.exceptions import UnauthorizedError
+from src.core.exceptions import BadRequestError, UnauthorizedError
 from src.core.security import (
     create_access_token,
     create_refresh_token,
     verify_refresh_token,
 )
+from src.models.orm.user import User
 from src.repositories import refresh_token_repo, user_repo
+from src.services.settings_service import get_setting_int
 
 
 class TokenPair:
@@ -92,3 +95,43 @@ async def refresh_tokens(db: AsyncSession, refresh_token_str: str) -> TokenPair:
 async def logout(db: AsyncSession, user_id: uuid.UUID) -> None:
     """Revoke all refresh tokens for a user."""
     await refresh_token_repo.revoke_all_for_user(db, user_id)
+
+
+def is_probation_passed(start_date: date | None) -> bool:
+    if start_date is None:
+        return False
+    probation_months = get_setting_int("probation_months")
+    probation_end = start_date + relativedelta(months=probation_months)
+    return date.today() >= probation_end
+
+
+async def validate_oauth_user(
+    db: AsyncSession,
+    email: str,
+    provider: str,
+    provider_id: str,
+) -> User:
+    """Validate and return the user for OAuth login, raising on failure."""
+    _, parsed_email = __import__("email.utils", fromlist=["parseaddr"]).parseaddr(email)
+    domain = parsed_email.rsplit("@", 1)[-1] if "@" in parsed_email else ""
+
+    _generic_auth_error = "Authentication failed. Please contact your administrator."
+
+    if domain not in settings.allowed_domains_list:
+        raise UnauthorizedError(_generic_auth_error)
+
+    user = await user_repo.get_by_email(db, email)
+    if not user:
+        raise UnauthorizedError(_generic_auth_error)
+
+    if not user.is_active:
+        raise UnauthorizedError(_generic_auth_error)
+
+    if not user.probation_override and not is_probation_passed(user.start_date):
+        raise BadRequestError("PROBATION_NOT_PASSED")
+
+    if not user.provider:
+        user.provider = provider
+        user.provider_id = provider_id
+
+    return user
