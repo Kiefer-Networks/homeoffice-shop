@@ -28,6 +28,8 @@ router = APIRouter(prefix="/purchase-reviews", tags=["admin-purchase-reviews"])
 async def list_reviews(
     status: str | None = None,
     user_id: UUID | None = None,
+    q: str | None = None,
+    sort: str = "date_desc",
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -40,6 +42,12 @@ async def list_reviews(
         conditions.append(HiBobPurchaseReview.status == status)
     if user_id:
         conditions.append(HiBobPurchaseReview.user_id == user_id)
+    if q:
+        search = f"%{q}%"
+        conditions.append(
+            (UserTarget.display_name.ilike(search))
+            | (HiBobPurchaseReview.description.ilike(search))
+        )
 
     base = (
         select(HiBobPurchaseReview, UserTarget.display_name)
@@ -49,7 +57,11 @@ async def list_reviews(
         from sqlalchemy import and_
         base = base.where(and_(*conditions))
 
-    count_q = select(func.count()).select_from(HiBobPurchaseReview)
+    count_q = (
+        select(func.count())
+        .select_from(HiBobPurchaseReview)
+        .join(UserTarget, HiBobPurchaseReview.user_id == UserTarget.id, isouter=True)
+    )
     if conditions:
         from sqlalchemy import and_
         count_q = count_q.where(and_(*conditions))
@@ -57,8 +69,18 @@ async def list_reviews(
     count_result = await db.execute(count_q)
     total = count_result.scalar() or 0
 
+    sort_map = {
+        "date_desc": HiBobPurchaseReview.entry_date.desc(),
+        "date_asc": HiBobPurchaseReview.entry_date.asc(),
+        "amount_desc": HiBobPurchaseReview.amount_cents.desc(),
+        "amount_asc": HiBobPurchaseReview.amount_cents.asc(),
+        "employee_asc": UserTarget.display_name.asc(),
+        "employee_desc": UserTarget.display_name.desc(),
+    }
+    order_clause = sort_map.get(sort, HiBobPurchaseReview.entry_date.desc())
+
     result = await db.execute(
-        base.order_by(HiBobPurchaseReview.created_at.desc())
+        base.order_by(order_clause)
         .offset((page - 1) * per_page)
         .limit(per_page)
     )
