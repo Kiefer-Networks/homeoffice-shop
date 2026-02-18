@@ -117,9 +117,9 @@ async def sync_purchases(
                     "Failed to fetch custom table for user %s (hibob_id=%s)",
                     user.id, user.hibob_id,
                 )
-            # Small delay between requests to stay within rate limits
+            # Delay between requests to stay within HiBob rate limits
             if i < len(users) - 1:
-                await asyncio.sleep(0.3)
+                await asyncio.sleep(1.5)
 
         logger.info("Purchase sync: fetched custom tables, %d users have entries", len(user_rows))
 
