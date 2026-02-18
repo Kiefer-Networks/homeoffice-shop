@@ -25,7 +25,6 @@ function formatVariantValue(value: string): string {
 }
 
 const INFO_FIELDS: { key: string; label: string }[] = [
-  { key: 'manufacturer', label: 'Manufacturer' },
   { key: 'material', label: 'Material' },
   { key: 'product_dimensions', label: 'Dimensions' },
   { key: 'item_weight', label: 'Weight' },
