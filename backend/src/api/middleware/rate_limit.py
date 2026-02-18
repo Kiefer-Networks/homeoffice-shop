@@ -1,5 +1,4 @@
 import time
-from collections import defaultdict
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
@@ -10,20 +9,26 @@ class SlidingWindowCounter:
     """In-memory sliding window rate limiter."""
 
     def __init__(self):
-        self._windows: dict[str, list[float]] = defaultdict(list)
+        self._windows: dict[str, list[float]] = {}
 
     def is_allowed(self, key: str, limit: int, window_seconds: int) -> tuple[bool, int, int]:
         now = time.monotonic()
         cutoff = now - window_seconds
-        requests = self._windows[key]
-        self._windows[key] = [t for t in requests if t > cutoff]
+        requests = self._windows.get(key, [])
+        active = [t for t in requests if t > cutoff]
 
-        if len(self._windows[key]) >= limit:
-            retry_after = int(self._windows[key][0] - cutoff) + 1
+        if not active:
+            self._windows.pop(key, None)
+        else:
+            self._windows[key] = active
+
+        if len(active) >= limit:
+            retry_after = int(active[0] - cutoff) + 1
             return False, max(retry_after, 1), 0
 
-        self._windows[key].append(now)
-        remaining = limit - len(self._windows[key])
+        active.append(now)
+        self._windows[key] = active
+        remaining = limit - len(active)
         return True, 0, remaining
 
 
