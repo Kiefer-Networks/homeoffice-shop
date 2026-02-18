@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { useBrandingStore } from '@/stores/brandingStore'
@@ -11,20 +11,21 @@ import { CallbackPage } from '@/pages/auth/CallbackPage'
 import { ProbationBlockedPage } from '@/pages/auth/ProbationBlockedPage'
 import { CatalogPage } from '@/pages/shop/CatalogPage'
 import { OrdersPage } from '@/pages/shop/OrdersPage'
-import { DashboardPage } from '@/pages/admin/DashboardPage'
-import { AdminProductsPage } from '@/pages/admin/ProductsPage'
-import { AdminOrdersPage } from '@/pages/admin/OrdersPage'
-import { AdminCategoriesPage } from '@/pages/admin/CategoriesPage'
-import { AdminEmployeesPage } from '@/pages/admin/EmployeesPage'
-import { AdminBudgetAdjustmentsPage } from '@/pages/admin/BudgetAdjustmentsPage'
-import { AdminSettingsPage } from '@/pages/admin/SettingsPage'
-import { AdminAuditLogPage } from '@/pages/admin/AuditLogPage'
-import { AdminSyncLogPage } from '@/pages/admin/SyncLogPage'
-import { AdminBrandsPage } from '@/pages/admin/BrandsPage'
-import { PurchaseReviewsPage } from '@/pages/admin/PurchaseReviewsPage'
-import { AdminBackupPage } from '@/pages/admin/BackupPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { useUiStore, type Toast } from '@/stores/uiStore'
+
+const DashboardPage = React.lazy(() => import('@/pages/admin/DashboardPage').then(m => ({ default: m.DashboardPage })))
+const AdminProductsPage = React.lazy(() => import('@/pages/admin/ProductsPage').then(m => ({ default: m.AdminProductsPage })))
+const AdminOrdersPage = React.lazy(() => import('@/pages/admin/OrdersPage').then(m => ({ default: m.AdminOrdersPage })))
+const AdminCategoriesPage = React.lazy(() => import('@/pages/admin/CategoriesPage').then(m => ({ default: m.AdminCategoriesPage })))
+const AdminEmployeesPage = React.lazy(() => import('@/pages/admin/EmployeesPage').then(m => ({ default: m.AdminEmployeesPage })))
+const AdminBudgetAdjustmentsPage = React.lazy(() => import('@/pages/admin/BudgetAdjustmentsPage').then(m => ({ default: m.AdminBudgetAdjustmentsPage })))
+const AdminSettingsPage = React.lazy(() => import('@/pages/admin/SettingsPage').then(m => ({ default: m.AdminSettingsPage })))
+const AdminAuditLogPage = React.lazy(() => import('@/pages/admin/AuditLogPage').then(m => ({ default: m.AdminAuditLogPage })))
+const AdminSyncLogPage = React.lazy(() => import('@/pages/admin/SyncLogPage').then(m => ({ default: m.AdminSyncLogPage })))
+const AdminBrandsPage = React.lazy(() => import('@/pages/admin/BrandsPage').then(m => ({ default: m.AdminBrandsPage })))
+const PurchaseReviewsPage = React.lazy(() => import('@/pages/admin/PurchaseReviewsPage').then(m => ({ default: m.PurchaseReviewsPage })))
+const AdminBackupPage = React.lazy(() => import('@/pages/admin/BackupPage').then(m => ({ default: m.AdminBackupPage })))
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -148,6 +149,14 @@ function ToastContainer() {
   )
 }
 
+function AdminFallback() {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[hsl(var(--primary))]" />
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
@@ -168,18 +177,18 @@ export default function App() {
 
           {/* Admin routes */}
           <Route element={<AuthGuard><AdminGuard><AdminLayout /></AdminGuard></AuthGuard>}>
-            <Route path="/admin" element={<DashboardPage />} />
-            <Route path="/admin/products" element={<AdminProductsPage />} />
-            <Route path="/admin/brands" element={<AdminBrandsPage />} />
-            <Route path="/admin/orders" element={<AdminOrdersPage />} />
-            <Route path="/admin/categories" element={<AdminCategoriesPage />} />
-            <Route path="/admin/employees" element={<AdminEmployeesPage />} />
-            <Route path="/admin/budgets" element={<AdminBudgetAdjustmentsPage />} />
-            <Route path="/admin/purchase-reviews" element={<PurchaseReviewsPage />} />
-            <Route path="/admin/settings" element={<AdminOnlyGuard><AdminSettingsPage /></AdminOnlyGuard>} />
-            <Route path="/admin/audit" element={<AdminOnlyGuard><AdminAuditLogPage /></AdminOnlyGuard>} />
-            <Route path="/admin/sync-log" element={<AdminOnlyGuard><AdminSyncLogPage /></AdminOnlyGuard>} />
-            <Route path="/admin/backups" element={<AdminOnlyGuard><AdminBackupPage /></AdminOnlyGuard>} />
+            <Route path="/admin" element={<Suspense fallback={<AdminFallback />}><DashboardPage /></Suspense>} />
+            <Route path="/admin/products" element={<Suspense fallback={<AdminFallback />}><AdminProductsPage /></Suspense>} />
+            <Route path="/admin/brands" element={<Suspense fallback={<AdminFallback />}><AdminBrandsPage /></Suspense>} />
+            <Route path="/admin/orders" element={<Suspense fallback={<AdminFallback />}><AdminOrdersPage /></Suspense>} />
+            <Route path="/admin/categories" element={<Suspense fallback={<AdminFallback />}><AdminCategoriesPage /></Suspense>} />
+            <Route path="/admin/employees" element={<Suspense fallback={<AdminFallback />}><AdminEmployeesPage /></Suspense>} />
+            <Route path="/admin/budgets" element={<Suspense fallback={<AdminFallback />}><AdminBudgetAdjustmentsPage /></Suspense>} />
+            <Route path="/admin/purchase-reviews" element={<Suspense fallback={<AdminFallback />}><PurchaseReviewsPage /></Suspense>} />
+            <Route path="/admin/settings" element={<AdminOnlyGuard><Suspense fallback={<AdminFallback />}><AdminSettingsPage /></Suspense></AdminOnlyGuard>} />
+            <Route path="/admin/audit" element={<AdminOnlyGuard><Suspense fallback={<AdminFallback />}><AdminAuditLogPage /></Suspense></AdminOnlyGuard>} />
+            <Route path="/admin/sync-log" element={<AdminOnlyGuard><Suspense fallback={<AdminFallback />}><AdminSyncLogPage /></Suspense></AdminOnlyGuard>} />
+            <Route path="/admin/backups" element={<AdminOnlyGuard><Suspense fallback={<AdminFallback />}><AdminBackupPage /></Suspense></AdminOnlyGuard>} />
           </Route>
         </Routes>
         <ToastContainer />
