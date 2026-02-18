@@ -224,10 +224,18 @@ async def download_invoice(
     if not file_path.exists():
         raise NotFoundError("Invoice file not found on disk")
 
+    from urllib.parse import quote
+    safe_name = invoice.filename.encode("ascii", "replace").decode()
+    encoded_name = quote(invoice.filename)
     return FileResponse(
         path=str(file_path),
-        filename=invoice.filename,
         media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{safe_name}"; '
+                f"filename*=UTF-8''{encoded_name}"
+            ),
+        },
     )
 
 
