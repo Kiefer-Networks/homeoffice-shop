@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import require_admin, require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
-from src.core.exceptions import NotFoundError
+from src.core.exceptions import BadRequestError, NotFoundError
 from src.models.dto.budget import (
     BudgetRuleCreate,
     BudgetRuleResponse,
@@ -102,6 +102,10 @@ async def delete_budget_rule(
     rule = await db.get(BudgetRule, rule_id)
     if not rule:
         raise NotFoundError("Budget rule not found")
+
+    count_result = await db.execute(select(BudgetRule.id))
+    if len(count_result.all()) <= 1:
+        raise BadRequestError("Cannot delete the last budget rule")
 
     await db.delete(rule)
     await db.flush()

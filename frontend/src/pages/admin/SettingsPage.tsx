@@ -337,7 +337,7 @@ export function AdminSettingsPage() {
                               <Button size="sm" variant="ghost" onClick={() => openRuleForm(rule)}>
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
-                              {isAdmin && (
+                              {isAdmin && rules.length > 1 && (
                                 <Button size="sm" variant="ghost" onClick={() => handleDeleteRule(rule.id)}>
                                   <Trash2 className="h-3.5 w-3.5 text-red-500" />
                                 </Button>
