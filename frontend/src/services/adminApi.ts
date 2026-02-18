@@ -140,4 +140,8 @@ export const adminApi = {
     api.put<HiBobPurchaseReview>(`/api/admin/purchase-reviews/${id}/adjust`),
   dismissReview: (id: string) =>
     api.put<HiBobPurchaseReview>(`/api/admin/purchase-reviews/${id}/dismiss`),
+
+  // Backup
+  exportBackup: () =>
+    api.post('/api/admin/backup/export', {}, { responseType: 'blob' }),
 }

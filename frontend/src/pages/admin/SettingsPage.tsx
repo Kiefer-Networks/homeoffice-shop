@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
-import { Save, Send, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Save, Send, Plus, Pencil, Trash2, Download } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { formatCents } from '@/lib/utils'
 import type { BudgetRule } from '@/types'
@@ -51,6 +51,7 @@ export function AdminSettingsPage() {
   const [showRuleForm, setShowRuleForm] = useState(false)
   const [ruleForm, setRuleForm] = useState({ effective_from: '', initial_cents: '', yearly_increment_cents: '' })
   const [savingRule, setSavingRule] = useState(false)
+  const [exportingBackup, setExportingBackup] = useState(false)
 
   useEffect(() => {
     if (isAdmin) {
@@ -298,6 +299,44 @@ export function AdminSettingsPage() {
                     />
                   </div>
                 ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Database Backup (admin only) */}
+          {isAdmin && (
+            <Card>
+              <CardContent className="space-y-4 pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold">Database Backup</h2>
+                    <p className="text-xs text-[hsl(var(--muted-foreground))]">Export a full database dump for migration or safekeeping</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      setExportingBackup(true)
+                      try {
+                        const { data } = await adminApi.exportBackup()
+                        const url = window.URL.createObjectURL(data as Blob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = `homeoffice_shop_${new Date().toISOString().slice(0, 10)}.dump`
+                        a.click()
+                        window.URL.revokeObjectURL(url)
+                        addToast({ title: 'Backup exported successfully' })
+                      } catch (err: unknown) {
+                        addToast({ title: 'Backup failed', description: getErrorMessage(err), variant: 'destructive' })
+                      } finally {
+                        setExportingBackup(false)
+                      }
+                    }}
+                    disabled={exportingBackup}
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    {exportingBackup ? 'Exporting...' : 'Export Database'}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
