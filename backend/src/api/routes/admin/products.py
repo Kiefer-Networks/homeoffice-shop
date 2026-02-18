@@ -83,6 +83,7 @@ async def create_product(
         details={"name": product.name}, ip_address=ip,
     )
 
+    await db.refresh(product)
     return product
 
 
@@ -118,6 +119,7 @@ async def update_product(
         details=changes, ip_address=ip,
     )
 
+    await db.refresh(product)
     return product
 
 
@@ -141,6 +143,7 @@ async def activate_product(
         db, user_id=admin.id, action="admin.product.activated",
         resource_type="product", resource_id=product.id, ip_address=ip,
     )
+    await db.refresh(product)
     return product
 
 
@@ -162,6 +165,7 @@ async def deactivate_product(
         db, user_id=admin.id, action="admin.product.deactivated",
         resource_type="product", resource_id=product.id, ip_address=ip,
     )
+    await db.refresh(product)
     return product
 
 
@@ -247,4 +251,5 @@ async def redownload_images(
         resource_type="product", resource_id=product.id, ip_address=ip,
     )
 
+    await db.refresh(product)
     return product
