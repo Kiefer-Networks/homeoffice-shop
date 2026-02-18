@@ -30,6 +30,7 @@ router = APIRouter(prefix="/orders", tags=["admin-orders"])
 VALID_STATUSES = {"pending", "ordered", "delivered", "rejected", "cancelled"}
 ALLOWED_INVOICE_TYPES = {"application/pdf", "image/jpeg", "image/png"}
 ALLOWED_INVOICE_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
+MAX_INVOICE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 
 @router.get("", response_model=OrderListResponse)
@@ -137,7 +138,7 @@ async def update_purchase_url(
     return order_data
 
 
-@router.post("/{order_id}/invoices", response_model=OrderInvoiceResponse)
+@router.post("/{order_id}/invoices", response_model=OrderInvoiceResponse, status_code=201)
 async def upload_invoice(
     order_id: UUID,
     request: Request,
@@ -159,6 +160,13 @@ async def upload_invoice(
             f"Invalid file extension. Allowed: {', '.join(ALLOWED_INVOICE_EXTENSIONS)}"
         )
 
+    # Read and validate file size
+    content = await file.read()
+    if len(content) > MAX_INVOICE_SIZE_BYTES:
+        raise BadRequestError(
+            f"File too large. Maximum size is {MAX_INVOICE_SIZE_BYTES // (1024 * 1024)} MB"
+        )
+
     # Create directory
     invoice_dir = settings.upload_dir / "invoices" / str(order_id)
     invoice_dir.mkdir(parents=True, exist_ok=True)
@@ -168,7 +176,6 @@ async def upload_invoice(
     file_path = invoice_dir / stored_name
 
     # Write file
-    content = await file.read()
     file_path.write_bytes(content)
 
     invoice = await order_service.add_invoice(
@@ -206,7 +213,13 @@ async def download_invoice(
     if not invoice:
         raise NotFoundError("Invoice not found")
 
-    file_path = Path(invoice.file_path)
+    file_path = Path(invoice.file_path).resolve()
+    upload_root = settings.upload_dir.resolve()
+
+    # Prevent path traversal
+    if not file_path.is_relative_to(upload_root):
+        raise BadRequestError("Invalid file path")
+
     if not file_path.exists():
         raise NotFoundError("Invoice file not found on disk")
 
@@ -217,7 +230,7 @@ async def download_invoice(
     )
 
 
-@router.delete("/{order_id}/invoices/{invoice_id}")
+@router.delete("/{order_id}/invoices/{invoice_id}", status_code=204)
 async def delete_invoice(
     order_id: UUID,
     invoice_id: UUID,
@@ -234,8 +247,6 @@ async def delete_invoice(
         details={"invoice_id": str(invoice_id)},
         ip_address=ip,
     )
-
-    return {"detail": "Invoice deleted"}
 
 
 @router.put("/{order_id}/items/{item_id}/check")

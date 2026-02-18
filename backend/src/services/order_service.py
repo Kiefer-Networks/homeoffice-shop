@@ -1,6 +1,6 @@
 import logging
-import os
 from datetime import datetime, timezone
+from pathlib import Path
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -456,12 +456,14 @@ async def delete_invoice(
     if not invoice:
         raise NotFoundError("Invoice not found")
 
-    file_path = invoice.file_path
+    file_path = Path(invoice.file_path).resolve()
     await db.delete(invoice)
     await db.flush()
 
-    # Clean up file on disk
-    if os.path.exists(file_path):
-        os.remove(file_path)
+    # Clean up file on disk (with path traversal protection)
+    from src.core.config import settings
+    upload_root = settings.upload_dir.resolve()
+    if file_path.is_relative_to(upload_root) and file_path.exists():
+        file_path.unlink()
 
-    return file_path
+    return str(file_path)

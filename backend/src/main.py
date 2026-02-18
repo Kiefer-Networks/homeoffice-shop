@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         try:
             await ensure_audit_partitions(db)
         except Exception:
-            logger.warning("Could not ensure audit partitions at startup")
+            logger.exception("Failed to ensure audit partitions at startup")
         try:
             from src.repositories import refresh_token_repo
             cleaned = await refresh_token_repo.cleanup_expired(db)
@@ -58,13 +58,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 logger.info("Cleaned up %d expired refresh tokens", cleaned)
             await db.commit()
         except Exception:
-            logger.warning("Could not cleanup expired refresh tokens")
+            logger.exception("Failed to cleanup expired refresh tokens")
         try:
             from src.services.cart_service import cleanup_stale_items
             cleaned = await cleanup_stale_items(db)
             await db.commit()
         except Exception:
-            logger.warning("Could not cleanup stale cart items")
+            logger.exception("Failed to cleanup stale cart items")
     yield
 
 
@@ -117,5 +117,7 @@ app.include_router(admin_audit.router, prefix="/api/admin")
 app.include_router(admin_hibob.router, prefix="/api/admin")
 app.include_router(admin_amazon.router, prefix="/api/admin")
 
-# Static files for uploaded images
-app.mount("/uploads", StaticFiles(directory=str(settings.upload_dir)), name="uploads")
+# Static files for uploaded product images only (invoices are served via authenticated endpoint)
+_products_upload_dir = settings.upload_dir / "products"
+_products_upload_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads/products", StaticFiles(directory=str(_products_upload_dir)), name="uploads-products")

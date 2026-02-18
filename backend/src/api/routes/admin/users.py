@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import require_admin, require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
-from src.core.exceptions import NotFoundError
+from src.core.exceptions import BadRequestError, NotFoundError
 from src.models.dto import DetailResponse
 from src.models.dto.user import (
     UserAdminListResponse,
@@ -20,6 +20,7 @@ from src.models.dto.user import (
 from src.models.orm.user import User
 from src.repositories import user_repo
 from src.services import budget_service, order_service
+from src.services.auth_service import logout as revoke_user_sessions
 from src.models.orm.budget_adjustment import BudgetAdjustment
 from sqlalchemy import select
 
@@ -121,6 +122,9 @@ async def update_user_role(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
+    if user_id == admin.id:
+        raise BadRequestError("Cannot change your own role")
+
     target = await user_repo.get_by_id(db, user_id)
     if not target:
         raise NotFoundError("User not found")
@@ -128,6 +132,9 @@ async def update_user_role(
     old_role = target.role
     target.role = body.role
     await db.flush()
+
+    # Invalidate all sessions so the user gets a fresh token with the new role
+    await revoke_user_sessions(db, user_id)
 
     ip = request.client.host if request.client else None
     await write_audit_log(
