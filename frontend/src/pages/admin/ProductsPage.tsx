@@ -2,51 +2,21 @@ import { useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useUiStore } from '@/stores/uiStore'
 import { adminApi } from '@/services/adminApi'
 import { productApi } from '@/services/productApi'
 import { formatCents, parseEuroToCents, centsToEuroInput } from '@/lib/utils'
 import {
-  Plus, Search, RefreshCcw, Loader2, ChevronDown, ChevronUp, Link,
-  Archive, ArchiveRestore, Pencil, Eye, EyeOff,
+  Plus, Search, Loader2, ChevronDown, ChevronUp, Link,
 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { ProductRefreshModal } from '@/components/admin/ProductRefreshModal'
+import { ProductTable } from '@/components/admin/ProductTable'
+import type { SortKey } from '@/components/admin/ProductTable'
 import type { Product, Category, AmazonSearchResult, Brand, ProductVariant } from '@/types'
 
 const PER_PAGE = 20
-
-type SortKey = 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc' | 'newest'
-
-function SortHeader({
-  label, sortKey, currentSort, onSort,
-}: {
-  label: string; sortKey: SortKey; currentSort: SortKey; onSort: (k: SortKey) => void
-}) {
-  const isNameSort = sortKey === 'name_asc'
-  const isPriceSort = sortKey === 'price_asc'
-  const isActive = isNameSort
-    ? currentSort === 'name_asc' || currentSort === 'name_desc'
-    : isPriceSort
-      ? currentSort === 'price_asc' || currentSort === 'price_desc'
-      : currentSort === sortKey
-
-  const handleClick = () => {
-    if (isNameSort) onSort(currentSort === 'name_asc' ? 'name_desc' : 'name_asc')
-    else if (isPriceSort) onSort(currentSort === 'price_asc' ? 'price_desc' : 'price_asc')
-    else onSort(sortKey)
-  }
-
-  const isDesc = currentSort === 'name_desc' || currentSort === 'price_desc'
-  return (
-    <button onClick={handleClick} className="inline-flex items-center gap-1 hover:text-[hsl(var(--foreground))] transition-colors">
-      {label}
-      {isActive && (isDesc ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />)}
-    </button>
-  )
-}
 
 export function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -305,8 +275,6 @@ export function AdminProductsPage() {
     setRefreshProduct(product)
   }
 
-  const apiUrl = import.meta.env.VITE_API_URL || ''
-
   return (
     <div>
       {/* Header */}
@@ -359,94 +327,20 @@ export function AdminProductsPage() {
       {/* Table */}
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))] w-12"></th>
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                    <SortHeader label="Name" sortKey="name_asc" currentSort={sort} onSort={setSort} />
-                  </th>
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Category</th>
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                    <SortHeader label="Price" sortKey="price_asc" currentSort={sort} onSort={setSort} />
-                  </th>
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Status</th>
-                  <th className="text-right px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProducts.map((p) => {
-                  const cat = categories.find(c => c.id === p.category_id)
-                  const imgUrl = p.image_url ? `${apiUrl}${p.image_url}` : null
-                  return (
-                    <tr key={p.id} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.5)]">
-                      <td className="px-4 py-3">
-                        {imgUrl ? (
-                          <img src={imgUrl} alt="" className="h-10 w-10 rounded object-contain bg-gray-50" />
-                        ) : (
-                          <div className="h-10 w-10 rounded bg-[hsl(var(--muted))] flex items-center justify-center text-xs font-medium">
-                            {p.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-medium">
-                          {p.name}
-                          {p.variants && p.variants.length > 0 && (
-                            <Badge variant="secondary" className="ml-2 text-xs">{p.variants.length} variants</Badge>
-                          )}
-                        </div>
-                        <div className="text-xs text-[hsl(var(--muted-foreground))]">
-                          {p.brand}{p.amazon_asin && ` · ${p.amazon_asin}`}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">{cat?.name || '—'}</td>
-                      <td className="px-4 py-3 font-medium">{formatCents(p.price_cents)}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant={p.is_active ? 'success' : 'secondary'}>
-                          {p.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-1">
-                          {archiveFilter === 'archived' ? (
-                            <Button size="sm" variant="outline" onClick={() => handleRestore(p)}>
-                              <ArchiveRestore className="h-3 w-3 mr-1" /> Restore
-                            </Button>
-                          ) : (
-                            <>
-                              <Button size="sm" variant="outline" onClick={() => openEdit(p)}>
-                                <Pencil className="h-3 w-3" />
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={() => toggleActive(p)}>
-                                {p.is_active ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                              </Button>
-                              {p.amazon_asin && (
-                                <Button size="sm" variant="ghost" onClick={(e) => openRefresh(p, e)}>
-                                  <RefreshCcw className="h-3 w-3" />
-                                </Button>
-                              )}
-                              <Button size="sm" variant="outline" className="text-orange-600 hover:text-orange-700" onClick={() => handleArchive(p)}>
-                                <Archive className="h-3 w-3" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-                {filteredProducts.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-[hsl(var(--muted-foreground))]">
-                      No products found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <ProductTable
+            products={filteredProducts}
+            categories={categories}
+            sort={sort}
+            onSort={setSort}
+            onEdit={openEdit}
+            onActivate={toggleActive}
+            onDeactivate={toggleActive}
+            onArchive={handleArchive}
+            onRestore={handleRestore}
+            onRefresh={openRefresh}
+            formatCents={formatCents}
+            archiveFilter={archiveFilter}
+          />
 
           {/* Pagination */}
           {totalPages > 1 && (
