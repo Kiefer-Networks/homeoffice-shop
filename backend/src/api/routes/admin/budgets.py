@@ -40,7 +40,8 @@ async def list_adjustments(
     if user_id:
         conditions.append(BudgetAdjustment.user_id == user_id)
     if q:
-        search = f"%{q}%"
+        escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        search = f"%{escaped}%"
         conditions.append(
             or_(
                 UserTarget.display_name.ilike(search),

@@ -298,7 +298,8 @@ async def get_orders(
 
     # Text search: filter by user name, email, or order ID prefix
     if q:
-        search_term = f"%{q}%"
+        escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        search_term = f"%{escaped}%"
         # Subquery to find matching user IDs
         user_subq = select(User.id).where(
             or_(
