@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies.auth import require_admin
+from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.integrations.amazon.client import AmazonClient
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/amazon", tags=["admin-amazon"])
 @router.get("/search", response_model=list[AmazonSearchResponse])
 async def amazon_search(
     query: str = Query(min_length=1, max_length=200),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     client = AmazonClient()
     results = await client.search(query)
@@ -40,7 +40,7 @@ async def amazon_product(
     asin: str = Query(min_length=10, max_length=10),
     request: Request = None,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     client = AmazonClient()
     product = await client.get_product(asin)

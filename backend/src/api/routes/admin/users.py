@@ -5,7 +5,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies.auth import require_admin
+from src.api.dependencies.auth import require_admin, require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import NotFoundError
@@ -38,7 +38,7 @@ async def list_users(
     is_active: bool | None = Query(None),
     sort: Literal["name_asc", "name_desc", "department", "start_date", "budget"] = Query("name_asc"),
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     users, total = await user_repo.get_all(
         db,
@@ -58,7 +58,7 @@ async def search_users(
     q: str = Query(min_length=1),
     limit: int = Query(20, le=50),
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     users = await user_repo.search_active(db, q, limit)
     return users
@@ -68,7 +68,7 @@ async def search_users(
 async def get_user_detail(
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     target = await user_repo.get_by_id(db, user_id)
     if not target:
@@ -146,7 +146,7 @@ async def update_probation_override(
     body: UserProbationOverride,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     target = await user_repo.get_by_id(db, user_id)
     if not target:

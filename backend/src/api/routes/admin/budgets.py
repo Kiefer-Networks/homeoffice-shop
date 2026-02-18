@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies.auth import require_admin
+from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import NotFoundError
@@ -22,7 +22,7 @@ async def list_adjustments(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     from sqlalchemy import func, and_
     from sqlalchemy.orm import aliased
@@ -70,7 +70,7 @@ async def create_adjustment(
     body: BudgetAdjustmentCreate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     target = await db.get(User, body.user_id)
     if not target:

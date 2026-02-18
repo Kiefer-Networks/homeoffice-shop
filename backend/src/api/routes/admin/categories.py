@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies.auth import require_admin
+from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import NotFoundError
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/categories", tags=["admin-categories"])
 @router.get("", response_model=list[CategoryResponse])
 async def list_categories(
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     result = await db.execute(
         select(Category).order_by(Category.sort_order, Category.name)
@@ -32,7 +32,7 @@ async def create_category(
     body: CategoryCreate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     category = Category(
         name=body.name,
@@ -58,7 +58,7 @@ async def reorder_categories(
     items: list[CategoryReorderItem],
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     ids = [item.id for item in items]
     result = await db.execute(select(Category).where(Category.id.in_(ids)))
@@ -86,7 +86,7 @@ async def update_category(
     body: CategoryUpdate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     category = await db.get(Category, category_id)
     if not category:
@@ -113,7 +113,7 @@ async def delete_category(
     category_id: UUID,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     category = await db.get(Category, category_id)
     if not category:

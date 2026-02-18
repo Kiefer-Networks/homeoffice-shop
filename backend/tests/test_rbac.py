@@ -105,6 +105,32 @@ class TestGetCurrentUser:
         assert request.state.user == user
 
 
+class TestRequireStaff:
+    @pytest.mark.asyncio
+    async def test_employee_raises(self):
+        from src.api.dependencies.auth import require_staff
+
+        user = make_user(role="employee")
+        with pytest.raises(ForbiddenError, match="Staff"):
+            await require_staff(user=user)
+
+    @pytest.mark.asyncio
+    async def test_manager_allowed(self):
+        from src.api.dependencies.auth import require_staff
+
+        user = make_user(role="manager")
+        result = await require_staff(user=user)
+        assert result.role == "manager"
+
+    @pytest.mark.asyncio
+    async def test_admin_allowed(self):
+        from src.api.dependencies.auth import require_staff
+
+        user = make_user(role="admin")
+        result = await require_staff(user=user)
+        assert result.role == "admin"
+
+
 class TestRequireAdmin:
     @pytest.mark.asyncio
     async def test_non_admin_raises(self):

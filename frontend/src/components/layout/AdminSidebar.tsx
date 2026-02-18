@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useUiStore } from '@/stores/uiStore'
+import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -15,14 +16,19 @@ const navItems = [
   { to: '/admin/categories', icon: FolderOpen, label: 'Categories' },
   { to: '/admin/employees', icon: Users, label: 'Employees' },
   { to: '/admin/budgets', icon: Wallet, label: 'Budget Adjustments' },
-  { to: '/admin/settings', icon: Settings, label: 'Settings' },
-  { to: '/admin/audit', icon: ScrollText, label: 'Audit Log' },
-  { to: '/admin/sync-log', icon: RefreshCcw, label: 'Sync Log' },
+  { to: '/admin/settings', icon: Settings, label: 'Settings', adminOnly: true },
+  { to: '/admin/audit', icon: ScrollText, label: 'Audit Log', adminOnly: true },
+  { to: '/admin/sync-log', icon: RefreshCcw, label: 'Sync Log', adminOnly: true },
 ]
 
 export function AdminSidebar() {
   const location = useLocation()
   const { sidebarOpen, setSidebarOpen } = useUiStore()
+  const { user } = useAuthStore()
+
+  const filteredNavItems = navItems.filter(
+    (item) => !item.adminOnly || user?.role === 'admin'
+  )
 
   const isActive = (to: string, exact?: boolean) =>
     exact ? location.pathname === to : location.pathname.startsWith(to)
@@ -32,7 +38,7 @@ export function AdminSidebar() {
       <Link to="/" className="flex items-center gap-2 px-3 py-2 mb-4 text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
         <Store className="h-4 w-4" /> Back to Shop
       </Link>
-      {navItems.map((item) => (
+      {filteredNavItems.map((item) => (
         <Link
           key={item.to}
           to={item.to}

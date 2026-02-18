@@ -35,7 +35,7 @@ export function Header() {
     <header className="sticky top-0 z-40 border-b bg-white">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-4">
-          {user?.role === 'admin' && (
+          {(user?.role === 'admin' || user?.role === 'manager') && (
             <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} className="lg:hidden">
               <Menu className="h-5 w-5" />
             </Button>
@@ -65,7 +65,7 @@ export function Header() {
             )}
           </Button>
 
-          {user?.role === 'admin' && (
+          {(user?.role === 'admin' || user?.role === 'manager') && (
             <Link to="/admin">
               <Button variant="ghost" size="icon" aria-label="Admin settings"><Settings className="h-5 w-5" /></Button>
             </Link>

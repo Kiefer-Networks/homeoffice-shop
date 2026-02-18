@@ -8,7 +8,7 @@ export interface User {
   available_budget_cents: number
   is_active: boolean
   probation_override: boolean
-  role: 'employee' | 'admin'
+  role: 'employee' | 'admin' | 'manager'
   avatar_url: string | null
   created_at: string
 }

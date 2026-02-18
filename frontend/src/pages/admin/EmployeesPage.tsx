@@ -6,7 +6,15 @@ import { Badge } from '@/components/ui/badge'
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate } from '@/lib/utils'
-import { RefreshCcw, Shield, ShieldOff, ChevronUp, ChevronDown } from 'lucide-react'
+import { RefreshCcw, MoreHorizontal, ChevronUp, ChevronDown } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
+import { useAuthStore } from '@/stores/authStore'
 import { getErrorMessage } from '@/lib/error'
 import { EmployeeDetailModal } from './EmployeeDetailModal'
 import type { UserAdmin } from '@/types'
@@ -95,6 +103,7 @@ export function AdminEmployeesPage() {
   const [syncing, setSyncing] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const { addToast } = useUiStore()
+  const { user: currentUser } = useAuthStore()
 
   // Debounce search input
   useEffect(() => {
@@ -142,8 +151,7 @@ export function AdminEmployeesPage() {
     }
   }
 
-  const toggleRole = async (user: UserAdmin) => {
-    const newRole = user.role === 'admin' ? 'employee' : 'admin'
+  const changeRole = async (user: UserAdmin, newRole: string) => {
     try {
       await adminApi.updateUserRole(user.id, newRole)
       load()
@@ -168,10 +176,12 @@ export function AdminEmployeesPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Employees ({total})</h1>
-        <Button onClick={handleSync} disabled={syncing}>
-          <RefreshCcw className={`h-4 w-4 mr-1 ${syncing ? 'animate-spin' : ''}`} />
-          Sync from HiBob
-        </Button>
+        {currentUser?.role === 'admin' && (
+          <Button onClick={handleSync} disabled={syncing}>
+            <RefreshCcw className={`h-4 w-4 mr-1 ${syncing ? 'animate-spin' : ''}`} />
+            Sync from HiBob
+          </Button>
+        )}
       </div>
 
       {/* Search */}
@@ -191,6 +201,7 @@ export function AdminEmployeesPage() {
           {[
             { label: 'All', value: '' },
             { label: 'Admin', value: 'admin' },
+            { label: 'Manager', value: 'manager' },
             { label: 'Employee', value: 'employee' },
           ].map((r) => (
             <Button
@@ -277,7 +288,7 @@ export function AdminEmployeesPage() {
                     <td className="px-4 py-3">{u.department || '—'}</td>
                     {/* Role */}
                     <td className="px-4 py-3">
-                      <Badge variant={u.role === 'admin' ? 'default' : 'secondary'}>{u.role}</Badge>
+                      <Badge variant={u.role === 'admin' ? 'default' : u.role === 'manager' ? 'warning' : 'secondary'}>{u.role}</Badge>
                     </td>
                     {/* Start Date */}
                     <td className="px-4 py-3">{u.start_date ? formatDate(u.start_date) : '—'}</td>
@@ -299,15 +310,38 @@ export function AdminEmployeesPage() {
                     </td>
                     {/* Actions */}
                     <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="outline" onClick={() => toggleRole(u)}>
-                          {u.role === 'admin' ? <ShieldOff className="h-3 w-3 mr-1" /> : <Shield className="h-3 w-3 mr-1" />}
-                          {u.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => toggleProbation(u)}>
-                          {u.probation_override ? 'Revoke EA' : 'Grant EA'}
-                        </Button>
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {currentUser?.role === 'admin' && (
+                            <>
+                              {u.role !== 'admin' && (
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeRole(u, 'admin') }}>
+                                  Make Admin
+                                </DropdownMenuItem>
+                              )}
+                              {u.role !== 'manager' && (
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeRole(u, 'manager') }}>
+                                  Make Manager
+                                </DropdownMenuItem>
+                              )}
+                              {u.role !== 'employee' && (
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeRole(u, 'employee') }}>
+                                  Remove Role
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); toggleProbation(u) }}>
+                            {u.probation_override ? 'Revoke Early Access' : 'Grant Early Access'}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 ))}

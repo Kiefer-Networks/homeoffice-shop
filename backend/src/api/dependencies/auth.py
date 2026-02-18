@@ -40,3 +40,11 @@ async def require_admin(
     if user.role != "admin":
         raise ForbiddenError("Admin access required")
     return user
+
+
+async def require_staff(
+    user: User = Depends(get_current_user),
+) -> User:
+    if user.role not in ("admin", "manager"):
+        raise ForbiddenError("Staff access required")
+    return user

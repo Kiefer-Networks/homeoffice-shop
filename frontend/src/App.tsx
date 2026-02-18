@@ -78,8 +78,18 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore()
 
-  if (user?.role !== 'admin') {
+  if (user?.role !== 'admin' && user?.role !== 'manager') {
     return <Navigate to="/" replace />
+  }
+
+  return <>{children}</>
+}
+
+function AdminOnlyGuard({ children }: { children: React.ReactNode }) {
+  const { user } = useAuthStore()
+
+  if (user?.role !== 'admin') {
+    return <Navigate to="/admin" replace />
   }
 
   return <>{children}</>
@@ -161,9 +171,9 @@ export default function App() {
             <Route path="/admin/categories" element={<AdminCategoriesPage />} />
             <Route path="/admin/employees" element={<AdminEmployeesPage />} />
             <Route path="/admin/budgets" element={<AdminBudgetAdjustmentsPage />} />
-            <Route path="/admin/settings" element={<AdminSettingsPage />} />
-            <Route path="/admin/audit" element={<AdminAuditLogPage />} />
-            <Route path="/admin/sync-log" element={<AdminSyncLogPage />} />
+            <Route path="/admin/settings" element={<AdminOnlyGuard><AdminSettingsPage /></AdminOnlyGuard>} />
+            <Route path="/admin/audit" element={<AdminOnlyGuard><AdminAuditLogPage /></AdminOnlyGuard>} />
+            <Route path="/admin/sync-log" element={<AdminOnlyGuard><AdminSyncLogPage /></AdminOnlyGuard>} />
           </Route>
         </Routes>
         <ToastContainer />

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies.auth import require_admin
+from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import BadRequestError, ConflictError, NotFoundError
@@ -28,7 +28,7 @@ def _slugify(name: str) -> str:
 @router.get("", response_model=list[BrandResponse])
 async def list_brands(
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     result = await db.execute(
         select(Brand).order_by(Brand.name.asc())
@@ -41,7 +41,7 @@ async def create_brand(
     body: BrandCreate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     # Check uniqueness
     existing = await db.execute(
@@ -72,7 +72,7 @@ async def update_brand(
     body: BrandUpdate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     brand = await db.get(Brand, brand_id)
     if not brand:
@@ -112,7 +112,7 @@ async def delete_brand(
     brand_id: UUID,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     brand = await db.get(Brand, brand_id)
     if not brand:

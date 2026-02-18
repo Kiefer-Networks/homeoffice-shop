@@ -66,7 +66,7 @@ class UserDetailResponse(BaseModel):
 
 
 class UserRoleUpdate(BaseModel):
-    role: Literal["employee", "admin"]
+    role: Literal["employee", "admin", "manager"]
 
 
 class UserProbationOverride(BaseModel):

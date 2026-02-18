@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies.auth import require_admin
+from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.config import settings
@@ -29,7 +29,7 @@ async def create_product(
     body: ProductCreate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     if body.price_cents == 0:
         body.is_active = False
@@ -113,7 +113,7 @@ async def update_product(
     body: ProductUpdate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     product = await db.get(Product, product_id)
     if not product:
@@ -148,7 +148,7 @@ async def activate_product(
     product_id: UUID,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     product = await db.get(Product, product_id)
     if not product:
@@ -172,7 +172,7 @@ async def deactivate_product(
     product_id: UUID,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     product = await db.get(Product, product_id)
     if not product:
@@ -194,7 +194,7 @@ async def archive_product(
     product_id: UUID,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     product = await db.get(Product, product_id)
     if not product:
@@ -219,7 +219,7 @@ async def restore_product(
     product_id: UUID,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     product = await db.get(Product, product_id)
     if not product:
@@ -245,7 +245,7 @@ async def redownload_images(
     product_id: UUID,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     product = await db.get(Product, product_id)
     if not product:

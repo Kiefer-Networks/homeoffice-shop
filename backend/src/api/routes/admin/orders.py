@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies.auth import require_admin
+from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import BadRequestError, NotFoundError
@@ -25,7 +25,7 @@ async def list_all_orders(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     if status and status not in VALID_STATUSES:
         raise BadRequestError(f"Invalid status. Must be one of: {', '.join(sorted(VALID_STATUSES))}")
@@ -39,7 +39,7 @@ async def list_all_orders(
 async def get_order(
     order_id: UUID,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     data = await order_service.get_order_with_items(db, order_id)
     if not data:
@@ -53,7 +53,7 @@ async def update_order_status(
     body: OrderStatusUpdate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     order = await order_service.transition_order(
         db, order_id, body.status, admin.id, body.admin_note
@@ -105,7 +105,7 @@ async def check_order_item(
     body: OrderItemCheckUpdate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_staff),
 ):
     item = await order_service.update_order_item_check(db, order_id, item_id, body.vendor_ordered)
     if not item:
