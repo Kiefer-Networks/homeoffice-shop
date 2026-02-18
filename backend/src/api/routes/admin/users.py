@@ -98,7 +98,7 @@ async def get_user_detail(
     # Budget summary
     spent = await budget_service.get_live_spent_cents(db, user_id)
     adjustment_total = await budget_service.get_live_adjustment_cents(db, user_id)
-    available = target.total_budget_cents - spent - adjustment_total
+    available = target.total_budget_cents + adjustment_total - spent
 
     return {
         "user": target,

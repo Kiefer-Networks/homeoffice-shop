@@ -75,7 +75,7 @@ class TestGetAvailableBudgetCents:
         user = make_user(total_budget_cents=100000, cached_spent_cents=30000, cached_adjustment_cents=5000)
         mock_db.get.return_value = user
         result = await get_available_budget_cents(mock_db, user.id)
-        assert result == 65000  # 100000 - 30000 - 5000
+        assert result == 75000  # 100000 + 5000 - 30000
 
 
 class TestCheckBudgetForOrder:

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { adminApi } from '@/services/adminApi'
@@ -199,58 +200,64 @@ export function AdminBudgetAdjustmentsPage() {
         />
       </div>
 
-      {/* Table */}
-      <div className="rounded-md border overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-[hsl(var(--muted)/0.5)]">
-              <th className="text-left p-3 font-medium">Employee</th>
-              <th className="text-right p-3 font-medium">
-                <button onClick={() => toggleSort('amount')} className="inline-flex items-center gap-1 hover:text-[hsl(var(--foreground))]">
-                  Amount <ArrowUpDown className="h-3 w-3" />
-                </button>
-              </th>
-              <th className="text-left p-3 font-medium">Reason</th>
-              <th className="text-left p-3 font-medium">Created By</th>
-              <th className="text-left p-3 font-medium">
-                <button onClick={() => toggleSort('date')} className="inline-flex items-center gap-1 hover:text-[hsl(var(--foreground))]">
-                  Date <ArrowUpDown className="h-3 w-3" />
-                </button>
-              </th>
-              <th className="text-right p-3 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {adjustments.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="text-center p-8 text-[hsl(var(--muted-foreground))]">
-                  No adjustments found.
-                </td>
-              </tr>
-            ) : (
-              adjustments.map((a) => (
-                <tr key={a.id} className="border-b hover:bg-[hsl(var(--muted)/0.3)]">
-                  <td className="p-3">{a.user_display_name || '—'}</td>
-                  <td className={`p-3 text-right font-medium ${a.amount_cents < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    {formatCents(a.amount_cents)}
-                  </td>
-                  <td className="p-3 max-w-xs truncate">{a.reason}</td>
-                  <td className="p-3">{a.creator_display_name || '—'}</td>
-                  <td className="p-3 whitespace-nowrap">{formatDate(a.created_at)}</td>
-                  <td className="p-3 text-right whitespace-nowrap">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(a)} aria-label="Edit adjustment">
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700" onClick={() => setDeleteTarget(a)} aria-label="Delete adjustment">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </td>
+      {/* Table — same style as BrandsPage */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
+                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Employee</th>
+                  <th className="text-right px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
+                    <button onClick={() => toggleSort('amount')} className="inline-flex items-center gap-1 hover:text-[hsl(var(--foreground))]">
+                      Amount <ArrowUpDown className="h-3 w-3" />
+                    </button>
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Reason</th>
+                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Created By</th>
+                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
+                    <button onClick={() => toggleSort('date')} className="inline-flex items-center gap-1 hover:text-[hsl(var(--foreground))]">
+                      Date <ArrowUpDown className="h-3 w-3" />
+                    </button>
+                  </th>
+                  <th className="text-right px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Actions</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {adjustments.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-[hsl(var(--muted-foreground))]">
+                      No adjustments found.
+                    </td>
+                  </tr>
+                ) : (
+                  adjustments.map((a) => (
+                    <tr key={a.id} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.5)]">
+                      <td className="px-4 py-3 font-medium">{a.user_display_name || '—'}</td>
+                      <td className={`px-4 py-3 text-right font-medium ${a.amount_cents < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {formatCents(a.amount_cents)}
+                      </td>
+                      <td className="px-4 py-3 max-w-xs truncate text-[hsl(var(--muted-foreground))]">{a.reason}</td>
+                      <td className="px-4 py-3 text-[hsl(var(--muted-foreground))]">{a.creator_display_name || '—'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-[hsl(var(--muted-foreground))]">{formatDate(a.created_at)}</td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => openEdit(a)}>
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-red-600" onClick={() => setDeleteTarget(a)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Pagination */}
       {totalPages > 1 && (
@@ -315,7 +322,7 @@ export function AdminBudgetAdjustmentsPage() {
               onChange={(e) => setCreateForm(f => ({ ...f, amount_euro: e.target.value }))}
             />
             <p className="text-xs text-[hsl(var(--muted-foreground))]">
-              Negative = deduction. Example: -100,00 deducts 100 EUR.
+              Positive = budget increase. Negative = budget deduction.
             </p>
             <textarea placeholder="Reason *" value={createForm.reason} onChange={(e) => setCreateForm(f => ({ ...f, reason: e.target.value }))}
               className="w-full rounded-md border px-3 py-2 text-sm min-h-[60px]" />

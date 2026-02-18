@@ -51,6 +51,14 @@ async def create_brand(
         raise ConflictError(f"Brand '{body.name}' already exists")
 
     slug = _slugify(body.name)
+
+    # Check slug uniqueness
+    existing_slug = await db.execute(
+        select(Brand).where(Brand.slug == slug)
+    )
+    if existing_slug.scalar_one_or_none():
+        raise ConflictError(f"A brand with a similar name already exists (slug '{slug}')")
+
     brand = Brand(name=body.name, slug=slug)
     db.add(brand)
     await db.flush()
@@ -86,9 +94,16 @@ async def update_brand(
         )
         if existing.scalar_one_or_none():
             raise ConflictError(f"Brand '{body.name}' already exists")
+        new_slug = _slugify(body.name)
+        # Check slug uniqueness
+        existing_slug = await db.execute(
+            select(Brand).where(Brand.slug == new_slug, Brand.id != brand_id)
+        )
+        if existing_slug.scalar_one_or_none():
+            raise ConflictError(f"A brand with a similar name already exists (slug '{new_slug}')")
         changes["name"] = {"old": brand.name, "new": body.name}
         brand.name = body.name
-        brand.slug = _slugify(body.name)
+        brand.slug = new_slug
 
     if body.logo_url is not None:
         changes["logo_url"] = {"old": brand.logo_url, "new": body.logo_url}
