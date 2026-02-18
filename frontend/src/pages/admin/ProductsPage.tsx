@@ -79,7 +79,7 @@ export function AdminProductsPage() {
   const [refreshProduct, setRefreshProduct] = useState<Product | null>(null)
 
   // Edit form
-  const [editForm, setEditForm] = useState({ name: '', category_id: '', price_euro: '', external_url: '', brand: '', description: '', is_active: true })
+  const [editForm, setEditForm] = useState({ name: '', category_id: '', price_euro: '', external_url: '', brand: '', brand_id: '', description: '', is_active: true })
 
   const { addToast } = useUiStore()
 
@@ -233,6 +233,7 @@ export function AdminProductsPage() {
       price_euro: centsToEuroInput(p.price_cents),
       external_url: p.external_url,
       brand: p.brand || '',
+      brand_id: p.brand_id || '',
       description: p.description || '',
       is_active: p.is_active,
     })
@@ -245,12 +246,14 @@ export function AdminProductsPage() {
     const priceCents = parseEuroToCents(editForm.price_euro)
     setUpdating(true)
     try {
+      const selectedBrand = brands.find(b => b.id === editForm.brand_id)
       await adminApi.updateProduct(editProduct.id, {
         name: editForm.name,
         category_id: editForm.category_id,
         price_cents: priceCents,
         external_url: editForm.external_url,
-        brand: editForm.brand || undefined,
+        brand: selectedBrand?.name || editForm.brand || undefined,
+        brand_id: editForm.brand_id || undefined,
         description: editForm.description || undefined,
         is_active: editForm.is_active,
       })
@@ -573,7 +576,11 @@ export function AdminProductsPage() {
           <DialogHeader><DialogTitle>Edit Product</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <Input placeholder="Product name *" value={editForm.name} onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))} />
-            <Input placeholder="Brand" value={editForm.brand} onChange={(e) => setEditForm(f => ({ ...f, brand: e.target.value }))} />
+            <select value={editForm.brand_id} onChange={(e) => setEditForm(f => ({ ...f, brand_id: e.target.value }))}
+              className="w-full rounded-md border px-3 py-2 text-sm">
+              <option value="">Select brand</option>
+              {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
             <select value={editForm.category_id} onChange={(e) => setEditForm(f => ({ ...f, category_id: e.target.value }))}
               className="w-full rounded-md border px-3 py-2 text-sm">
               <option value="">Select category *</option>
