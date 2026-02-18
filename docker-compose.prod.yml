@@ -7,8 +7,8 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./deploy/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      - ./deploy/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf:ro
     ports:
       - "127.0.0.1:${DB_PORT_HOST:-5432}:5432"
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
