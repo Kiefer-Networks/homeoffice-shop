@@ -105,23 +105,22 @@ async def sync_purchases(
         pending_count = 0
         affected_user_ids: set[UUID] = set()
 
-        # Fetch all custom tables concurrently (max 5 parallel requests)
-        sem = asyncio.Semaphore(5)
+        # Fetch custom tables sequentially with delay to avoid HiBob rate limits
         user_rows: dict[UUID, list[dict]] = {}
+        for i, user in enumerate(users):
+            try:
+                rows = await client.get_custom_table(user.hibob_id, table_id)
+                if rows:
+                    user_rows[user.id] = rows
+            except Exception:
+                logger.warning(
+                    "Failed to fetch custom table for user %s (hibob_id=%s)",
+                    user.id, user.hibob_id,
+                )
+            # Small delay between requests to stay within rate limits
+            if i < len(users) - 1:
+                await asyncio.sleep(0.3)
 
-        async def _fetch(user: User) -> None:
-            async with sem:
-                try:
-                    rows = await client.get_custom_table(user.hibob_id, table_id)
-                    if rows:
-                        user_rows[user.id] = rows
-                except Exception:
-                    logger.exception(
-                        "Failed to fetch custom table for user %s (hibob_id=%s)",
-                        user.id, user.hibob_id,
-                    )
-
-        await asyncio.gather(*[_fetch(u) for u in users])
         logger.info("Purchase sync: fetched custom tables, %d users have entries", len(user_rows))
 
         for user in users:
