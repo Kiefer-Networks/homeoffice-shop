@@ -1,10 +1,10 @@
 import asyncio
 import logging
 import re
-import time
 from typing import Protocol, runtime_checkable
 
 import httpx
+from cachetools import TTLCache
 
 from src.core.config import settings
 from src.integrations.amazon.models import AmazonProduct, AmazonSearchResult, AmazonVariant
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 SCRAPER_BASE = "https://api.scraperapi.com/structured/amazon"
 _CACHE_TTL = 300  # 5 minutes
-_product_cache: dict[str, tuple[float, AmazonProduct]] = {}
+_product_cache: TTLCache[str, AmazonProduct] = TTLCache(maxsize=128, ttl=_CACHE_TTL)
 
 
 def _extract_asin(url: str) -> str | None:
@@ -91,14 +91,10 @@ class AmazonClient:
         return results
 
     async def get_product(self, asin: str) -> AmazonProduct | None:
-        # Check cache first
         cached = _product_cache.get(asin)
-        if cached:
-            ts, product = cached
-            if time.monotonic() - ts < _CACHE_TTL:
-                logger.info("Cache hit for ASIN %s", asin)
-                return product
-            del _product_cache[asin]
+        if cached is not None:
+            logger.info("Cache hit for ASIN %s", asin)
+            return cached
 
         params = {
             "api_key": settings.scraperapi_api_key,
@@ -221,15 +217,7 @@ class AmazonClient:
             variants=variants,
         )
 
-        # Cache the result
-        _product_cache[asin] = (time.monotonic(), result)
-        # Evict old entries if cache grows too large
-        if len(_product_cache) > 100:
-            now = time.monotonic()
-            expired = [k for k, (ts, _) in _product_cache.items() if now - ts >= _CACHE_TTL]
-            for k in expired:
-                del _product_cache[k]
-
+        _product_cache[asin] = result
         return result
 
     async def get_current_price(self, asin: str) -> int | None:
