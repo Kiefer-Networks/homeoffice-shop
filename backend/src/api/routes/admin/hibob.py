@@ -153,7 +153,7 @@ async def _run_purchase_sync(admin_id, ip: str | None) -> None:
             logger.exception("Background purchase sync failed")
 
 
-@router.post("/sync")
+@router.post("/sync", status_code=202)
 async def trigger_sync(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -189,7 +189,7 @@ async def get_sync_logs(
     return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
-@router.post("/purchase-sync")
+@router.post("/purchase-sync", status_code=202)
 async def trigger_purchase_sync(
     request: Request,
     db: AsyncSession = Depends(get_db),
