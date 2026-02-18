@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,7 +8,6 @@ from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import NotFoundError
-from src.models.dto import DetailResponse
 from src.models.dto.budget import (
     BudgetAdjustmentCreate,
     BudgetAdjustmentResponse,
@@ -191,7 +190,7 @@ async def update_adjustment(
     }
 
 
-@router.delete("/adjustments/{adjustment_id}")
+@router.delete("/adjustments/{adjustment_id}", status_code=204)
 async def delete_adjustment(
     adjustment_id: UUID,
     request: Request,
@@ -222,4 +221,4 @@ async def delete_adjustment(
         ip_address=ip,
     )
 
-    return DetailResponse(detail="Adjustment deleted")
+    return Response(status_code=204)

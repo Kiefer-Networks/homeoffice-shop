@@ -34,4 +34,4 @@ async def get_avatar(
     if parsed.scheme not in ("https",) or parsed.hostname not in _ALLOWED_AVATAR_HOSTS:
         raise BadRequestError("Invalid avatar URL")
 
-    return RedirectResponse(url=target_user.avatar_url)
+    return RedirectResponse(url=target_user.avatar_url, status_code=302)

@@ -1,7 +1,7 @@
 import re
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -154,3 +154,5 @@ async def delete_brand(
         resource_type="brand", resource_id=brand_id,
         details={"name": brand_name}, ip_address=ip,
     )
+
+    return Response(status_code=204)
