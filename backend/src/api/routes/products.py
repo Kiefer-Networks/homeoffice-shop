@@ -73,6 +73,7 @@ async def list_products(
             "item_weight": p.item_weight,
             "item_model_number": p.item_model_number,
             "product_information": p.product_information,
+            "variants": p.variants,
             "amazon_asin": p.amazon_asin,
             "external_url": p.external_url,
             "brand_id": p.brand_id,

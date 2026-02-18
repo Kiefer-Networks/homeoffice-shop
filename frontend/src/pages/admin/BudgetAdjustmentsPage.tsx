@@ -8,6 +8,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate, parseEuroToCents, centsToEuroInput } from '@/lib/utils'
 import { Plus, X, Pencil, Trash2, ArrowUpDown, Search } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
+import { useAuthStore } from '@/stores/authStore'
 import type { BudgetAdjustment, UserSearchResult } from '@/types'
 
 type SortKey = 'newest' | 'oldest' | 'amount_asc' | 'amount_desc'
@@ -128,6 +129,7 @@ export function AdminBudgetAdjustmentsPage() {
       setSelectedEmployeeName('')
       setEmployeeSearch('')
       load()
+      useAuthStore.getState().refreshBudget()
       addToast({ title: 'Adjustment created' })
     } catch (err: unknown) {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
@@ -153,6 +155,7 @@ export function AdminBudgetAdjustmentsPage() {
       await adminApi.updateAdjustment(editTarget.id, { amount_cents: amountCents, reason: editForm.reason })
       setEditTarget(null)
       load()
+      useAuthStore.getState().refreshBudget()
       addToast({ title: 'Adjustment updated' })
     } catch (err: unknown) {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
@@ -165,6 +168,7 @@ export function AdminBudgetAdjustmentsPage() {
       await adminApi.deleteAdjustment(deleteTarget.id)
       setDeleteTarget(null)
       load()
+      useAuthStore.getState().refreshBudget()
       addToast({ title: 'Adjustment deleted' })
     } catch (err: unknown) {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })

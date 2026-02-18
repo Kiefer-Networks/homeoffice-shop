@@ -6,6 +6,49 @@ import { adminApi } from '@/services/adminApi'
 import { formatCents, formatDate } from '@/lib/utils'
 import type { UserDetailResponse } from '@/types'
 
+function EmployeeAvatar({ name, avatarUrl, size = 48 }: { name: string; avatarUrl?: string | null; size?: number }) {
+  const [imgError, setImgError] = useState(false)
+
+  const initials = name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const hue = Math.abs(hash) % 360
+
+  if (avatarUrl && !imgError) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        className="rounded-full object-cover shrink-0"
+        style={{ width: size, height: size }}
+        onError={() => setImgError(true)}
+      />
+    )
+  }
+
+  return (
+    <div
+      className="rounded-full flex items-center justify-center text-white font-medium shrink-0"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size * 0.38,
+        backgroundColor: `hsl(${hue}, 55%, 50%)`,
+      }}
+    >
+      {initials}
+    </div>
+  )
+}
+
 const statusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning'> = {
   pending: 'warning', ordered: 'default', delivered: 'success', rejected: 'destructive', cancelled: 'secondary',
 }
@@ -42,10 +85,15 @@ export function EmployeeDetailModal({ userId, onClose }: EmployeeDetailModalProp
         ) : data ? (
           <>
             <DialogHeader>
-              <DialogTitle>{data.user.display_name}</DialogTitle>
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">
-                {data.user.email}{data.user.department ? ` — ${data.user.department}` : ''}
-              </p>
+              <div className="flex items-center gap-3">
+                <EmployeeAvatar name={data.user.display_name} avatarUrl={data.user.avatar_url} size={48} />
+                <div>
+                  <DialogTitle>{data.user.display_name}</DialogTitle>
+                  <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                    {data.user.email}{data.user.department ? ` — ${data.user.department}` : ''}
+                  </p>
+                </div>
+              </div>
             </DialogHeader>
 
             {/* Budget Summary */}

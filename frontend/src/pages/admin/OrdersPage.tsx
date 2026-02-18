@@ -436,78 +436,82 @@ export function AdminOrdersPage() {
                 </div>
               )}
 
-              {/* Purchase URL */}
-              <div>
-                <label className="text-sm font-medium block mb-1">Purchase URL (internal)</label>
-                <div className="flex gap-2">
-                  <Input
-                    value={purchaseUrl}
-                    onChange={(e) => setPurchaseUrl(e.target.value)}
-                    placeholder="Vendor order/purchase link..."
-                    className="flex-1"
-                  />
-                  {purchaseUrl && (
-                    <Button size="icon" variant="outline" asChild>
-                      <a href={purchaseUrl} target="_blank" rel="noopener noreferrer">
-                        <Link2 className="h-4 w-4" />
-                      </a>
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleSavePurchaseUrl}
-                    disabled={purchaseUrlSaving || purchaseUrl === (selected.purchase_url || '')}
-                  >
-                    {purchaseUrlSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Invoices */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-medium">Invoices</h3>
-                  <div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={handleInvoiceUpload}
-                      className="hidden"
+              {/* Purchase URL — only for active orders */}
+              {selected.status !== 'rejected' && selected.status !== 'cancelled' && (
+                <div>
+                  <label className="text-sm font-medium block mb-1">Purchase URL (internal)</label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={purchaseUrl}
+                      onChange={(e) => setPurchaseUrl(e.target.value)}
+                      placeholder="Vendor order/purchase link..."
+                      className="flex-1"
                     />
-                    <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                      {uploading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
-                      Upload
+                    {purchaseUrl && (
+                      <Button size="icon" variant="outline" asChild>
+                        <a href={purchaseUrl} target="_blank" rel="noopener noreferrer">
+                          <Link2 className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleSavePurchaseUrl}
+                      disabled={purchaseUrlSaving || purchaseUrl === (selected.purchase_url || '')}
+                    >
+                      {purchaseUrlSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
                     </Button>
                   </div>
                 </div>
-                {selected.invoices && selected.invoices.length > 0 ? (
-                  <div className="border rounded-lg divide-y">
-                    {selected.invoices.map((inv: OrderInvoice) => (
-                      <div key={inv.id} className="flex items-center justify-between px-3 py-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FileText className="h-4 w-4 text-[hsl(var(--muted-foreground))] shrink-0" />
-                          <span className="text-sm truncate">{inv.filename}</span>
-                          <span className="text-xs text-[hsl(var(--muted-foreground))] shrink-0">{formatDate(inv.uploaded_at)}</span>
-                        </div>
-                        <div className="flex gap-1 shrink-0">
-                          <Button size="icon" variant="ghost" className="h-7 w-7"
-                            onClick={() => handleInvoiceDownload(selected.id, inv.id, inv.filename)}>
-                            <Download className="h-3 w-3" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600 hover:text-red-700"
-                            onClick={() => handleInvoiceDelete(selected.id, inv.id)}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+              )}
+
+              {/* Invoices — only for active orders */}
+              {selected.status !== 'rejected' && selected.status !== 'cancelled' && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-medium">Invoices</h3>
+                    <div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={handleInvoiceUpload}
+                        className="hidden"
+                      />
+                      <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                        {uploading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
+                        Upload
+                      </Button>
+                    </div>
                   </div>
-                ) : (
-                  <p className="text-sm text-[hsl(var(--muted-foreground))]">No invoices uploaded.</p>
-                )}
-              </div>
+                  {selected.invoices && selected.invoices.length > 0 ? (
+                    <div className="border rounded-lg divide-y">
+                      {selected.invoices.map((inv: OrderInvoice) => (
+                        <div key={inv.id} className="flex items-center justify-between px-3 py-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="h-4 w-4 text-[hsl(var(--muted-foreground))] shrink-0" />
+                            <span className="text-sm truncate">{inv.filename}</span>
+                            <span className="text-xs text-[hsl(var(--muted-foreground))] shrink-0">{formatDate(inv.uploaded_at)}</span>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <Button size="icon" variant="ghost" className="h-7 w-7"
+                              onClick={() => handleInvoiceDownload(selected.id, inv.id, inv.filename)}>
+                              <Download className="h-3 w-3" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600 hover:text-red-700"
+                              onClick={() => handleInvoiceDelete(selected.id, inv.id)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[hsl(var(--muted-foreground))]">No invoices uploaded.</p>
+                  )}
+                </div>
+              )}
 
               {/* Status transition buttons */}
               {transitions[selected.status] && (

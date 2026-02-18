@@ -35,7 +35,8 @@ async def search_products(
     elif not include_archived:
         conditions.append(Product.archived_at.is_(None))
 
-    if is_active is not None:
+    # Don't filter by is_active when viewing archived products
+    if is_active is not None and not archived_only:
         conditions.append(Product.is_active == is_active)
     if category_id:
         conditions.append(Product.category_id == category_id)
