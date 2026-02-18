@@ -28,6 +28,9 @@ DEFAULT_SETTINGS = {
     "hibob_purchase_col_description": "Description",
     "hibob_purchase_col_amount": "Amount",
     "hibob_purchase_col_currency": "Currency",
+    "backup_schedule_enabled": "false",
+    "backup_schedule_hour": "2",
+    "backup_schedule_minute": "0",
 }
 
 _cache: dict[str, str] = {}

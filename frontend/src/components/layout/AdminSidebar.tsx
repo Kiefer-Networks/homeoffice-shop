@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Package, ShoppingBag, FolderOpen, Users,
-  Wallet, Settings, ScrollText, RefreshCcw, Store, X, Tag, ClipboardCheck
+  Wallet, Settings, ScrollText, RefreshCcw, Store, X, Tag, ClipboardCheck, HardDrive
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useUiStore } from '@/stores/uiStore'
@@ -22,6 +22,7 @@ const navItems = [
   { to: '/admin/settings', icon: Settings, label: 'Settings', adminOnly: true },
   { to: '/admin/audit', icon: ScrollText, label: 'Audit Log', adminOnly: true },
   { to: '/admin/sync-log', icon: RefreshCcw, label: 'Sync Log', adminOnly: true },
+  { to: '/admin/backups', icon: HardDrive, label: 'Backups', adminOnly: true },
 ]
 
 export function AdminSidebar() {

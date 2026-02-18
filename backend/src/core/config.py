@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     allowed_email_domains: str = "your-company.com"
     initial_admin_emails: str = "admin@your-company.com"
 
+    # Backup
+    backup_dir: str = "/app/backups"
+    backup_retention_count: int = 10
+
     # Uvicorn
     uvicorn_workers: int = 2
 

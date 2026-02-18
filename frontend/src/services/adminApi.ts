@@ -6,6 +6,7 @@ import type {
   ProductCreateInput, ProductUpdateInput, CategoryCreateInput, CategoryUpdateInput,
   UserSearchResult, UserDetailResponse, RefreshPreviewResponse,
   AmazonProductDetail, BudgetRule, UserBudgetOverride,
+  BackupFile, BackupSchedule,
 } from '@/types'
 
 export const adminApi = {
@@ -144,4 +145,14 @@ export const adminApi = {
   // Backup
   exportBackup: () =>
     api.post('/api/admin/backup/export', {}, { responseType: 'blob' }),
+  listBackups: () =>
+    api.get<{ items: BackupFile[] }>('/api/admin/backup/list'),
+  downloadBackup: (filename: string) =>
+    api.get(`/api/admin/backup/download/${filename}`, { responseType: 'blob' }),
+  deleteBackup: (filename: string) =>
+    api.delete(`/api/admin/backup/${filename}`),
+  getBackupSchedule: () =>
+    api.get<BackupSchedule>('/api/admin/backup/schedule'),
+  updateBackupSchedule: (data: Partial<BackupSchedule>) =>
+    api.put<BackupSchedule>('/api/admin/backup/schedule', data),
 }

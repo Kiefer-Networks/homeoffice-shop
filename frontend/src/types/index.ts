@@ -392,6 +392,18 @@ export interface ProductFieldDiff {
   new_value: string | number | Record<string, unknown> | unknown[] | null
 }
 
+export interface BackupFile {
+  filename: string
+  size_bytes: number
+  created_at: string
+}
+
+export interface BackupSchedule {
+  enabled: boolean
+  hour: number
+  minute: number
+}
+
 export interface RefreshPreviewResponse {
   product_id: string
   images_updated: boolean

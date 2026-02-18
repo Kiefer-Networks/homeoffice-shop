@@ -22,6 +22,7 @@ import { AdminAuditLogPage } from '@/pages/admin/AuditLogPage'
 import { AdminSyncLogPage } from '@/pages/admin/SyncLogPage'
 import { AdminBrandsPage } from '@/pages/admin/BrandsPage'
 import { PurchaseReviewsPage } from '@/pages/admin/PurchaseReviewsPage'
+import { AdminBackupPage } from '@/pages/admin/BackupPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { useUiStore, type Toast } from '@/stores/uiStore'
 
@@ -178,6 +179,7 @@ export default function App() {
             <Route path="/admin/settings" element={<AdminOnlyGuard><AdminSettingsPage /></AdminOnlyGuard>} />
             <Route path="/admin/audit" element={<AdminOnlyGuard><AdminAuditLogPage /></AdminOnlyGuard>} />
             <Route path="/admin/sync-log" element={<AdminOnlyGuard><AdminSyncLogPage /></AdminOnlyGuard>} />
+            <Route path="/admin/backups" element={<AdminOnlyGuard><AdminBackupPage /></AdminOnlyGuard>} />
           </Route>
         </Routes>
         <ToastContainer />
