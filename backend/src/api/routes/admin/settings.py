@@ -5,8 +5,9 @@ from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import BadRequestError
-from src.models.dto.settings import AppSettingResponse, AppSettingUpdate, AppSettingsResponse
+from src.models.dto.settings import AppSettingResponse, AppSettingUpdate, AppSettingsResponse, TestEmailRequest
 from src.models.orm.user import User
+from src.notifications.email import send_test_email
 from src.services import settings_service
 
 router = APIRouter(prefix="/settings", tags=["admin-settings"])
@@ -44,3 +45,29 @@ async def update_setting(
     )
 
     return {"key": key, "value": body.value}
+
+
+@router.post("/test-email")
+async def test_email(
+    body: TestEmailRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    ip = request.client.host if request.client else None
+    await write_audit_log(
+        db, user_id=admin.id, action="admin.settings.test_email",
+        resource_type="app_setting",
+        details={"to": body.to},
+        ip_address=ip,
+    )
+
+    try:
+        result = await send_test_email(body.to)
+        if not result:
+            raise BadRequestError("SMTP is not configured. Please set SMTP host first.")
+        return {"detail": "Test email sent successfully"}
+    except BadRequestError:
+        raise
+    except Exception as e:
+        raise BadRequestError(f"Failed to send test email: {e}")

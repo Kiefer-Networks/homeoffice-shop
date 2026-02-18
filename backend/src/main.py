@@ -32,7 +32,7 @@ from src.api.routes.admin import (
 )
 from src.audit.service import ensure_audit_partitions
 from src.core.config import settings
-from src.services.settings_service import load_settings
+from src.services.settings_service import load_settings, seed_defaults
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,8 @@ except ValueError as e:
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     async with async_session_factory() as db:
         await load_settings(db)
+        await seed_defaults(db)
+        await db.commit()
         try:
             await ensure_audit_partitions(db)
         except Exception:

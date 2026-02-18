@@ -7,7 +7,7 @@ from pathlib import Path
 import aiosmtplib
 from jinja2 import Environment, FileSystemLoader
 
-from src.core.config import settings
+from src.services.settings_service import get_setting
 
 logger = logging.getLogger(__name__)
 
@@ -22,13 +22,28 @@ ALLOWED_TEMPLATES = {
 }
 
 
+def _get_smtp_config() -> dict:
+    host = get_setting("smtp_host")
+    port = int(get_setting("smtp_port") or "587")
+    use_tls = get_setting("smtp_use_tls").lower() in ("true", "1", "yes")
+    return {
+        "hostname": host,
+        "port": port,
+        "username": get_setting("smtp_username") or None,
+        "password": get_setting("smtp_password") or None,
+        "start_tls": use_tls if port == 587 else False,
+        "use_tls": use_tls if port != 587 else False,
+    }
+
+
 async def send_email(
     to: str,
     subject: str,
     template_name: str,
     context: dict,
 ) -> bool:
-    if not settings.smtp_host:
+    smtp = _get_smtp_config()
+    if not smtp["hostname"]:
         logger.debug("SMTP not configured, skipping email to %s", to)
         return False
 
@@ -40,21 +55,16 @@ async def send_email(
         template = _jinja_env.get_template(template_name)
         html_body = template.render(**context)
 
+        from_name = get_setting("smtp_from_name")
+        from_address = get_setting("smtp_from_address")
+
         message = MIMEMultipart("alternative")
-        message["From"] = formataddr((settings.smtp_from_name, settings.smtp_from_address))
+        message["From"] = formataddr((from_name, from_address))
         message["To"] = to
         message["Subject"] = subject
         message.attach(MIMEText(html_body, "html"))
 
-        await aiosmtplib.send(
-            message,
-            hostname=settings.smtp_host,
-            port=settings.smtp_port,
-            username=settings.smtp_username or None,
-            password=settings.smtp_password or None,
-            start_tls=settings.smtp_use_tls if settings.smtp_port == 587 else False,
-            use_tls=settings.smtp_use_tls if settings.smtp_port != 587 else False,
-        )
+        await aiosmtplib.send(message, **smtp)
         masked = to.split("@")[0][:2] + "***@" + to.split("@")[-1] if "@" in to else "***"
         logger.info("Email sent to %s: %s", masked, subject)
         return True
@@ -62,3 +72,26 @@ async def send_email(
         masked = to.split("@")[0][:2] + "***@" + to.split("@")[-1] if "@" in to else "***"
         logger.exception("Failed to send email to %s", masked)
         return False
+
+
+async def send_test_email(to: str) -> bool:
+    """Send a plain test email to verify SMTP configuration."""
+    smtp = _get_smtp_config()
+    if not smtp["hostname"]:
+        return False
+
+    from_name = get_setting("smtp_from_name")
+    from_address = get_setting("smtp_from_address")
+
+    message = MIMEMultipart("alternative")
+    message["From"] = formataddr((from_name, from_address))
+    message["To"] = to
+    message["Subject"] = "Test Email - Home Office Shop"
+    message.attach(MIMEText(
+        "<h2>SMTP Test</h2><p>SMTP configuration is working correctly.</p>",
+        "html",
+    ))
+
+    await aiosmtplib.send(message, **smtp)
+    logger.info("Test email sent to %s", to)
+    return True

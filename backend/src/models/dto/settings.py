@@ -1,8 +1,12 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class AppSettingUpdate(BaseModel):
     value: str
+
+
+class TestEmailRequest(BaseModel):
+    to: str = Field(max_length=320)
 
 
 class AppSettingResponse(BaseModel):

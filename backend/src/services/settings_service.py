@@ -17,6 +17,13 @@ DEFAULT_SETTINGS = {
     "price_refresh_rate_limit_per_minute": "10",
     "company_name": "Home Office Shop",
     "cart_stale_days": "30",
+    "smtp_host": "",
+    "smtp_port": "587",
+    "smtp_username": "",
+    "smtp_password": "",
+    "smtp_use_tls": "true",
+    "smtp_from_address": "noreply@your-company.com",
+    "smtp_from_name": "Home Office Shop",
 }
 
 _cache: dict[str, str] = {}

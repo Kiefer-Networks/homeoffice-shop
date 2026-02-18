@@ -34,15 +34,6 @@ class Settings(BaseSettings):
     amazon_tld: str = "de"
     amazon_country_code: str = "de"
 
-    # SMTP
-    smtp_host: str = ""
-    smtp_port: int = 587
-    smtp_username: str = ""
-    smtp_password: str = ""
-    smtp_use_tls: bool = True
-    smtp_from_address: str = "noreply@your-company.com"
-    smtp_from_name: str = "Home Office Shop"
-
     # Slack
     slack_webhook_url: str = ""
 

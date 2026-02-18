@@ -67,7 +67,8 @@ async def _check_amazon() -> dict:
 
 
 async def _check_smtp() -> dict:
-    if not settings.smtp_host:
+    from src.services.settings_service import get_setting
+    if not get_setting("smtp_host"):
         return {"status": "not_configured"}
     return {"status": "configured"}
 
