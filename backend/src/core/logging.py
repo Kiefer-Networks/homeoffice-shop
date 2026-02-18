@@ -12,7 +12,9 @@ class JSONFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage(),
         }
-        request_id = getattr(record, "request_id", None)
+        # Read request_id from contextvars (async-safe)
+        from src.api.middleware.request_id import request_id_var
+        request_id = request_id_var.get("")
         if request_id:
             log_entry["request_id"] = request_id
         if record.exc_info and record.exc_info[1]:

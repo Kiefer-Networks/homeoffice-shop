@@ -1,12 +1,14 @@
-import logging
 import re
 import uuid
+from contextvars import ContextVar
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
 
 _REQUEST_ID_RE = re.compile(r"^[a-zA-Z0-9\-_.]{1,128}$")
+
+request_id_var: ContextVar[str] = ContextVar("request_id", default="")
 
 
 class RequestIdMiddleware(BaseHTTPMiddleware):
@@ -20,24 +22,11 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
             request_id = str(uuid.uuid4())
         request.state.request_id = request_id
 
-        # Propagate request_id to logging context via a filter
-        log_filter = _RequestIdFilter(request_id)
-        root_logger = logging.getLogger()
-        root_logger.addFilter(log_filter)
+        token = request_id_var.set(request_id)
         try:
             response = await call_next(request)
         finally:
-            root_logger.removeFilter(log_filter)
+            request_id_var.reset(token)
 
         response.headers["X-Request-ID"] = request_id
         return response
-
-
-class _RequestIdFilter(logging.Filter):
-    def __init__(self, request_id: str):
-        super().__init__()
-        self.request_id = request_id
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        record.request_id = self.request_id
-        return True
