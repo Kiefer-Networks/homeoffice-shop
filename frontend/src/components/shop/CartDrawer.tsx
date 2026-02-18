@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef } from 'react'
 import { X, Trash2, Plus, Minus, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +16,47 @@ interface Props {
 export function CartDrawer({ onRefreshCart, onCheckout }: Props) {
   const { cart, isOpen, setOpen } = useCartStore()
   const { addToast } = useUiStore()
+  const drawerRef = useRef<HTMLDivElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    if (isOpen) {
+      previousFocusRef.current = document.activeElement as HTMLElement
+      requestAnimationFrame(() => {
+        drawerRef.current?.focus()
+      })
+    } else if (previousFocusRef.current) {
+      previousFocusRef.current.focus()
+      previousFocusRef.current = null
+    }
+  }, [isOpen])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setOpen(false)
+      return
+    }
+    if (e.key !== 'Tab') return
+
+    const container = drawerRef.current
+    if (!container) return
+
+    const focusable = container.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    if (!focusable.length) return
+
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault()
+      last.focus()
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault()
+      first.focus()
+    }
+  }, [setOpen])
 
   if (!isOpen) return null
 
@@ -42,8 +84,8 @@ export function CartDrawer({ onRefreshCart, onCheckout }: Props) {
 
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Shopping cart"
-      onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}>
-      <div className="fixed inset-0 bg-black/50" onClick={() => setOpen(false)} />
+      ref={drawerRef} tabIndex={-1} onKeyDown={handleKeyDown}>
+      <div className="fixed inset-0 bg-black/50" onClick={() => setOpen(false)} aria-hidden="true" />
       <div className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-xl flex flex-col">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold">Shopping Cart</h2>
