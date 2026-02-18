@@ -9,6 +9,7 @@ import { formatCents, formatDate, parseEuroToCents, centsToEuroInput } from '@/l
 import { Plus, X, Pencil, Trash2, ArrowUpDown, Search } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { useAuthStore } from '@/stores/authStore'
+import { EmployeeDetailModal } from './EmployeeDetailModal'
 import type { BudgetAdjustment, UserSearchResult } from '@/types'
 
 type SortKey = 'newest' | 'oldest' | 'amount_asc' | 'amount_desc'
@@ -37,6 +38,9 @@ export function AdminBudgetAdjustmentsPage() {
 
   // Delete dialog
   const [deleteTarget, setDeleteTarget] = useState<BudgetAdjustment | null>(null)
+
+  // Employee detail modal
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
 
   const { addToast } = useUiStore()
   const perPage = 20
@@ -237,7 +241,14 @@ export function AdminBudgetAdjustmentsPage() {
                 ) : (
                   adjustments.map((a) => (
                     <tr key={a.id} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.5)]">
-                      <td className="px-4 py-3 font-medium">{a.user_display_name || '—'}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          className="font-medium text-left hover:underline hover:text-[hsl(var(--primary))] transition-colors"
+                          onClick={() => setSelectedUserId(a.user_id)}
+                        >
+                          {a.user_display_name || '—'}
+                        </button>
+                      </td>
                       <td className={`px-4 py-3 text-right font-medium ${a.amount_cents < 0 ? 'text-red-600' : 'text-green-600'}`}>
                         {formatCents(a.amount_cents)}
                       </td>
@@ -396,6 +407,13 @@ export function AdminBudgetAdjustmentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {selectedUserId && (
+        <EmployeeDetailModal
+          userId={selectedUserId}
+          onClose={() => setSelectedUserId(null)}
+        />
+      )}
     </div>
   )
 }

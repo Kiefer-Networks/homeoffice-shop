@@ -11,7 +11,7 @@ _scheduler_task: asyncio.Task | None = None
 
 async def _scheduler_loop() -> None:
     """Check once per minute whether a scheduled backup should run."""
-    last_run_date: str | None = None
+    last_run_key: str | None = None
 
     while True:
         await asyncio.sleep(60)
@@ -20,18 +20,34 @@ async def _scheduler_loop() -> None:
             if not enabled:
                 continue
 
+            frequency = get_setting("backup_schedule_frequency") or "daily"
             hour = int(get_setting("backup_schedule_hour") or "2")
             minute = int(get_setting("backup_schedule_minute") or "0")
+            weekday = int(get_setting("backup_schedule_weekday") or "0")
 
             now = datetime.now(timezone.utc)
-            today = now.strftime("%Y-%m-%d")
 
-            if now.hour == hour and now.minute == minute and last_run_date != today:
-                last_run_date = today
-                logger.info("Scheduled backup triggered at %s", now.isoformat())
-                from src.api.routes.admin.backup import run_backup
-                await run_backup(triggered_by="scheduler")
-                logger.info("Scheduled backup completed")
+            if frequency == "hourly":
+                if now.minute != minute:
+                    continue
+                run_key = now.strftime("%Y-%m-%d-%H")
+            elif frequency == "weekly":
+                if now.weekday() != weekday or now.hour != hour or now.minute != minute:
+                    continue
+                run_key = f"{now.strftime('%Y-W%W')}"
+            else:  # daily
+                if now.hour != hour or now.minute != minute:
+                    continue
+                run_key = now.strftime("%Y-%m-%d")
+
+            if last_run_key == run_key:
+                continue
+
+            last_run_key = run_key
+            logger.info("Scheduled %s backup triggered at %s", frequency, now.isoformat())
+            from src.api.routes.admin.backup import run_backup
+            await run_backup(triggered_by="scheduler")
+            logger.info("Scheduled backup completed")
         except Exception:
             logger.exception("Scheduled backup failed")
 

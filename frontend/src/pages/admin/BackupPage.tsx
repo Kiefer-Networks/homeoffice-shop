@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
-import { Download, Trash2, Plus, Clock, Save, Database, HardDrive, Calendar, Shield } from 'lucide-react'
+import { Download, Trash2, Plus, Clock, Save, Database, HardDrive, Calendar, Shield, ChevronLeft, ChevronRight, Repeat } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import type { BackupFile, BackupSchedule } from '@/types'
 
@@ -25,7 +26,11 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`
 }
 
-const defaultSchedule: BackupSchedule = { enabled: false, hour: 2, minute: 0, max_backups: 10 }
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+const FREQUENCY_LABELS: Record<string, string> = { hourly: 'Hourly', daily: 'Daily', weekly: 'Weekly' }
+
+const defaultSchedule: BackupSchedule = { enabled: false, frequency: 'daily', hour: 2, minute: 0, weekday: 0, max_backups: 10 }
+const PER_PAGE = 10
 
 export function AdminBackupPage() {
   const [backups, setBackups] = useState<BackupFile[]>([])
@@ -35,6 +40,7 @@ export function AdminBackupPage() {
   const [scheduleForm, setScheduleForm] = useState<BackupSchedule>(defaultSchedule)
   const [scheduleDirty, setScheduleDirty] = useState(false)
   const [savingSchedule, setSavingSchedule] = useState(false)
+  const [page, setPage] = useState(1)
   const { addToast } = useUiStore()
 
   const loadBackups = () => {
@@ -123,6 +129,16 @@ export function AdminBackupPage() {
   }
 
   const totalSize = backups.reduce((sum, b) => sum + b.size_bytes, 0)
+  const totalPages = Math.ceil(backups.length / PER_PAGE)
+  const pagedBackups = backups.slice((page - 1) * PER_PAGE, page * PER_PAGE)
+
+  const scheduleDescription = () => {
+    if (!schedule.enabled) return 'Automatic backups are disabled.'
+    const time = `${String(schedule.hour).padStart(2, '0')}:${String(schedule.minute).padStart(2, '0')} UTC`
+    if (schedule.frequency === 'hourly') return `Every hour at :${String(schedule.minute).padStart(2, '0')} \u00b7 keeping max. ${schedule.max_backups} backups`
+    if (schedule.frequency === 'weekly') return `${WEEKDAYS[schedule.weekday]} at ${time} \u00b7 keeping max. ${schedule.max_backups} backups`
+    return `Daily at ${time} \u00b7 keeping max. ${schedule.max_backups} backups`
+  }
 
   return (
     <div>
@@ -202,7 +218,7 @@ export function AdminBackupPage() {
                 </div>
                 <div>
                   <CardTitle>Automatic Backup</CardTitle>
-                  <CardDescription>Configure daily backups and retention policy</CardDescription>
+                  <CardDescription>Configure schedule, frequency and retention policy</CardDescription>
                 </div>
               </div>
               <Badge variant={schedule.enabled ? 'success' : 'secondary'}>
@@ -216,8 +232,8 @@ export function AdminBackupPage() {
               <div className="flex items-center gap-3">
                 <Shield className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
                 <div>
-                  <p className="text-sm font-medium">Enable daily backup</p>
-                  <p className="text-xs text-[hsl(var(--muted-foreground))]">Automatically create a backup every day</p>
+                  <p className="text-sm font-medium">Enable automatic backup</p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))]">Automatically create backups on a schedule</p>
                 </div>
               </div>
               <div
@@ -233,24 +249,45 @@ export function AdminBackupPage() {
             </label>
 
             {/* Settings grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Frequency */}
+              <div className="p-4 rounded-lg border border-[hsl(var(--border))] space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <Repeat className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
+                  Frequency
+                </label>
+                <select
+                  value={scheduleForm.frequency}
+                  onChange={(e) => updateForm({ frequency: e.target.value as BackupSchedule['frequency'] })}
+                  className="w-full border border-[hsl(var(--border))] rounded-md px-3 py-2 text-sm bg-[hsl(var(--background))]"
+                >
+                  {Object.entries(FREQUENCY_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Time picker */}
               <div className="p-4 rounded-lg border border-[hsl(var(--border))] space-y-2">
                 <label className="text-sm font-medium flex items-center gap-2">
                   <Clock className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
-                  Backup Time (UTC)
+                  {scheduleForm.frequency === 'hourly' ? 'Minute' : 'Time (UTC)'}
                 </label>
                 <div className="flex items-center gap-2">
-                  <select
-                    value={scheduleForm.hour}
-                    onChange={(e) => updateForm({ hour: parseInt(e.target.value) })}
-                    className="flex-1 border border-[hsl(var(--border))] rounded-md px-3 py-2 text-sm bg-[hsl(var(--background))]"
-                  >
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
-                    ))}
-                  </select>
-                  <span className="text-lg font-medium text-[hsl(var(--muted-foreground))]">:</span>
+                  {scheduleForm.frequency !== 'hourly' && (
+                    <>
+                      <select
+                        value={scheduleForm.hour}
+                        onChange={(e) => updateForm({ hour: parseInt(e.target.value) })}
+                        className="flex-1 border border-[hsl(var(--border))] rounded-md px-3 py-2 text-sm bg-[hsl(var(--background))]"
+                      >
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
+                        ))}
+                      </select>
+                      <span className="text-lg font-medium text-[hsl(var(--muted-foreground))]">:</span>
+                    </>
+                  )}
                   <select
                     value={scheduleForm.minute}
                     onChange={(e) => updateForm({ minute: parseInt(e.target.value) })}
@@ -261,6 +298,17 @@ export function AdminBackupPage() {
                     ))}
                   </select>
                 </div>
+                {scheduleForm.frequency === 'weekly' && (
+                  <select
+                    value={scheduleForm.weekday}
+                    onChange={(e) => updateForm({ weekday: parseInt(e.target.value) })}
+                    className="w-full border border-[hsl(var(--border))] rounded-md px-3 py-2 text-sm bg-[hsl(var(--background))] mt-2"
+                  >
+                    {WEEKDAYS.map((day, i) => (
+                      <option key={i} value={i}>{day}</option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* Retention count */}
@@ -269,37 +317,26 @@ export function AdminBackupPage() {
                   <Database className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
                   Maximum Backups
                 </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={scheduleForm.max_backups}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value)
-                      if (!isNaN(v) && v >= 1 && v <= 100) updateForm({ max_backups: v })
-                    }}
-                    className="w-20 border border-[hsl(var(--border))] rounded-md px-3 py-2 text-sm bg-[hsl(var(--background))]"
-                  />
-                  <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                    Older backups are automatically deleted when this limit is exceeded.
-                  </p>
-                </div>
+                <Input
+                  value={scheduleForm.max_backups}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value)
+                    if (!isNaN(v) && v >= 1 && v <= 100) updateForm({ max_backups: v })
+                    else if (e.target.value === '') updateForm({ max_backups: 1 })
+                  }}
+                  className="w-full"
+                />
+                <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                  Older backups are deleted automatically.
+                </p>
               </div>
             </div>
 
             {/* Save button */}
             <div className="flex items-center justify-between pt-1">
-              {schedule.enabled ? (
-                <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                  Daily at {String(schedule.hour).padStart(2, '0')}:{String(schedule.minute).padStart(2, '0')} UTC
-                  {' '}&middot; keeping max. {schedule.max_backups} backups
-                </p>
-              ) : (
-                <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                  Automatic backups are disabled.
-                </p>
-              )}
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                {scheduleDescription()}
+              </p>
               <Button
                 onClick={handleSaveSchedule}
                 disabled={!scheduleDirty || savingSchedule}
@@ -314,11 +351,28 @@ export function AdminBackupPage() {
         {/* Backup List */}
         <Card>
           <CardHeader>
-            <CardTitle>Stored Backups</CardTitle>
-            <CardDescription>
-              {backups.length} backup{backups.length !== 1 ? 's' : ''} stored
-              {schedule.max_backups ? ` (limit: ${schedule.max_backups})` : ''}
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Stored Backups</CardTitle>
+                <CardDescription>
+                  {backups.length} backup{backups.length !== 1 ? 's' : ''} stored
+                  {schedule.max_backups ? ` (limit: ${schedule.max_backups})` : ''}
+                </CardDescription>
+              </div>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-xs text-[hsl(var(--muted-foreground))] px-2">
+                    {page} / {totalPages}
+                  </span>
+                  <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -332,33 +386,36 @@ export function AdminBackupPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {backups.map((backup, i) => (
-                  <div
-                    key={backup.filename}
-                    className="flex items-center justify-between p-3 rounded-lg border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.3)] transition-colors"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`p-1.5 rounded-md ${i === 0 ? 'bg-green-50' : 'bg-[hsl(var(--muted))]'}`}>
-                        <Database className={`h-4 w-4 ${i === 0 ? 'text-green-600' : 'text-[hsl(var(--muted-foreground))]'}`} />
+                {pagedBackups.map((backup) => {
+                  const isLatest = backup === backups[0]
+                  return (
+                    <div
+                      key={backup.filename}
+                      className="flex items-center justify-between p-3 rounded-lg border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.3)] transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`p-1.5 rounded-md ${isLatest ? 'bg-green-50' : 'bg-[hsl(var(--muted))]'}`}>
+                          <Database className={`h-4 w-4 ${isLatest ? 'text-green-600' : 'text-[hsl(var(--muted-foreground))]'}`} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium font-mono truncate">{backup.filename}</p>
+                          <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                            {new Date(backup.created_at).toLocaleString()} &middot; {formatBytes(backup.size_bytes)}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium font-mono truncate">{backup.filename}</p>
-                        <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                          {new Date(backup.created_at).toLocaleString()} &middot; {formatBytes(backup.size_bytes)}
-                        </p>
+                      <div className="flex items-center gap-1 ml-2">
+                        {isLatest && <Badge variant="success" className="mr-1">Latest</Badge>}
+                        <Button size="sm" variant="ghost" onClick={() => handleDownload(backup.filename)} title="Download">
+                          <Download className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleDelete(backup.filename)} title="Delete">
+                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 ml-2">
-                      {i === 0 && <Badge variant="success" className="mr-1">Latest</Badge>}
-                      <Button size="sm" variant="ghost" onClick={() => handleDownload(backup.filename)} title="Download">
-                        <Download className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleDelete(backup.filename)} title="Delete">
-                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </CardContent>

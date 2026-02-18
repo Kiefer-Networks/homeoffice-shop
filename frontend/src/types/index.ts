@@ -400,8 +400,10 @@ export interface BackupFile {
 
 export interface BackupSchedule {
   enabled: boolean
+  frequency: 'hourly' | 'daily' | 'weekly'
   hour: number
   minute: number
+  weekday: number
   max_backups: number
 }
 
