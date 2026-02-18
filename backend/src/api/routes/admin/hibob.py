@@ -27,6 +27,21 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/hibob", tags=["admin-hibob"])
 
+_employee_sync_lock = asyncio.Lock()
+_purchase_sync_lock = asyncio.Lock()
+
+
+async def _guarded_employee_sync(admin_id, ip: str | None) -> None:
+    """Acquire the lock, then delegate to the actual sync."""
+    async with _employee_sync_lock:
+        await _run_employee_sync(admin_id, ip)
+
+
+async def _guarded_purchase_sync(admin_id, ip: str | None) -> None:
+    """Acquire the lock, then delegate to the actual sync."""
+    async with _purchase_sync_lock:
+        await _run_purchase_sync(admin_id, ip)
+
 
 async def _run_employee_sync(admin_id, ip: str | None) -> None:
     """Run employee + purchase sync in the background with its own DB session."""
@@ -144,8 +159,10 @@ async def trigger_sync(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
+    if _employee_sync_lock.locked():
+        return {"detail": "Sync already in progress"}
     ip = request.client.host if request.client else None
-    asyncio.create_task(_run_employee_sync(admin.id, ip))
+    asyncio.create_task(_guarded_employee_sync(admin.id, ip))
     return {"detail": "Sync started in background"}
 
 
@@ -178,8 +195,10 @@ async def trigger_purchase_sync(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
+    if _purchase_sync_lock.locked():
+        return {"detail": "Purchase sync already in progress"}
     ip = request.client.host if request.client else None
-    asyncio.create_task(_run_purchase_sync(admin.id, ip))
+    asyncio.create_task(_guarded_purchase_sync(admin.id, ip))
     return {"detail": "Purchase sync started in background"}
 
 
