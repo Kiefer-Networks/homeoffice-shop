@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.orm.base import Base
 
-DEFAULT_SLACK_EVENTS = ["order.created", "order.cancelled", "hibob.sync"]
+DEFAULT_SLACK_EVENTS = ["order.created", "order.cancelled"]
 DEFAULT_EMAIL_EVENTS = ["order.created"]
 
 

@@ -10,7 +10,7 @@ from src.integrations.hibob.sync import sync_employees
 from src.models.dto.hibob import HiBobSyncLogListResponse, HiBobSyncLogResponse
 from src.models.orm.hibob_sync_log import HiBobSyncLog
 from src.models.orm.user import User
-from src.notifications.service import notify_admins_email, notify_admins_slack
+from src.notifications.service import notify_staff_email, notify_staff_slack
 
 router = APIRouter(prefix="/hibob", tags=["admin-hibob"])
 
@@ -37,7 +37,7 @@ async def trigger_sync(
         ip_address=ip,
     )
 
-    await notify_admins_email(
+    await notify_staff_email(
         db, event="hibob.sync",
         subject="HiBob Sync Complete",
         template_name="hibob_sync_complete.html",
@@ -49,7 +49,7 @@ async def trigger_sync(
             "error_message": log.error_message,
         },
     )
-    await notify_admins_slack(
+    await notify_staff_slack(
         db, event="hibob.sync",
         text=f"HiBob sync completed: {log.employees_synced} synced, "
              f"{log.employees_created} created, {log.employees_updated} updated",

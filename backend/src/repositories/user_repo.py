@@ -42,6 +42,13 @@ async def get_active_admins(db: AsyncSession) -> list[User]:
     return list(result.scalars().all())
 
 
+async def get_active_staff(db: AsyncSession) -> list[User]:
+    result = await db.execute(
+        select(User).where(User.is_active.is_(True), User.role.in_(("admin", "manager")))
+    )
+    return list(result.scalars().all())
+
+
 async def get_all(
     db: AsyncSession,
     *,

@@ -9,7 +9,7 @@ from src.audit.service import write_audit_log
 from src.core.exceptions import NotFoundError
 from src.models.dto.order import OrderCancelRequest, OrderCreate, OrderListResponse, OrderResponse
 from src.models.orm.user import User
-from src.notifications.service import notify_admins_email, notify_admins_slack
+from src.notifications.service import notify_staff_email, notify_staff_slack
 from src.services import order_service
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -72,7 +72,7 @@ async def create_order(
     order_data = await order_service.get_order_with_items(db, order.id)
 
     from src.core.config import settings
-    await notify_admins_email(
+    await notify_staff_email(
         db, event="order.created",
         subject=f"New Order from {user.display_name}",
         template_name="order_created.html",
@@ -85,7 +85,7 @@ async def create_order(
             "admin_url": f"{settings.frontend_url}/admin/orders/{order.id}",
         },
     )
-    await notify_admins_slack(
+    await notify_staff_slack(
         db, event="order.created",
         text=f"New order from {user.display_name} ({user.email}) - Total: EUR {order.total_cents / 100:.2f}",
     )
@@ -113,7 +113,7 @@ async def cancel_my_order(
         ip_address=ip,
     )
 
-    await notify_admins_email(
+    await notify_staff_email(
         db, event="order.cancelled",
         subject=f"Order Cancelled by {user.display_name}",
         template_name="order_cancelled.html",
@@ -125,7 +125,7 @@ async def cancel_my_order(
             "total_cents": order.total_cents,
         },
     )
-    await notify_admins_slack(
+    await notify_staff_slack(
         db, event="order.cancelled",
         text=f"Order #{str(order.id)[:8]} cancelled by {user.display_name}: {body.reason}",
     )

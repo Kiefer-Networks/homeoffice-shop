@@ -241,6 +241,8 @@ export interface NotificationPrefs {
   slack_events: string[]
   email_enabled: boolean
   email_events: string[]
+  available_slack_events?: string[]
+  available_email_events?: string[]
 }
 
 export interface AmazonSearchResult {

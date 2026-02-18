@@ -118,13 +118,15 @@ export function Header() {
           )}
 
           <div className="flex items-center gap-2.5 ml-1 pl-3 border-l border-[hsl(var(--border))]">
-            {user && (
-              <UserAvatar name={user.display_name} avatarUrl={user.avatar_url} size={34} />
-            )}
-            <div className="hidden md:block text-sm">
-              <div className="font-medium leading-tight">{user?.display_name}</div>
-              <div className="text-xs text-[hsl(var(--muted-foreground))] leading-tight">{user?.department}</div>
-            </div>
+            <Link to="/profile" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+              {user && (
+                <UserAvatar name={user.display_name} avatarUrl={user.avatar_url} size={34} />
+              )}
+              <div className="hidden md:block text-sm">
+                <div className="font-medium leading-tight">{user?.display_name}</div>
+                <div className="text-xs text-[hsl(var(--muted-foreground))] leading-tight">{user?.department}</div>
+              </div>
+            </Link>
             <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Log out">
               <LogOut className="h-4 w-4" />
             </Button>

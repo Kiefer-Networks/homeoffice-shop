@@ -8,8 +8,10 @@ from src.repositories import user_repo, notification_pref_repo
 
 logger = logging.getLogger(__name__)
 
+ADMIN_ONLY_EVENTS = {"hibob.sync", "price.refresh"}
 
-async def notify_admins_email(
+
+async def notify_staff_email(
     db: AsyncSession,
     *,
     event: str,
@@ -17,34 +19,39 @@ async def notify_admins_email(
     template_name: str,
     context: dict,
 ) -> None:
-    admins = await user_repo.get_active_admins(db)
+    staff = await user_repo.get_active_staff(db)
     prefs = await notification_pref_repo.get_all(db)
 
-    for admin in admins:
-        pref = prefs.get(admin.id)
+    for member in staff:
+        pref = prefs.get(member.id)
+
+        # Manager without prefs row: skip admin-only events
+        if not pref and member.role == "manager" and event in ADMIN_ONLY_EVENTS:
+            continue
+
         if pref and not pref.email_enabled:
             continue
         if pref and event not in (pref.email_events or []):
             continue
 
-        await send_email(admin.email, subject, template_name, context)
+        await send_email(member.email, subject, template_name, context)
 
 
-async def notify_admins_slack(
+async def notify_staff_slack(
     db: AsyncSession,
     *,
     event: str,
     text: str,
     blocks: list[dict] | None = None,
 ) -> None:
-    admins = await user_repo.get_active_admins(db)
+    staff = await user_repo.get_active_staff(db)
     prefs = await notification_pref_repo.get_all(db)
 
     should_send = any(
-        (pref := prefs.get(admin.id)) is not None
+        (pref := prefs.get(member.id)) is not None
         and pref.slack_enabled
         and event in (pref.slack_events or [])
-        for admin in admins
+        for member in staff
     )
 
     if not should_send:

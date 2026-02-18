@@ -83,11 +83,13 @@ export const adminApi = {
   getSettings: () => api.get<{ settings: Record<string, string> }>('/api/admin/settings'),
   updateSetting: (key: string, value: string) =>
     api.put(`/api/admin/settings/${key}`, { value }),
+  sendTestEmail: (to: string) =>
+    api.post('/api/admin/settings/test-email', { to }),
 
   // Notifications
   getNotificationPrefs: () => api.get<NotificationPrefs>('/api/admin/notifications/preferences'),
   updateNotificationPrefs: (data: Partial<NotificationPrefs>) =>
-    api.put('/api/admin/notifications/preferences', data),
+    api.put<NotificationPrefs>('/api/admin/notifications/preferences', data),
 
   // Audit
   listAuditLogs: (params?: Record<string, string | number>) =>

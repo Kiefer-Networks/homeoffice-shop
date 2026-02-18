@@ -17,5 +17,7 @@ class NotificationPrefResponse(BaseModel):
     slack_events: list[str]
     email_enabled: bool
     email_events: list[str]
+    available_slack_events: list[str] = []
+    available_email_events: list[str] = []
 
     model_config = {"from_attributes": True}

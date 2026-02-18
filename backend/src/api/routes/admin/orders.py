@@ -22,7 +22,7 @@ from src.models.dto.order import (
     OrderStatusUpdate,
 )
 from src.models.orm.user import User
-from src.notifications.service import notify_admins_slack, notify_user_email
+from src.notifications.service import notify_staff_slack, notify_user_email
 from src.services import order_service
 
 router = APIRouter(prefix="/orders", tags=["admin-orders"])
@@ -104,12 +104,12 @@ async def update_order_status(
         )
 
     if body.status == "cancelled":
-        await notify_admins_slack(
+        await notify_staff_slack(
             db, event="order.cancelled",
             text=f"Order {str(order.id)[:8]} has been cancelled.",
         )
     else:
-        await notify_admins_slack(
+        await notify_staff_slack(
             db, event="order.status_changed",
             text=f"Order {str(order.id)[:8]} status changed to {body.status}.",
         )
