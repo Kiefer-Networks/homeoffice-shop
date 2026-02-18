@@ -18,8 +18,15 @@ export function ProductCard({ product, onRefreshCart, onShowDetail }: Props) {
   const { addToast } = useUiStore()
   const setCartOpen = useCartStore((s) => s.setOpen)
 
+  const hasVariants = product.variants && product.variants.length > 0
+
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation()
+    // Products with variants must be selected via detail modal
+    if (hasVariants) {
+      onShowDetail(product)
+      return
+    }
     try {
       await cartApi.addItem(product.id)
       onRefreshCart()
@@ -66,7 +73,7 @@ export function ProductCard({ product, onRefreshCart, onShowDetail }: Props) {
           </span>
           <Button size="sm" onClick={handleAddToCart} disabled={!product.is_active}>
             <ShoppingCart className="h-4 w-4 mr-1" />
-            Add
+            {hasVariants ? 'Select' : 'Add'}
           </Button>
         </div>
       </CardContent>

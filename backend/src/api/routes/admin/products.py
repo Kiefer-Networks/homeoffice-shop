@@ -110,8 +110,18 @@ async def create_product(
                 product.item_model_number = amazon_data.item_model_number
                 product.product_information = amazon_data.product_information
 
-                # Store variants
+                # Store variants — fetch missing prices concurrently
                 if amazon_data.variants:
+                    missing = [v.asin for v in amazon_data.variants if v.price_cents == 0]
+                    if missing:
+                        try:
+                            prices = await client.get_variant_prices(missing)
+                            for v in amazon_data.variants:
+                                if v.asin in prices:
+                                    v.price_cents = prices[v.asin]
+                        except Exception:
+                            logger.exception("Failed to fetch variant prices for product %s", product.id)
+
                     product.variants = [v.model_dump() for v in amazon_data.variants]
                     variant_prices = [v.price_cents for v in amazon_data.variants if v.price_cents > 0]
                     if variant_prices:

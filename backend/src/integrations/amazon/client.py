@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 import time
@@ -237,14 +238,27 @@ class AmazonClient:
             return product.price_cents
         return None
 
-    async def get_variant_prices(self, asins: list[str]) -> dict[str, int]:
-        """Fetch current price for multiple ASINs. Returns {asin: price_cents}."""
-        prices: dict[str, int] = {}
-        for asin in asins:
-            product = await self.get_product(asin)
-            if product and product.price_cents > 0:
-                prices[asin] = product.price_cents
-        return prices
+    async def get_variant_prices(self, asins: list[str], max_concurrent: int = 10) -> dict[str, int]:
+        """Fetch current price for multiple ASINs concurrently. Returns {asin: price_cents}."""
+        # Limit to avoid excessive API calls
+        asins_to_fetch = asins[:max_concurrent]
+        if len(asins) > max_concurrent:
+            logger.warning(
+                "Limiting variant price fetch from %d to %d ASINs",
+                len(asins), max_concurrent,
+            )
+
+        async def _fetch_one(asin: str) -> tuple[str, int]:
+            try:
+                product = await self.get_product(asin)
+                if product and product.price_cents > 0:
+                    return asin, product.price_cents
+            except Exception:
+                logger.warning("Failed to fetch price for variant ASIN %s", asin)
+            return asin, 0
+
+        results = await asyncio.gather(*[_fetch_one(a) for a in asins_to_fetch])
+        return {asin: price for asin, price in results if price > 0}
 
 
 class FakeAmazonClient:
