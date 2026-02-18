@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.exceptions import BadRequestError, NotFoundError
@@ -11,6 +11,16 @@ from src.models.orm.user_budget_override import UserBudgetOverride
 from src.repositories import user_repo
 from src.services import budget_service, order_service
 from src.services.auth_service import logout as revoke_user_sessions
+
+
+async def get_departments(db: AsyncSession) -> list[str]:
+    result = await db.execute(
+        select(User.department)
+        .where(User.department.isnot(None), User.is_active.is_(True))
+        .group_by(User.department)
+        .order_by(User.department)
+    )
+    return [row[0] for row in result.all()]
 
 
 async def get_user_detail(db: AsyncSession, user_id: UUID) -> dict:

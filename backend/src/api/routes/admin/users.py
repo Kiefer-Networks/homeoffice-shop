@@ -29,6 +29,14 @@ from src.services import user_service
 router = APIRouter(prefix="/users", tags=["admin-users"])
 
 
+@router.get("/departments", response_model=list[str])
+async def list_departments(
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_staff),
+):
+    return await user_service.get_departments(db)
+
+
 @router.get("", response_model=UserAdminListResponse)
 async def list_users(
     page: int = Query(1, ge=1),
