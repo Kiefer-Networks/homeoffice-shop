@@ -6,30 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from src.core.exceptions import BadRequestError, NotFoundError
+from src.mappers.purchase_review import review_to_dict as _review_to_dict
 from src.models.orm.budget_adjustment import BudgetAdjustment
 from src.models.orm.hibob_purchase_review import HiBobPurchaseReview
 from src.models.orm.order import Order
 from src.models.orm.user import User
 from src.services.budget_service import refresh_budget_cache
-
-
-def _review_to_dict(review: HiBobPurchaseReview) -> dict:
-    return {
-        "id": review.id,
-        "user_id": review.user_id,
-        "hibob_employee_id": review.hibob_employee_id,
-        "hibob_entry_id": review.hibob_entry_id,
-        "entry_date": review.entry_date,
-        "description": review.description,
-        "amount_cents": review.amount_cents,
-        "currency": review.currency,
-        "status": review.status,
-        "matched_order_id": review.matched_order_id,
-        "adjustment_id": review.adjustment_id,
-        "resolved_by": review.resolved_by,
-        "resolved_at": review.resolved_at,
-        "created_at": review.created_at,
-    }
 
 
 async def list_reviews(
