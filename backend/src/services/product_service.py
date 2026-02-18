@@ -1,14 +1,85 @@
 import asyncio
 import logging
+import re
 from uuid import UUID
 
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_, or_, literal_column
+from sqlalchemy.exc import DataError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.orm.product import Product
 from src.models.orm.category import Category
 
 logger = logging.getLogger(__name__)
+
+# Bidirectional synonym map for search expansion
+SEARCH_SYNONYMS: dict[str, list[str]] = {
+    "notebook": ["laptop"],
+    "laptop": ["notebook"],
+    "headphones": ["earbuds", "earphones"],
+    "earbuds": ["headphones", "earphones"],
+    "earphones": ["headphones", "earbuds"],
+    "monitor": ["display", "screen"],
+    "display": ["monitor", "screen"],
+    "screen": ["monitor", "display"],
+    "keyboard": ["keeb"],
+    "keeb": ["keyboard"],
+    "mouse": ["mice"],
+    "mice": ["mouse"],
+    "phone": ["smartphone", "mobile"],
+    "smartphone": ["phone", "mobile"],
+    "mobile": ["phone", "smartphone"],
+    "cable": ["cord", "wire"],
+    "cord": ["cable", "wire"],
+    "wire": ["cable", "cord"],
+    "charger": ["adapter", "power supply"],
+    "adapter": ["charger", "power supply"],
+    "speaker": ["speakers"],
+    "speakers": ["speaker"],
+    "mic": ["microphone"],
+    "microphone": ["mic"],
+    "webcam": ["camera"],
+    "camera": ["webcam"],
+    "hdd": ["hard drive"],
+    "hard drive": ["hdd"],
+    "ssd": ["solid state drive"],
+    "solid state drive": ["ssd"],
+}
+
+
+def _build_prefix_tsquery(q: str) -> str | None:
+    """Build a tsquery string with prefix matching on the last term.
+
+    E.g. "wire key" -> "wire & key:*"
+    """
+    words = q.strip().split()
+    if not words:
+        return None
+    # Sanitize: keep only alphanumeric chars per word
+    sanitized = [re.sub(r"[^\w]", "", w) for w in words]
+    sanitized = [w for w in sanitized if w]
+    if not sanitized:
+        return None
+    if len(sanitized) == 1:
+        return f"{sanitized[0]}:*"
+    return " & ".join(sanitized[:-1]) + f" & {sanitized[-1]}:*"
+
+
+def _expand_with_synonyms(q: str) -> str:
+    """Expand query terms with known synonyms using OR.
+
+    E.g. "notebook case" -> "notebook | laptop case"
+    """
+    words = q.lower().strip().split()
+    expanded_parts: list[str] = []
+    for word in words:
+        clean = re.sub(r"[^\w]", "", word)
+        if clean in SEARCH_SYNONYMS:
+            group = [clean] + SEARCH_SYNONYMS[clean]
+            expanded_parts.append("(" + " | ".join(group) + ")")
+        else:
+            expanded_parts.append(clean)
+    return " ".join(expanded_parts)
 
 
 async def search_products(
@@ -55,13 +126,52 @@ async def search_products(
         conditions.append(Product.price_cents <= price_max * 100)
 
     if q:
-        ts_query = func.plainto_tsquery("english", q)
-        search_condition = or_(
-            Product.search_vector.op("@@")(ts_query),
-            func.similarity(Product.name, q) > 0.1,
-            func.similarity(Product.brand, q) > 0.1,
-        )
-        conditions.append(search_condition)
+        try:
+            search_conditions: list = []
+
+            # Strategy 1: websearch_to_tsquery — supports AND, OR, -exclude, "phrases"
+            ws_query = func.websearch_to_tsquery("english", q)
+            search_conditions.append(Product.search_vector.op("@@")(ws_query))
+
+            # Strategy 2: Prefix query for partial typing / autocomplete
+            prefix_expr = _build_prefix_tsquery(q)
+            if prefix_expr:
+                prefix_query = func.to_tsquery("english", prefix_expr)
+                search_conditions.append(
+                    Product.search_vector.op("@@")(prefix_query)
+                )
+
+            # Strategy 3: Synonym expansion
+            expanded = _expand_with_synonyms(q)
+            if expanded.lower() != q.lower().strip():
+                syn_query = func.plainto_tsquery("english", expanded)
+                search_conditions.append(
+                    Product.search_vector.op("@@")(syn_query)
+                )
+
+            # Strategy 4: Category name subquery (ILIKE + similarity)
+            search_conditions.append(Product.category_id.in_(
+                select(Category.id).where(
+                    or_(
+                        Category.name.ilike(f"%{q}%"),
+                        func.similarity(Category.name, q) > 0.3,
+                    )
+                )
+            ))
+
+            # Strategy 5: Trigram similarity (threshold 0.3)
+            search_conditions.append(func.similarity(Product.name, q) > 0.3)
+            search_conditions.append(func.similarity(Product.brand, q) > 0.3)
+
+            conditions.append(or_(*search_conditions))
+        except DataError:
+            logger.warning("Malformed search query %r, falling back to similarity", q)
+            conditions.append(
+                or_(
+                    func.similarity(Product.name, q) > 0.3,
+                    func.similarity(Product.brand, q) > 0.3,
+                )
+            )
 
     where = and_(*conditions) if conditions else True
 
@@ -81,10 +191,21 @@ async def search_products(
     elif sort == "newest":
         query = query.order_by(Product.created_at.desc())
     elif q and sort == "relevance":
-        ts_query = func.plainto_tsquery("english", q)
-        query = query.order_by(
-            func.ts_rank(Product.search_vector, ts_query).desc()
-        )
+        # Blended score: ts_rank * 2 + max(name_sim, brand_sim) + prefix_rank
+        ws_query = func.websearch_to_tsquery("english", q)
+        ts_rank = func.ts_rank(Product.search_vector, ws_query)
+        name_sim = func.coalesce(func.similarity(Product.name, q), 0)
+        brand_sim = func.coalesce(func.similarity(Product.brand, q), 0)
+        best_sim = func.greatest(name_sim, brand_sim)
+
+        prefix_rank = literal_column("0")
+        prefix_expr = _build_prefix_tsquery(q)
+        if prefix_expr:
+            prefix_tsq = func.to_tsquery("english", prefix_expr)
+            prefix_rank = func.ts_rank(Product.search_vector, prefix_tsq)
+
+        blended = ts_rank * 2 + best_sim + prefix_rank
+        query = query.order_by(blended.desc())
     else:
         query = query.order_by(Product.created_at.desc())
 
