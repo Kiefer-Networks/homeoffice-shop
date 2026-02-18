@@ -15,8 +15,14 @@ from src.api.dependencies.rate_limit import rate_limit
 from src.audit.service import write_audit_log
 from src.core.config import settings
 from src.core.exceptions import BadRequestError, NotFoundError
+from src.models.dto.backup import (
+    BackupFileResponse,
+    BackupListResponse,
+    BackupScheduleResponse,
+    BackupScheduleUpdate,
+)
 from src.models.orm.user import User
-from src.services.settings_service import get_setting
+from src.services.settings_service import get_setting, update_setting
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +118,7 @@ async def export_backup(
         )
 
 
-@router.get("/list")
+@router.get("/list", response_model=BackupListResponse)
 async def list_backups(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
@@ -122,12 +128,12 @@ async def list_backups(
     items = []
     for f in files:
         stat = f.stat()
-        items.append({
-            "filename": f.name,
-            "size_bytes": stat.st_size,
-            "created_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
-        })
-    return {"items": items}
+        items.append(BackupFileResponse(
+            filename=f.name,
+            size_bytes=stat.st_size,
+            created_at=datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+        ))
+    return BackupListResponse(items=items)
 
 
 @router.get("/download/{filename}")
@@ -150,7 +156,7 @@ async def download_backup(
     )
 
 
-@router.delete("/{filename}")
+@router.delete("/{filename}", status_code=204)
 async def delete_backup(
     filename: str,
     request: Request,
@@ -174,59 +180,41 @@ async def delete_backup(
         ip_address=ip,
     )
 
-    return {"detail": "Backup deleted"}
+    return Response(status_code=204)
 
 
-@router.get("/schedule")
+@router.get("/schedule", response_model=BackupScheduleResponse)
 async def get_schedule(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    return {
-        "enabled": get_setting("backup_schedule_enabled") == "true",
-        "hour": int(get_setting("backup_schedule_hour") or "2"),
-        "minute": int(get_setting("backup_schedule_minute") or "0"),
-    }
+    return BackupScheduleResponse(
+        enabled=get_setting("backup_schedule_enabled") == "true",
+        hour=int(get_setting("backup_schedule_hour") or "2"),
+        minute=int(get_setting("backup_schedule_minute") or "0"),
+    )
 
 
-@router.put("/schedule")
+@router.put("/schedule", response_model=BackupScheduleResponse)
 async def update_schedule(
+    body: BackupScheduleUpdate,
     request: Request,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    body = await request.json()
-    enabled = body.get("enabled")
-    hour = body.get("hour")
-    minute = body.get("minute")
-
-    if enabled is not None:
-        if not isinstance(enabled, bool):
-            raise BadRequestError("enabled must be a boolean")
-
-    if hour is not None:
-        if not isinstance(hour, int) or not (0 <= hour <= 23):
-            raise BadRequestError("hour must be 0-23")
-
-    if minute is not None:
-        if not isinstance(minute, int) or not (0 <= minute <= 59):
-            raise BadRequestError("minute must be 0-59")
-
-    from src.services.settings_service import update_setting
-
-    if enabled is not None:
-        await update_setting(db, "backup_schedule_enabled", str(enabled).lower(), updated_by=admin.id)
-    if hour is not None:
-        await update_setting(db, "backup_schedule_hour", str(hour), updated_by=admin.id)
-    if minute is not None:
-        await update_setting(db, "backup_schedule_minute", str(minute), updated_by=admin.id)
+    if body.enabled is not None:
+        await update_setting(db, "backup_schedule_enabled", str(body.enabled).lower(), updated_by=admin.id)
+    if body.hour is not None:
+        await update_setting(db, "backup_schedule_hour", str(body.hour), updated_by=admin.id)
+    if body.minute is not None:
+        await update_setting(db, "backup_schedule_minute", str(body.minute), updated_by=admin.id)
     await db.commit()
 
     ip = request.client.host if request.client else None
     await write_audit_log(
         db, user_id=admin.id, action="admin.backup.schedule_updated",
         resource_type="database",
-        details={"enabled": enabled, "hour": hour, "minute": minute},
+        details={"enabled": body.enabled, "hour": body.hour, "minute": body.minute},
         ip_address=ip,
     )
 
