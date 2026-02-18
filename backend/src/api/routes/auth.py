@@ -112,7 +112,10 @@ async def _handle_oauth_callback(
         path="/api/auth",
     )
 
-    return TokenResponse(access_token=tokens.access_token)
+    return TokenResponse(
+        access_token=tokens.access_token,
+        expires_in=settings.jwt_access_token_expire_minutes * 60,
+    )
 
 
 @router.get("/google/login")
@@ -177,7 +180,10 @@ async def refresh_token(
         path="/api/auth",
     )
 
-    return TokenResponse(access_token=tokens.access_token)
+    return TokenResponse(
+        access_token=tokens.access_token,
+        expires_in=settings.jwt_access_token_expire_minutes * 60,
+    )
 
 
 @router.post("/logout", status_code=204)
@@ -195,5 +201,11 @@ async def logout_user(
     )
 
     response = Response(status_code=204)
-    response.delete_cookie(key="refresh_token", path="/api/auth")
+    response.delete_cookie(
+        key="refresh_token",
+        path="/api/auth",
+        httponly=True,
+        secure=True,
+        samesite="strict",
+    )
     return response

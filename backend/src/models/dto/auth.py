@@ -3,7 +3,8 @@ from pydantic import BaseModel
 
 class TokenResponse(BaseModel):
     access_token: str
-    token_type: str = "bearer"
+    token_type: str = "Bearer"
+    expires_in: int = 900  # 15 minutes in seconds
 
 
 class RefreshRequest(BaseModel):
