@@ -10,7 +10,7 @@ import { productApi } from '@/services/productApi'
 import { formatCents, parseEuroToCents, centsToEuroInput } from '@/lib/utils'
 import {
   Plus, Search, RefreshCcw, Loader2, ChevronDown, ChevronUp, Link,
-  Trash2, Pencil, Eye, EyeOff,
+  Archive, ArchiveRestore, Pencil, Eye, EyeOff,
 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import type { Product, Category, AmazonSearchResult } from '@/types'
@@ -59,7 +59,7 @@ export function AdminProductsPage() {
   const [activeFilter, setActiveFilter] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [editProduct, setEditProduct] = useState<Product | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<Product | null>(null)
+  const [archiveFilter, setArchiveFilter] = useState<'live' | 'archived'>('live')
 
   // Create form
   const [form, setForm] = useState({ name: '', category_id: '', price_euro: '', external_url: '', amazon_asin: '', brand: '', description: '' })
@@ -94,15 +94,20 @@ export function AdminProductsPage() {
     params.set('sort', sort)
     if (debouncedSearch) params.set('q', debouncedSearch)
     if (categoryFilter) params.set('category', categoryFilter)
+    if (archiveFilter === 'archived') {
+      params.set('archived_only', 'true')
+    } else {
+      params.set('include_archived', 'false')
+    }
     // We need to fetch all (active+inactive) for admin
     productApi.search(params).then(({ data }) => {
       setProducts(data.items)
       setTotal(data.total)
     })
-  }, [page, sort, debouncedSearch, categoryFilter, activeFilter])
+  }, [page, sort, debouncedSearch, categoryFilter, activeFilter, archiveFilter])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => { setPage(1) }, [debouncedSearch, categoryFilter, activeFilter, sort])
+  useEffect(() => { setPage(1) }, [debouncedSearch, categoryFilter, activeFilter, sort, archiveFilter])
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -257,13 +262,21 @@ export function AdminProductsPage() {
     }
   }
 
-  const handleDelete = async () => {
-    if (!deleteConfirm) return
+  const handleArchive = async (product: Product) => {
     try {
-      await adminApi.deleteProduct(deleteConfirm.id)
-      setDeleteConfirm(null)
+      await adminApi.archiveProduct(product.id)
       load()
-      addToast({ title: 'Product deleted' })
+      addToast({ title: 'Product archived' })
+    } catch (err: unknown) {
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+    }
+  }
+
+  const handleRestore = async (product: Product) => {
+    try {
+      await adminApi.restoreProduct(product.id)
+      load()
+      addToast({ title: 'Product restored' })
     } catch (err: unknown) {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     }
@@ -309,18 +322,26 @@ export function AdminProductsPage() {
           {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
 
-        {/* Active filter */}
+        {/* Archive filter */}
         <div className="flex gap-1">
-          {[
-            { label: 'All', value: '' },
-            { label: 'Active', value: 'active' },
-            { label: 'Inactive', value: 'inactive' },
-          ].map((a) => (
-            <Button key={a.value} size="sm" variant={activeFilter === a.value ? 'default' : 'outline'} onClick={() => setActiveFilter(a.value)}>
-              {a.label}
-            </Button>
-          ))}
+          <Button size="sm" variant={archiveFilter === 'live' ? 'default' : 'outline'} onClick={() => setArchiveFilter('live')}>Live</Button>
+          <Button size="sm" variant={archiveFilter === 'archived' ? 'default' : 'outline'} onClick={() => setArchiveFilter('archived')}>Archived</Button>
         </div>
+
+        {/* Active filter */}
+        {archiveFilter === 'live' && (
+          <div className="flex gap-1">
+            {[
+              { label: 'All', value: '' },
+              { label: 'Active', value: 'active' },
+              { label: 'Inactive', value: 'inactive' },
+            ].map((a) => (
+              <Button key={a.value} size="sm" variant={activeFilter === a.value ? 'default' : 'outline'} onClick={() => setActiveFilter(a.value)}>
+                {a.label}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -372,20 +393,28 @@ export function AdminProductsPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="outline" onClick={() => openEdit(p)}>
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => toggleActive(p)}>
-                            {p.is_active ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                          </Button>
-                          {p.amazon_asin && (
-                            <Button size="sm" variant="ghost" onClick={(e) => redownloadImages(p.id, e)}>
-                              <RefreshCcw className="h-3 w-3" />
+                          {archiveFilter === 'archived' ? (
+                            <Button size="sm" variant="outline" onClick={() => handleRestore(p)}>
+                              <ArchiveRestore className="h-3 w-3 mr-1" /> Restore
                             </Button>
+                          ) : (
+                            <>
+                              <Button size="sm" variant="outline" onClick={() => openEdit(p)}>
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => toggleActive(p)}>
+                                {p.is_active ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                              </Button>
+                              {p.amazon_asin && (
+                                <Button size="sm" variant="ghost" onClick={(e) => redownloadImages(p.id, e)}>
+                                  <RefreshCcw className="h-3 w-3" />
+                                </Button>
+                              )}
+                              <Button size="sm" variant="outline" className="text-orange-600 hover:text-orange-700" onClick={() => handleArchive(p)}>
+                                <Archive className="h-3 w-3" />
+                              </Button>
+                            </>
                           )}
-                          <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700" onClick={() => setDeleteConfirm(p)}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -517,19 +546,6 @@ export function AdminProductsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
-      <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Delete product?</DialogTitle></DialogHeader>
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">
-            Are you sure you want to delete <strong>{deleteConfirm?.name}</strong>? This action cannot be undone.
-          </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

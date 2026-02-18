@@ -41,6 +41,30 @@ class UserAdminListResponse(BaseModel):
     per_page: int
 
 
+class UserSearchResult(BaseModel):
+    id: UUID
+    email: str
+    display_name: str
+    department: str | None = None
+    avatar_url: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class BudgetSummary(BaseModel):
+    total_budget_cents: int
+    spent_cents: int
+    adjustment_cents: int
+    available_cents: int
+
+
+class UserDetailResponse(BaseModel):
+    user: UserAdminResponse
+    orders: list = []
+    adjustments: list = []
+    budget_summary: BudgetSummary
+
+
 class UserRoleUpdate(BaseModel):
     role: Literal["employee", "admin"]
 

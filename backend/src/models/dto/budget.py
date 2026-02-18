@@ -17,5 +17,7 @@ class BudgetAdjustmentResponse(BaseModel):
     reason: str
     created_by: UUID
     created_at: datetime
+    user_display_name: str | None = None
+    creator_display_name: str | None = None
 
     model_config = {"from_attributes": True}

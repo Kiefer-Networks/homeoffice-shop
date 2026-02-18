@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -8,21 +8,22 @@ import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate, parseEuroToCents } from '@/lib/utils'
 import { Plus, X } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
-import type { BudgetAdjustment, UserAdmin } from '@/types'
+import type { BudgetAdjustment, UserSearchResult } from '@/types'
 
 export function AdminBudgetAdjustmentsPage() {
   const [adjustments, setAdjustments] = useState<BudgetAdjustment[]>([])
-  const [users, setUsers] = useState<UserAdmin[]>([])
   const [showDialog, setShowDialog] = useState(false)
   const [form, setForm] = useState({ user_id: '', amount_euro: '', reason: '' })
   const [employeeSearch, setEmployeeSearch] = useState('')
+  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([])
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false)
   const [selectedEmployeeName, setSelectedEmployeeName] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const { addToast } = useUiStore()
 
   const load = () => adminApi.listAdjustments({ per_page: 100 }).then(({ data }) => setAdjustments(data.items))
-  useEffect(() => { load(); adminApi.listUsers({ per_page: 200 }).then(({ data }) => setUsers(data.items)) }, [])
+  useEffect(() => { load() }, [])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -35,19 +36,33 @@ export function AdminBudgetAdjustmentsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const filteredUsers = useMemo(() => {
-    if (!employeeSearch.trim()) return users
-    const search = employeeSearch.toLowerCase()
-    return users.filter(u =>
-      u.display_name.toLowerCase().includes(search) ||
-      u.email.toLowerCase().includes(search)
-    )
-  }, [users, employeeSearch])
+  // Server-side search with debounce
+  const handleEmployeeSearch = (value: string) => {
+    setEmployeeSearch(value)
+    setShowEmployeeDropdown(true)
 
-  const selectEmployee = (user: UserAdmin) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    if (!value.trim()) {
+      setSearchResults([])
+      return
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const { data } = await adminApi.searchUsers(value)
+        setSearchResults(data)
+      } catch {
+        setSearchResults([])
+      }
+    }, 300)
+  }
+
+  const selectEmployee = (user: UserSearchResult) => {
     setForm(f => ({ ...f, user_id: user.id }))
     setSelectedEmployeeName(`${user.display_name} (${user.email})`)
     setEmployeeSearch('')
+    setSearchResults([])
     setShowEmployeeDropdown(false)
   }
 
@@ -55,6 +70,7 @@ export function AdminBudgetAdjustmentsPage() {
     setForm(f => ({ ...f, user_id: '' }))
     setSelectedEmployeeName('')
     setEmployeeSearch('')
+    setSearchResults([])
   }
 
   const handleCreate = async () => {
@@ -87,29 +103,27 @@ export function AdminBudgetAdjustmentsPage() {
         <Button onClick={() => setShowDialog(true)}><Plus className="h-4 w-4 mr-1" /> Add Adjustment</Button>
       </div>
       <div className="space-y-2">
-        {adjustments.map((a) => {
-          const userName = users.find(u => u.id === a.user_id)?.display_name
-          return (
-            <Card key={a.id}>
-              <CardContent className="flex items-center justify-between p-4">
-                <div>
-                  <div className="font-medium">{formatCents(a.amount_cents)}</div>
-                  <div className="text-sm text-[hsl(var(--muted-foreground))]">{a.reason}</div>
-                  <div className="text-xs text-[hsl(var(--muted-foreground))]">
-                    {userName && <span>{userName} — </span>}{formatDate(a.created_at)}
-                  </div>
+        {adjustments.map((a) => (
+          <Card key={a.id}>
+            <CardContent className="flex items-center justify-between p-4">
+              <div>
+                <div className="font-medium">{formatCents(a.amount_cents)}</div>
+                <div className="text-sm text-[hsl(var(--muted-foreground))]">{a.reason}</div>
+                <div className="text-xs text-[hsl(var(--muted-foreground))]">
+                  {a.user_display_name && <span>{a.user_display_name} — </span>}{formatDate(a.created_at)}
+                  {a.creator_display_name && <span className="ml-1">(by {a.creator_display_name})</span>}
                 </div>
-              </CardContent>
-            </Card>
-          )
-        })}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
         {adjustments.length === 0 && <p className="text-[hsl(var(--muted-foreground))]">No adjustments yet.</p>}
       </div>
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Budget Adjustment</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            {/* Employee autocomplete */}
+            {/* Employee autocomplete - server-side search */}
             <div ref={dropdownRef} className="relative">
               {selectedEmployeeName ? (
                 <div className="flex items-center gap-2 w-full rounded-md border px-3 py-2 text-sm">
@@ -122,26 +136,25 @@ export function AdminBudgetAdjustmentsPage() {
                 <Input
                   placeholder="Search employee by name or email *"
                   value={employeeSearch}
-                  onChange={(e) => {
-                    setEmployeeSearch(e.target.value)
-                    setShowEmployeeDropdown(true)
-                  }}
-                  onFocus={() => setShowEmployeeDropdown(true)}
+                  onChange={(e) => handleEmployeeSearch(e.target.value)}
+                  onFocus={() => { if (employeeSearch.trim()) setShowEmployeeDropdown(true) }}
                 />
               )}
-              {showEmployeeDropdown && !selectedEmployeeName && (
+              {showEmployeeDropdown && !selectedEmployeeName && employeeSearch.trim() && (
                 <div className="absolute z-10 w-full mt-1 bg-[hsl(var(--background))] border rounded-md shadow-lg max-h-48 overflow-y-auto">
-                  {filteredUsers.length === 0 ? (
-                    <div className="px-3 py-2 text-sm text-[hsl(var(--muted-foreground))]">No employees found</div>
+                  {searchResults.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-[hsl(var(--muted-foreground))]">
+                      {employeeSearch.length < 2 ? 'Type to search...' : 'No employees found'}
+                    </div>
                   ) : (
-                    filteredUsers.map(u => (
+                    searchResults.map(u => (
                       <button
                         key={u.id}
                         onClick={() => selectEmployee(u)}
                         className="w-full text-left px-3 py-2 text-sm hover:bg-[hsl(var(--muted))] border-b last:border-b-0"
                       >
                         <div className="font-medium">{u.display_name}</div>
-                        <div className="text-xs text-[hsl(var(--muted-foreground))]">{u.email}</div>
+                        <div className="text-xs text-[hsl(var(--muted-foreground))]">{u.email}{u.department && ` · ${u.department}`}</div>
                       </button>
                     ))
                   )}

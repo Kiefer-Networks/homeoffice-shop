@@ -25,12 +25,43 @@ export interface UserAdmin extends User {
   updated_at: string
 }
 
+export interface UserSearchResult {
+  id: string
+  email: string
+  display_name: string
+  department: string | null
+  avatar_url: string | null
+}
+
+export interface BudgetSummary {
+  total_budget_cents: number
+  spent_cents: number
+  adjustment_cents: number
+  available_cents: number
+}
+
+export interface UserDetailResponse {
+  user: UserAdmin
+  orders: Order[]
+  adjustments: BudgetAdjustment[]
+  budget_summary: BudgetSummary
+}
+
+export interface Brand {
+  id: string
+  name: string
+  slug: string
+  logo_url: string | null
+  created_at: string
+}
+
 export interface Product {
   id: string
   category_id: string
   name: string
   description: string | null
   brand: string | null
+  brand_id: string | null
   model: string | null
   image_url: string | null
   image_gallery: string[] | null
@@ -47,6 +78,7 @@ export interface Product {
   amazon_asin: string | null
   external_url: string
   is_active: boolean
+  archived_at: string | null
   max_quantity_per_user: number
   created_at: string
   updated_at: string
@@ -108,6 +140,9 @@ export interface Order {
   admin_note: string | null
   reviewed_by: string | null
   reviewed_at: string | null
+  cancellation_reason: string | null
+  cancelled_by: string | null
+  cancelled_at: string | null
   items: OrderItem[]
   created_at: string
   updated_at: string
@@ -120,6 +155,8 @@ export interface BudgetAdjustment {
   reason: string
   created_by: string
   created_at: string
+  user_display_name?: string | null
+  creator_display_name?: string | null
 }
 
 export interface AuditLogEntry {
@@ -192,6 +229,7 @@ export interface ProductCreateInput {
   name: string
   description?: string | null
   brand?: string | null
+  brand_id?: string | null
   model?: string | null
   price_cents: number
   amazon_asin?: string | null
@@ -205,6 +243,7 @@ export interface ProductUpdateInput {
   name?: string
   description?: string | null
   brand?: string | null
+  brand_id?: string | null
   model?: string | null
   price_cents?: number
   external_url?: string

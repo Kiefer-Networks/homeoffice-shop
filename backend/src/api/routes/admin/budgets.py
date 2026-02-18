@@ -25,6 +25,11 @@ async def list_adjustments(
     admin: User = Depends(require_admin),
 ):
     from sqlalchemy import func, and_
+    from sqlalchemy.orm import aliased
+
+    UserTarget = aliased(User, name="user_target")
+    UserCreator = aliased(User, name="user_creator")
+
     conditions = []
     if user_id:
         conditions.append(BudgetAdjustment.user_id == user_id)
@@ -36,13 +41,27 @@ async def list_adjustments(
     total = count_result.scalar() or 0
 
     result = await db.execute(
-        select(BudgetAdjustment)
+        select(BudgetAdjustment, UserTarget.display_name, UserCreator.display_name)
+        .join(UserTarget, BudgetAdjustment.user_id == UserTarget.id, isouter=True)
+        .join(UserCreator, BudgetAdjustment.created_by == UserCreator.id, isouter=True)
         .where(where)
         .order_by(BudgetAdjustment.created_at.desc())
         .offset((page - 1) * per_page)
         .limit(per_page)
     )
-    items = list(result.scalars().all())
+    rows = result.all()
+    items = []
+    for adj, user_name, creator_name in rows:
+        items.append({
+            "id": adj.id,
+            "user_id": adj.user_id,
+            "amount_cents": adj.amount_cents,
+            "reason": adj.reason,
+            "created_by": adj.created_by,
+            "created_at": adj.created_at,
+            "user_display_name": user_name,
+            "creator_display_name": creator_name,
+        })
     return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 

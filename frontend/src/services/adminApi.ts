@@ -1,8 +1,9 @@
 import api from './api'
 import type {
-  Product, Category, Order, UserAdmin, BudgetAdjustment,
+  Product, Category, Order, UserAdmin, BudgetAdjustment, Brand,
   AuditLogEntry, HiBobSyncLog, PaginatedResponse, NotificationPrefs,
   ProductCreateInput, ProductUpdateInput, CategoryCreateInput, CategoryUpdateInput,
+  UserSearchResult, UserDetailResponse,
 } from '@/types'
 
 export const adminApi = {
@@ -11,10 +12,18 @@ export const adminApi = {
   updateProduct: (id: string, data: ProductUpdateInput) => api.put<Product>(`/api/admin/products/${id}`, data),
   activateProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/activate`),
   deactivateProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/deactivate`),
-  deleteProduct: (id: string) => api.delete(`/api/admin/products/${id}`),
+  archiveProduct: (id: string) => api.delete<Product>(`/api/admin/products/${id}`),
+  restoreProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/restore`),
   redownloadImages: (id: string) => api.post(`/api/admin/products/${id}/redownload-images`),
   amazonSearch: (query: string) => api.get('/api/admin/amazon/search', { params: { query } }),
   amazonProduct: (asin: string) => api.get('/api/admin/amazon/product', { params: { asin } }),
+
+  // Brands
+  listBrands: () => api.get<Brand[]>('/api/admin/brands'),
+  createBrand: (data: { name: string }) => api.post<Brand>('/api/admin/brands', data),
+  updateBrand: (id: string, data: { name?: string; logo_url?: string | null }) =>
+    api.put<Brand>(`/api/admin/brands/${id}`, data),
+  deleteBrand: (id: string) => api.delete(`/api/admin/brands/${id}`),
 
   // Categories
   listCategories: () => api.get<Category[]>('/api/admin/categories'),
@@ -36,6 +45,9 @@ export const adminApi = {
   // Users
   listUsers: (params?: Record<string, string | number>) =>
     api.get<PaginatedResponse<UserAdmin>>('/api/admin/users', { params }),
+  searchUsers: (q: string, limit?: number) =>
+    api.get<UserSearchResult[]>('/api/admin/users/search', { params: { q, limit: limit || 20 } }),
+  getUserDetail: (id: string) => api.get<UserDetailResponse>(`/api/admin/users/${id}`),
   updateUserRole: (id: string, role: string) =>
     api.put(`/api/admin/users/${id}/role`, { role }),
   updateProbationOverride: (id: string, probation_override: boolean) =>

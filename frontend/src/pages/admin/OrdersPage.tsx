@@ -120,6 +120,12 @@ export function AdminOrdersPage() {
                 ))}
               </div>
               {order.delivery_note && <p className="text-sm mt-2 text-[hsl(var(--muted-foreground))]">Note: {order.delivery_note}</p>}
+              {order.cancellation_reason && (
+                <div className="mt-2 p-2 rounded bg-gray-50 border border-gray-200 text-sm text-gray-700">
+                  <strong>Cancellation reason:</strong> {order.cancellation_reason}
+                  {order.cancelled_at && <span className="text-xs ml-2 text-[hsl(var(--muted-foreground))]">({formatDate(order.cancelled_at)})</span>}
+                </div>
+              )}
               <div className="flex gap-2 mt-3">
                 <Button size="sm" variant="outline" onClick={() => openAllLinks(order)}>
                   <ExternalLink className="h-3 w-3 mr-1" /> Open All Links

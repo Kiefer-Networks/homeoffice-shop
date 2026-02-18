@@ -20,6 +20,7 @@ import { AdminBudgetAdjustmentsPage } from '@/pages/admin/BudgetAdjustmentsPage'
 import { AdminSettingsPage } from '@/pages/admin/SettingsPage'
 import { AdminAuditLogPage } from '@/pages/admin/AuditLogPage'
 import { AdminSyncLogPage } from '@/pages/admin/SyncLogPage'
+import { AdminBrandsPage } from '@/pages/admin/BrandsPage'
 import { useUiStore, type Toast } from '@/stores/uiStore'
 
 class ErrorBoundary extends React.Component<
@@ -155,6 +156,7 @@ export default function App() {
           <Route element={<AuthGuard><AdminGuard><AdminLayout /></AdminGuard></AuthGuard>}>
             <Route path="/admin" element={<DashboardPage />} />
             <Route path="/admin/products" element={<AdminProductsPage />} />
+            <Route path="/admin/brands" element={<AdminBrandsPage />} />
             <Route path="/admin/orders" element={<AdminOrdersPage />} />
             <Route path="/admin/categories" element={<AdminCategoriesPage />} />
             <Route path="/admin/employees" element={<AdminEmployeesPage />} />

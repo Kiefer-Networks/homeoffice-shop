@@ -10,9 +10,18 @@ from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import NotFoundError
 from src.models.dto import DetailResponse
-from src.models.dto.user import UserAdminListResponse, UserProbationOverride, UserRoleUpdate
+from src.models.dto.user import (
+    UserAdminListResponse,
+    UserDetailResponse,
+    UserProbationOverride,
+    UserRoleUpdate,
+    UserSearchResult,
+)
 from src.models.orm.user import User
 from src.repositories import user_repo
+from src.services import budget_service, order_service
+from src.models.orm.budget_adjustment import BudgetAdjustment
+from sqlalchemy import select
 
 router = APIRouter(prefix="/users", tags=["admin-users"])
 
@@ -42,6 +51,66 @@ async def list_users(
         sort=sort,
     )
     return {"items": users, "total": total, "page": page, "per_page": per_page}
+
+
+@router.get("/search", response_model=list[UserSearchResult])
+async def search_users(
+    q: str = Query(min_length=1),
+    limit: int = Query(20, le=50),
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    users = await user_repo.search_active(db, q, limit)
+    return users
+
+
+@router.get("/{user_id}", response_model=UserDetailResponse)
+async def get_user_detail(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    target = await user_repo.get_by_id(db, user_id)
+    if not target:
+        raise NotFoundError("User not found")
+
+    # Get orders
+    orders, _ = await order_service.get_orders(db, user_id=user_id, page=1, per_page=100)
+
+    # Get adjustments
+    result = await db.execute(
+        select(BudgetAdjustment)
+        .where(BudgetAdjustment.user_id == user_id)
+        .order_by(BudgetAdjustment.created_at.desc())
+    )
+    adjustments = [
+        {
+            "id": a.id,
+            "user_id": a.user_id,
+            "amount_cents": a.amount_cents,
+            "reason": a.reason,
+            "created_by": a.created_by,
+            "created_at": a.created_at,
+        }
+        for a in result.scalars().all()
+    ]
+
+    # Budget summary
+    spent = await budget_service.get_live_spent_cents(db, user_id)
+    adjustment_total = await budget_service.get_live_adjustment_cents(db, user_id)
+    available = target.total_budget_cents - spent - adjustment_total
+
+    return {
+        "user": target,
+        "orders": orders,
+        "adjustments": adjustments,
+        "budget_summary": {
+            "total_budget_cents": target.total_budget_cents,
+            "spent_cents": spent,
+            "adjustment_cents": adjustment_total,
+            "available_cents": available,
+        },
+    }
 
 
 @router.put("/{user_id}/role", response_model=DetailResponse)

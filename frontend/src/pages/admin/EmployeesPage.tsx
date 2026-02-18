@@ -8,6 +8,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate } from '@/lib/utils'
 import { RefreshCcw, Shield, ShieldOff, ChevronUp, ChevronDown } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
+import { EmployeeDetailModal } from './EmployeeDetailModal'
 import type { UserAdmin } from '@/types'
 
 const PER_PAGE = 20
@@ -92,6 +93,7 @@ export function AdminEmployeesPage() {
   const [activeFilter, setActiveFilter] = useState<string>('')
   const [departments, setDepartments] = useState<string[]>([])
   const [syncing, setSyncing] = useState(false)
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const { addToast } = useUiStore()
 
   // Debounce search input
@@ -260,7 +262,7 @@ export function AdminEmployeesPage() {
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.5)]">
+                  <tr key={u.id} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.5)] cursor-pointer" onClick={() => setSelectedUserId(u.id)}>
                     {/* Avatar + Name */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -346,6 +348,13 @@ export function AdminEmployeesPage() {
           )}
         </CardContent>
       </Card>
+
+      {selectedUserId && (
+        <EmployeeDetailModal
+          userId={selectedUserId}
+          onClose={() => setSelectedUserId(null)}
+        />
+      )}
     </div>
   )
 }

@@ -22,7 +22,7 @@ async def trigger_sync(
     admin: User = Depends(require_admin),
 ):
     client = HiBobClient()
-    log = await sync_employees(db, client)
+    log = await sync_employees(db, client, admin_id=admin.id)
 
     ip = request.client.host if request.client else None
     await write_audit_log(

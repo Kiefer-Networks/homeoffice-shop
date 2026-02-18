@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { orderApi } from '@/services/orderApi'
 import { formatCents, formatDate } from '@/lib/utils'
 import { ChevronRight, Package, AlertTriangle, CheckCircle2, XCircle, Clock } from 'lucide-react'
+import { useUiStore } from '@/stores/uiStore'
+import { getErrorMessage } from '@/lib/error'
 import type { Order } from '@/types'
 
 const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'success' | 'destructive' | 'warning'; icon: typeof Clock; label: string }> = {
@@ -21,12 +23,34 @@ export function OrdersPage() {
   const [loading, setLoading] = useState(true)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [filter, setFilter] = useState<string>('')
+  const [cancelOrder, setCancelOrder] = useState<Order | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelling, setCancelling] = useState(false)
+  const { addToast } = useUiStore()
 
-  useEffect(() => {
+  const loadOrders = () => {
     orderApi.list({ per_page: 100 }).then(({ data }) => setOrders(data.items)).finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { loadOrders() }, [])
 
   const filteredOrders = filter ? orders.filter(o => o.status === filter) : orders
+
+  const handleCancel = async () => {
+    if (!cancelOrder || !cancelReason.trim()) return
+    setCancelling(true)
+    try {
+      await orderApi.cancel(cancelOrder.id, cancelReason)
+      setCancelOrder(null)
+      setCancelReason('')
+      loadOrders()
+      addToast({ title: 'Order cancelled' })
+    } catch (err: unknown) {
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+    } finally {
+      setCancelling(false)
+    }
+  }
 
   if (loading) return <div className="animate-pulse space-y-4">{[...Array(3)].map((_, i) => <div key={i} className="h-32 bg-gray-100 rounded-xl" />)}</div>
 
@@ -87,6 +111,11 @@ export function OrdersPage() {
                       <strong>Rejection reason:</strong> {order.admin_note}
                     </div>
                   )}
+                  {order.status === 'cancelled' && order.cancellation_reason && (
+                    <div className="mt-3 p-2 rounded bg-gray-50 border border-gray-200 text-sm text-gray-700">
+                      <strong>Cancellation reason:</strong> {order.cancellation_reason}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )
@@ -103,7 +132,6 @@ export function OrdersPage() {
                 <DialogTitle>Order #{selectedOrder.id.slice(0, 8)}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                {/* Status */}
                 <div className="flex items-center justify-between">
                   <Badge variant={statusConfig[selectedOrder.status]?.variant || 'secondary'} className="text-sm px-3 py-1">
                     {statusConfig[selectedOrder.status]?.label || selectedOrder.status}
@@ -111,14 +139,12 @@ export function OrdersPage() {
                   <span className="text-sm text-[hsl(var(--muted-foreground))]">{formatDate(selectedOrder.created_at)}</span>
                 </div>
 
-                {/* Status Timeline */}
                 {selectedOrder.reviewed_at && (
                   <div className="text-sm text-[hsl(var(--muted-foreground))]">
                     Reviewed on {formatDate(selectedOrder.reviewed_at)}
                   </div>
                 )}
 
-                {/* Rejection/Admin Note */}
                 {selectedOrder.admin_note && (
                   <div className={`p-3 rounded-lg text-sm ${
                     selectedOrder.status === 'rejected'
@@ -130,7 +156,16 @@ export function OrdersPage() {
                   </div>
                 )}
 
-                {/* Items */}
+                {selectedOrder.cancellation_reason && (
+                  <div className="p-3 rounded-lg text-sm bg-gray-50 border border-gray-200 text-gray-700">
+                    <strong>Cancellation reason:</strong>
+                    <p className="mt-1">{selectedOrder.cancellation_reason}</p>
+                    {selectedOrder.cancelled_at && (
+                      <p className="text-xs mt-1 text-[hsl(var(--muted-foreground))]">Cancelled on {formatDate(selectedOrder.cancelled_at)}</p>
+                    )}
+                  </div>
+                )}
+
                 <div>
                   <h4 className="font-medium mb-2">Items</h4>
                   <div className="space-y-2">
@@ -146,20 +181,17 @@ export function OrdersPage() {
                   </div>
                 </div>
 
-                {/* Total */}
                 <div className="flex justify-between items-center border-t pt-3">
                   <span className="font-bold">Total</span>
                   <span className="text-lg font-bold">{formatCents(selectedOrder.total_cents)}</span>
                 </div>
 
-                {/* Delivery Note */}
                 {selectedOrder.delivery_note && (
                   <div className="p-3 rounded-lg bg-[hsl(var(--muted))] text-sm">
                     <strong>Delivery note:</strong> {selectedOrder.delivery_note}
                   </div>
                 )}
 
-                {/* Vendor Ordered Status */}
                 {selectedOrder.status === 'ordered' && (
                   <div className="space-y-1">
                     <h4 className="font-medium text-sm">Order status</h4>
@@ -175,9 +207,48 @@ export function OrdersPage() {
                     ))}
                   </div>
                 )}
+
+                {selectedOrder.status === 'pending' && (
+                  <Button
+                    variant="destructive"
+                    className="w-full"
+                    onClick={() => {
+                      setCancelOrder(selectedOrder)
+                      setSelectedOrder(null)
+                    }}
+                  >
+                    Cancel Order
+                  </Button>
+                )}
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Order Dialog */}
+      <Dialog open={!!cancelOrder} onOpenChange={() => { setCancelOrder(null); setCancelReason('') }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Order #{cancelOrder?.id.slice(0, 8)}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">
+              Please provide a reason for cancelling this order. Your budget will be released.
+            </p>
+            <textarea
+              placeholder="Cancellation reason *"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              className="w-full rounded-md border px-3 py-2 text-sm min-h-[80px]"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setCancelOrder(null); setCancelReason('') }}>Keep Order</Button>
+            <Button variant="destructive" onClick={handleCancel} disabled={cancelling || !cancelReason.trim()}>
+              {cancelling ? 'Cancelling...' : 'Cancel Order'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

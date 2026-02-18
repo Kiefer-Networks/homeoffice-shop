@@ -26,8 +26,8 @@ class TestValidTransitions:
     def test_pending_cannot_go_to_delivered(self):
         assert "delivered" not in VALID_TRANSITIONS["pending"]
 
-    def test_pending_cannot_go_to_cancelled(self):
-        assert "cancelled" not in VALID_TRANSITIONS["pending"]
+    def test_pending_can_go_to_cancelled(self):
+        assert "cancelled" in VALID_TRANSITIONS["pending"]
 
     def test_ordered_can_go_to_delivered(self):
         assert "delivered" in VALID_TRANSITIONS["ordered"]

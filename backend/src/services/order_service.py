@@ -21,7 +21,7 @@ from src.services.budget_service import check_budget_for_order, refresh_budget_c
 logger = logging.getLogger(__name__)
 
 VALID_TRANSITIONS: dict[str, set[str]] = {
-    "pending": {"ordered", "rejected"},
+    "pending": {"ordered", "rejected", "cancelled"},
     "ordered": {"delivered", "cancelled"},
     "rejected": set(),
     "delivered": set(),
@@ -155,10 +155,44 @@ def _order_to_dict(order: Order, user: User | None, items: list[dict]) -> dict:
         "admin_note": order.admin_note,
         "reviewed_by": order.reviewed_by,
         "reviewed_at": order.reviewed_at,
+        "cancellation_reason": order.cancellation_reason,
+        "cancelled_by": order.cancelled_by,
+        "cancelled_at": order.cancelled_at,
         "items": items,
         "created_at": order.created_at,
         "updated_at": order.updated_at,
     }
+
+
+async def cancel_order_by_user(
+    db: AsyncSession,
+    order_id: UUID,
+    user_id: UUID,
+    reason: str,
+) -> Order:
+    """Cancel a pending order by the owning user."""
+    result = await db.execute(
+        select(Order).where(Order.id == order_id).with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise NotFoundError("Order not found")
+
+    if order.user_id != user_id:
+        raise NotFoundError("Order not found")
+
+    if order.status != "pending":
+        raise BadRequestError("Only pending orders can be cancelled")
+
+    order.status = "cancelled"
+    order.cancellation_reason = reason
+    order.cancelled_by = user_id
+    order.cancelled_at = datetime.now(timezone.utc)
+
+    await db.flush()
+    await refresh_budget_cache(db, order.user_id)
+
+    return order
 
 
 async def get_order_with_items(db: AsyncSession, order_id: UUID) -> dict | None:

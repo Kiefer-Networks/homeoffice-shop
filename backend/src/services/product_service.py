@@ -22,11 +22,18 @@ async def search_products(
     price_min: int | None = None,
     price_max: int | None = None,
     is_active: bool = True,
+    include_archived: bool = False,
+    archived_only: bool = False,
     sort: str = "relevance",
     page: int = 1,
     per_page: int = 20,
 ) -> dict:
     conditions = []
+
+    if archived_only:
+        conditions.append(Product.archived_at.isnot(None))
+    elif not include_archived:
+        conditions.append(Product.archived_at.is_(None))
 
     if is_active is not None:
         conditions.append(Product.is_active == is_active)
@@ -93,8 +100,7 @@ async def search_products(
             .where(active_condition)
             .where(Product.brand.isnot(None))
             .group_by(Product.brand)
-            .order_by(func.count().desc())
-            .limit(20)
+            .order_by(Product.brand)
         )
         return [{"value": b, "count": c} for b, c in r.all()]
 

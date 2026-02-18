@@ -7,7 +7,7 @@ from src.api.dependencies.auth import get_current_user
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import NotFoundError
-from src.models.dto.order import OrderCreate, OrderListResponse, OrderResponse
+from src.models.dto.order import OrderCancelRequest, OrderCreate, OrderListResponse, OrderResponse
 from src.models.orm.user import User
 from src.notifications.service import notify_admins_email, notify_admins_slack
 from src.services import order_service
@@ -90,4 +90,45 @@ async def create_order(
         text=f"New order from {user.display_name} ({user.email}) - Total: EUR {order.total_cents / 100:.2f}",
     )
 
+    return order_data
+
+
+@router.post("/{order_id}/cancel", response_model=OrderResponse)
+async def cancel_my_order(
+    order_id: UUID,
+    body: OrderCancelRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    order = await order_service.cancel_order_by_user(
+        db, order_id, user.id, body.reason
+    )
+
+    ip = request.client.host if request.client else None
+    await write_audit_log(
+        db, user_id=user.id, action="order.cancelled",
+        resource_type="order", resource_id=order.id,
+        details={"reason": body.reason},
+        ip_address=ip,
+    )
+
+    await notify_admins_email(
+        db, event="order.cancelled",
+        subject=f"Order Cancelled by {user.display_name}",
+        template_name="order_cancelled.html",
+        context={
+            "user_name": user.display_name,
+            "user_email": user.email,
+            "order_id": str(order.id),
+            "reason": body.reason,
+            "total_cents": order.total_cents,
+        },
+    )
+    await notify_admins_slack(
+        db, event="order.cancelled",
+        text=f"Order #{str(order.id)[:8]} cancelled by {user.display_name}: {body.reason}",
+    )
+
+    order_data = await order_service.get_order_with_items(db, order.id)
     return order_data

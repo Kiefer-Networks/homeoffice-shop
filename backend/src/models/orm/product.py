@@ -35,7 +35,13 @@ class Product(Base):
     product_information: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     amazon_asin: Mapped[str | None] = mapped_column(String(20), nullable=True)
     external_url: Mapped[str] = mapped_column(Text, nullable=False)
+    brand_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("brands.id"), nullable=True
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    archived_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     max_quantity_per_user: Mapped[int] = mapped_column(
         Integer, nullable=False, default=1
     )

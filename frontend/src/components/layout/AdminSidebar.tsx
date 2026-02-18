@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Package, ShoppingBag, FolderOpen, Users,
-  Wallet, Settings, ScrollText, RefreshCcw, Store, X
+  Wallet, Settings, ScrollText, RefreshCcw, Store, X, Tag
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useUiStore } from '@/stores/uiStore'
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
   { to: '/admin/products', icon: Package, label: 'Products' },
+  { to: '/admin/brands', icon: Tag, label: 'Brands' },
   { to: '/admin/orders', icon: ShoppingBag, label: 'Orders' },
   { to: '/admin/categories', icon: FolderOpen, label: 'Categories' },
   { to: '/admin/employees', icon: Users, label: 'Employees' },

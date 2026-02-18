@@ -9,6 +9,7 @@ class ProductCreate(BaseModel):
     name: str = Field(min_length=1, max_length=500)
     description: str | None = None
     brand: str | None = None
+    brand_id: UUID | None = None
     model: str | None = None
     price_cents: int = Field(ge=0)
     amazon_asin: str | None = None
@@ -29,6 +30,7 @@ class ProductUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = None
     brand: str | None = None
+    brand_id: UUID | None = None
     model: str | None = None
     price_cents: int | None = Field(default=None, ge=0)
     amazon_asin: str | None = None
@@ -65,7 +67,9 @@ class ProductResponse(BaseModel):
     product_information: dict | None = None
     amazon_asin: str | None = None
     external_url: str
+    brand_id: UUID | None = None
     is_active: bool
+    archived_at: datetime | None = None
     max_quantity_per_user: int = 1
     created_at: datetime
     updated_at: datetime

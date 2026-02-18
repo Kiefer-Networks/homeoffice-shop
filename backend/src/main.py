@@ -19,6 +19,7 @@ from src.api.middleware.security_headers import SecurityHeadersMiddleware
 from src.api.routes import auth, avatars, branding, cart, categories, health, orders, products, users
 from src.api.routes.admin import (
     audit as admin_audit,
+    brands as admin_brands,
     budgets as admin_budgets,
     categories as admin_categories,
     hibob as admin_hibob,
@@ -105,6 +106,7 @@ app.include_router(orders.router, prefix="/api")
 
 # Admin routes
 app.include_router(admin_products.router, prefix="/api/admin")
+app.include_router(admin_brands.router, prefix="/api/admin")
 app.include_router(admin_categories.router, prefix="/api/admin")
 app.include_router(admin_orders.router, prefix="/api/admin")
 app.include_router(admin_users.router, prefix="/api/admin")

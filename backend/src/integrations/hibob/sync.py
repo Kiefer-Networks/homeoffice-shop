@@ -1,9 +1,11 @@
 import logging
 from datetime import datetime, timezone
 from email.utils import parseaddr
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.audit.service import write_audit_log
 from src.core.config import settings
 from src.integrations.hibob.client import HiBobClientProtocol
 from src.models.orm.hibob_sync_log import HiBobSyncLog
@@ -18,6 +20,7 @@ logger = logging.getLogger(__name__)
 async def sync_employees(
     db: AsyncSession,
     client: HiBobClientProtocol,
+    admin_id: "UUID | None" = None,
 ) -> HiBobSyncLog:
     log = HiBobSyncLog(status="running")
     db.add(log)
@@ -91,6 +94,19 @@ async def sync_employees(
                 if user.hibob_id not in hibob_ids and user.is_active:
                     user.is_active = False
                     deactivated += 1
+                    if admin_id:
+                        await write_audit_log(
+                            db,
+                            user_id=admin_id,
+                            action="hibob.user.deactivated",
+                            resource_type="user",
+                            resource_id=user.id,
+                            details={
+                                "display_name": user.display_name,
+                                "email": user.email,
+                                "hibob_id": user.hibob_id,
+                            },
+                        )
 
             if deactivated > 0:
                 await db.flush()

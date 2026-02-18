@@ -99,8 +99,8 @@ async def download_and_store_product_images(
                 await asyncio.to_thread(filepath.write_bytes, resp.content)
                 main_image_path = f"/uploads/products/{product_id}/{filename}"
                 logger.info("Downloaded main image for product %s", product_id)
-            except Exception:
-                logger.warning("Failed to download main image for product %s", product_id)
+            except Exception as exc:
+                logger.warning("Failed to download main image for product %s: %s", product_id, exc)
 
         if not main_image_path:
             svg_data = _generate_placeholder_svg(product_name)
@@ -123,9 +123,9 @@ async def download_and_store_product_images(
                 filepath = product_dir / filename
                 await asyncio.to_thread(filepath.write_bytes, resp.content)
                 gallery_paths.append(f"/uploads/products/{product_id}/{filename}")
-            except Exception:
+            except Exception as exc:
                 logger.warning(
-                    "Failed to download gallery image %d for product %s", i, product_id
+                    "Failed to download gallery image %d for product %s: %s", i, product_id, exc
                 )
 
     return ImagePaths(main_image=main_image_path, gallery=gallery_paths)

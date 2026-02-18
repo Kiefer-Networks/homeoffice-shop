@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class OrderCreate(BaseModel):
@@ -13,6 +13,10 @@ class OrderCreate(BaseModel):
 class OrderStatusUpdate(BaseModel):
     status: Literal["ordered", "delivered", "rejected", "cancelled"]
     admin_note: str | None = None
+
+
+class OrderCancelRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=1000)
 
 
 class OrderItemResponse(BaseModel):
@@ -36,6 +40,9 @@ class OrderResponse(BaseModel):
     admin_note: str | None = None
     reviewed_by: UUID | None = None
     reviewed_at: datetime | None = None
+    cancellation_reason: str | None = None
+    cancelled_by: UUID | None = None
+    cancelled_at: datetime | None = None
     items: list[OrderItemResponse] = []
     created_at: datetime
     updated_at: datetime

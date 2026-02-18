@@ -90,6 +90,23 @@ async def get_all(
     return list(result.scalars().all()), total
 
 
+async def search_active(db: AsyncSession, q: str, limit: int = 20) -> list[User]:
+    from sqlalchemy import or_
+
+    escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    pattern = f"%{escaped}%"
+    result = await db.execute(
+        select(User)
+        .where(
+            User.is_active.is_(True),
+            or_(User.display_name.ilike(pattern), User.email.ilike(pattern)),
+        )
+        .order_by(User.display_name.asc())
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+
+
 async def create(db: AsyncSession, user: User) -> User:
     db.add(user)
     await db.flush()
