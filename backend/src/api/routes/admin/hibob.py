@@ -16,10 +16,9 @@ from src.models.dto.hibob import (
     HiBobSyncLogListResponse,
     HiBobSyncLogResponse,
 )
-from src.models.orm.hibob_purchase_sync_log import HiBobPurchaseSyncLog
-from src.models.orm.hibob_sync_log import HiBobSyncLog
 from src.models.orm.user import User
 from src.notifications.service import notify_staff_email, notify_staff_slack
+from src.services import hibob_service
 from src.services.purchase_sync import sync_purchases
 from src.services.settings_service import get_setting
 
@@ -173,19 +172,7 @@ async def get_sync_logs(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    from sqlalchemy import func
-    count_result = await db.execute(
-        select(func.count()).select_from(HiBobSyncLog)
-    )
-    total = count_result.scalar() or 0
-
-    result = await db.execute(
-        select(HiBobSyncLog)
-        .order_by(HiBobSyncLog.started_at.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-    )
-    items = list(result.scalars().all())
+    items, total = await hibob_service.get_sync_logs(db, page=page, per_page=per_page)
     return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
@@ -209,18 +196,5 @@ async def get_purchase_sync_logs(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    from sqlalchemy import func
-
-    count_result = await db.execute(
-        select(func.count()).select_from(HiBobPurchaseSyncLog)
-    )
-    total = count_result.scalar() or 0
-
-    result = await db.execute(
-        select(HiBobPurchaseSyncLog)
-        .order_by(HiBobPurchaseSyncLog.started_at.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-    )
-    items = list(result.scalars().all())
+    items, total = await hibob_service.get_purchase_sync_logs(db, page=page, per_page=per_page)
     return {"items": items, "total": total, "page": page, "per_page": per_page}
