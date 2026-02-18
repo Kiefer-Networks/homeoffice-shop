@@ -2,9 +2,11 @@ import logging
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
+from src.core.exceptions import BadRequestError, NotFoundError
 from src.models.orm.budget_adjustment import BudgetAdjustment
 from src.models.orm.budget_rule import BudgetRule
 from src.models.orm.order import Order
@@ -196,3 +198,218 @@ async def check_budget_for_order(
     available = user.total_budget_cents + adjustments - spent
 
     return order_total_cents <= available
+
+
+# ── Budget Rule CRUD ─────────────────────────────────────────────────────────
+
+async def create_budget_rule(
+    db: AsyncSession,
+    *,
+    effective_from: date,
+    initial_cents: int,
+    yearly_increment_cents: int,
+    created_by: UUID,
+) -> BudgetRule:
+    rule = BudgetRule(
+        effective_from=effective_from,
+        initial_cents=initial_cents,
+        yearly_increment_cents=yearly_increment_cents,
+        created_by=created_by,
+    )
+    db.add(rule)
+    await db.flush()
+    return rule
+
+
+async def update_budget_rule(
+    db: AsyncSession,
+    rule_id: UUID,
+    data: dict,
+) -> BudgetRule:
+    rule = await db.get(BudgetRule, rule_id)
+    if not rule:
+        raise NotFoundError("Budget rule not found")
+    if data.get("effective_from") is not None:
+        rule.effective_from = data["effective_from"]
+    if data.get("initial_cents") is not None:
+        rule.initial_cents = data["initial_cents"]
+    if data.get("yearly_increment_cents") is not None:
+        rule.yearly_increment_cents = data["yearly_increment_cents"]
+    await db.flush()
+    return rule
+
+
+async def delete_budget_rule(db: AsyncSession, rule_id: UUID) -> None:
+    rule = await db.get(BudgetRule, rule_id)
+    if not rule:
+        raise NotFoundError("Budget rule not found")
+    count_result = await db.execute(select(BudgetRule.id))
+    if len(count_result.all()) <= 1:
+        raise BadRequestError("Cannot delete the last budget rule")
+    await db.delete(rule)
+    await db.flush()
+
+
+# ── Budget Adjustment CRUD ───────────────────────────────────────────────────
+
+async def list_adjustments(
+    db: AsyncSession,
+    *,
+    user_id: UUID | None = None,
+    q: str | None = None,
+    sort: str = "newest",
+    page: int = 1,
+    per_page: int = 50,
+) -> tuple[list[dict], int]:
+    UserTarget = aliased(User, name="user_target")
+    UserCreator = aliased(User, name="user_creator")
+
+    conditions = []
+    if user_id:
+        conditions.append(BudgetAdjustment.user_id == user_id)
+    if q:
+        escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        search = f"%{escaped}%"
+        conditions.append(
+            or_(
+                UserTarget.display_name.ilike(search),
+                BudgetAdjustment.reason.ilike(search),
+            )
+        )
+    where = and_(*conditions) if conditions else True
+
+    base_query = (
+        select(BudgetAdjustment, UserTarget.display_name, UserCreator.display_name)
+        .join(UserTarget, BudgetAdjustment.user_id == UserTarget.id, isouter=True)
+        .join(UserCreator, BudgetAdjustment.created_by == UserCreator.id, isouter=True)
+        .where(where)
+    )
+
+    count_result = await db.execute(
+        select(func.count())
+        .select_from(BudgetAdjustment)
+        .join(UserTarget, BudgetAdjustment.user_id == UserTarget.id, isouter=True)
+        .where(where)
+    )
+    total = count_result.scalar() or 0
+
+    order_clause = {
+        "newest": BudgetAdjustment.created_at.desc(),
+        "oldest": BudgetAdjustment.created_at.asc(),
+        "amount_asc": BudgetAdjustment.amount_cents.asc(),
+        "amount_desc": BudgetAdjustment.amount_cents.desc(),
+    }.get(sort, BudgetAdjustment.created_at.desc())
+
+    result = await db.execute(
+        base_query.order_by(order_clause)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    rows = result.all()
+    items = []
+    for adj, user_name, creator_name in rows:
+        items.append({
+            "id": adj.id,
+            "user_id": adj.user_id,
+            "amount_cents": adj.amount_cents,
+            "reason": adj.reason,
+            "source": adj.source,
+            "hibob_entry_id": adj.hibob_entry_id,
+            "created_by": adj.created_by,
+            "created_at": adj.created_at,
+            "user_display_name": user_name,
+            "creator_display_name": creator_name,
+        })
+    return items, total
+
+
+async def create_adjustment(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    amount_cents: int,
+    reason: str,
+    created_by: UUID,
+) -> BudgetAdjustment:
+    target = await db.get(User, user_id)
+    if not target:
+        raise NotFoundError("User not found")
+
+    adjustment = BudgetAdjustment(
+        user_id=user_id,
+        amount_cents=amount_cents,
+        reason=reason,
+        created_by=created_by,
+    )
+    db.add(adjustment)
+    await db.flush()
+    await refresh_budget_cache(db, user_id)
+    return adjustment
+
+
+async def update_adjustment(
+    db: AsyncSession,
+    adjustment_id: UUID,
+    *,
+    amount_cents: int,
+    reason: str,
+) -> tuple[BudgetAdjustment, dict]:
+    adjustment = await db.get(BudgetAdjustment, adjustment_id)
+    if not adjustment:
+        raise NotFoundError("Adjustment not found")
+    if adjustment.source == "hibob":
+        raise BadRequestError(
+            "Cannot modify HiBob-synced adjustments. Manage via Purchase Reviews."
+        )
+
+    old = {"amount_cents": adjustment.amount_cents, "reason": adjustment.reason}
+    adjustment.amount_cents = amount_cents
+    adjustment.reason = reason
+    await db.flush()
+    await refresh_budget_cache(db, adjustment.user_id)
+
+    # Re-query with user joins
+    UserTarget = aliased(User, name="user_target")
+    UserCreator = aliased(User, name="user_creator")
+    result = await db.execute(
+        select(BudgetAdjustment, UserTarget.display_name, UserCreator.display_name)
+        .join(UserTarget, BudgetAdjustment.user_id == UserTarget.id, isouter=True)
+        .join(UserCreator, BudgetAdjustment.created_by == UserCreator.id, isouter=True)
+        .where(BudgetAdjustment.id == adjustment_id)
+    )
+    row = result.one()
+    adj, user_name, creator_name = row
+    enriched = {
+        "id": adj.id,
+        "user_id": adj.user_id,
+        "amount_cents": adj.amount_cents,
+        "reason": adj.reason,
+        "created_by": adj.created_by,
+        "created_at": adj.created_at,
+        "user_display_name": user_name,
+        "creator_display_name": creator_name,
+    }
+    return adjustment, {**old, "new_amount_cents": amount_cents, "new_reason": reason}, enriched
+
+
+async def delete_adjustment(
+    db: AsyncSession, adjustment_id: UUID,
+) -> tuple[UUID, dict]:
+    adjustment = await db.get(BudgetAdjustment, adjustment_id)
+    if not adjustment:
+        raise NotFoundError("Adjustment not found")
+    if adjustment.source == "hibob":
+        raise BadRequestError(
+            "Cannot modify HiBob-synced adjustments. Manage via Purchase Reviews."
+        )
+
+    user_id = adjustment.user_id
+    details = {
+        "target_user_id": str(user_id),
+        "amount_cents": adjustment.amount_cents,
+        "reason": adjustment.reason,
+    }
+    await db.delete(adjustment)
+    await db.flush()
+    await refresh_budget_cache(db, user_id)
+    return user_id, details

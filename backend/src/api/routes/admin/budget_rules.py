@@ -1,20 +1,18 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin, require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
-from src.core.exceptions import BadRequestError, NotFoundError
 from src.models.dto.budget import (
     BudgetRuleCreate,
     BudgetRuleResponse,
     BudgetRuleUpdate,
 )
-from src.models.orm.budget_rule import BudgetRule
 from src.models.orm.user import User
+from src.services import budget_service
 
 router = APIRouter(prefix="/budget-rules", tags=["admin-budget-rules"])
 
@@ -24,10 +22,7 @@ async def list_budget_rules(
     db: AsyncSession = Depends(get_db),
     staff: User = Depends(require_staff),
 ):
-    result = await db.execute(
-        select(BudgetRule).order_by(BudgetRule.effective_from)
-    )
-    return list(result.scalars().all())
+    return await budget_service.get_budget_rules(db)
 
 
 @router.post("", response_model=BudgetRuleResponse, status_code=201)
@@ -37,14 +32,13 @@ async def create_budget_rule(
     db: AsyncSession = Depends(get_db),
     staff: User = Depends(require_staff),
 ):
-    rule = BudgetRule(
+    rule = await budget_service.create_budget_rule(
+        db,
         effective_from=body.effective_from,
         initial_cents=body.initial_cents,
         yearly_increment_cents=body.yearly_increment_cents,
         created_by=staff.id,
     )
-    db.add(rule)
-    await db.flush()
 
     ip = request.client.host if request.client else None
     await write_audit_log(
@@ -57,7 +51,6 @@ async def create_budget_rule(
         },
         ip_address=ip,
     )
-
     return rule
 
 
@@ -69,26 +62,16 @@ async def update_budget_rule(
     db: AsyncSession = Depends(get_db),
     staff: User = Depends(require_staff),
 ):
-    rule = await db.get(BudgetRule, rule_id)
-    if not rule:
-        raise NotFoundError("Budget rule not found")
-
-    if body.effective_from is not None:
-        rule.effective_from = body.effective_from
-    if body.initial_cents is not None:
-        rule.initial_cents = body.initial_cents
-    if body.yearly_increment_cents is not None:
-        rule.yearly_increment_cents = body.yearly_increment_cents
-    await db.flush()
+    data = body.model_dump(exclude_none=True)
+    rule = await budget_service.update_budget_rule(db, rule_id, data)
 
     ip = request.client.host if request.client else None
     await write_audit_log(
         db, user_id=staff.id, action="admin.budget_rule.updated",
         resource_type="budget_rule", resource_id=rule.id,
-        details=body.model_dump(exclude_none=True, mode="json"),
+        details={k: (str(v) if hasattr(v, 'isoformat') else v) for k, v in data.items()},
         ip_address=ip,
     )
-
     return rule
 
 
@@ -99,16 +82,7 @@ async def delete_budget_rule(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    rule = await db.get(BudgetRule, rule_id)
-    if not rule:
-        raise NotFoundError("Budget rule not found")
-
-    count_result = await db.execute(select(BudgetRule.id))
-    if len(count_result.all()) <= 1:
-        raise BadRequestError("Cannot delete the last budget rule")
-
-    await db.delete(rule)
-    await db.flush()
+    await budget_service.delete_budget_rule(db, rule_id)
 
     ip = request.client.host if request.client else None
     await write_audit_log(
