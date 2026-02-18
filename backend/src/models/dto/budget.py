@@ -10,6 +10,11 @@ class BudgetAdjustmentCreate(BaseModel):
     reason: str = Field(min_length=1, max_length=500)
 
 
+class BudgetAdjustmentUpdate(BaseModel):
+    amount_cents: int = Field(ge=-10_000_00, le=10_000_00)
+    reason: str = Field(min_length=1, max_length=500)
+
+
 class BudgetAdjustmentResponse(BaseModel):
     id: UUID
     user_id: UUID

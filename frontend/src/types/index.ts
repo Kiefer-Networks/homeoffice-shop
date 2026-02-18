@@ -148,6 +148,11 @@ export interface Order {
   updated_at: string
 }
 
+export interface BudgetResponse {
+  total_budget_cents: number
+  available_budget_cents: number
+}
+
 export interface BudgetAdjustment {
   id: string
   user_id: string

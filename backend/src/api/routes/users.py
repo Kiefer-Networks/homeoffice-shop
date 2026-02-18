@@ -30,3 +30,15 @@ async def get_current_user_profile(
         "avatar_url": user.avatar_url,
         "created_at": user.created_at,
     }
+
+
+@router.get("/me/budget")
+async def get_my_budget(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    available = await get_available_budget_cents(db, user.id)
+    return {
+        "total_budget_cents": user.total_budget_cents,
+        "available_budget_cents": available,
+    }

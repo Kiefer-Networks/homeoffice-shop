@@ -61,6 +61,10 @@ export const adminApi = {
     api.get<PaginatedResponse<BudgetAdjustment>>('/api/admin/budgets/adjustments', { params }),
   createAdjustment: (data: { user_id: string; amount_cents: number; reason: string }) =>
     api.post('/api/admin/budgets/adjustments', data),
+  updateAdjustment: (id: string, data: { amount_cents: number; reason: string }) =>
+    api.put<BudgetAdjustment>(`/api/admin/budgets/adjustments/${id}`, data),
+  deleteAdjustment: (id: string) =>
+    api.delete(`/api/admin/budgets/adjustments/${id}`),
 
   // Settings
   getSettings: () => api.get<{ settings: Record<string, string> }>('/api/admin/settings'),

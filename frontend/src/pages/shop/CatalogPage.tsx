@@ -10,6 +10,7 @@ import { CartPriceAlert } from '@/components/shop/CartPriceAlert'
 import { Button } from '@/components/ui/button'
 import { useFilterStore } from '@/stores/filterStore'
 import { useCartStore } from '@/stores/cartStore'
+import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { productApi } from '@/services/productApi'
 import { cartApi } from '@/services/cartApi'
@@ -74,6 +75,7 @@ export function CatalogPage() {
       setShowPriceAlert(false)
       setCartOpen(false)
       await refreshCart()
+      useAuthStore.getState().refreshBudget()
       addToast({ title: 'Order placed!', description: 'Your order has been submitted for review.' })
     } catch (err: unknown) {
       addToast({ title: 'Order failed', description: getErrorMessage(err), variant: 'destructive' })

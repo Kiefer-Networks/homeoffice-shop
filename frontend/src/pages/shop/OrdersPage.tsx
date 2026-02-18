@@ -7,6 +7,7 @@ import { orderApi } from '@/services/orderApi'
 import { formatCents, formatDate } from '@/lib/utils'
 import { ChevronRight, Package, AlertTriangle, CheckCircle2, XCircle, Clock } from 'lucide-react'
 import { useUiStore } from '@/stores/uiStore'
+import { useAuthStore } from '@/stores/authStore'
 import { getErrorMessage } from '@/lib/error'
 import type { Order } from '@/types'
 
@@ -44,6 +45,7 @@ export function OrdersPage() {
       setCancelOrder(null)
       setCancelReason('')
       loadOrders()
+      useAuthStore.getState().refreshBudget()
       addToast({ title: 'Order cancelled' })
     } catch (err: unknown) {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
