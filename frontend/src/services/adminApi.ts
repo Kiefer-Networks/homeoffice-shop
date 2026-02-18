@@ -125,7 +125,7 @@ export const adminApi = {
     api.get<PaginatedResponse<HiBobSyncLog>>('/api/admin/hibob/sync-log', { params }),
 
   // Purchase Sync
-  triggerPurchaseSync: () => api.post('/api/admin/hibob/purchase-sync'),
+  triggerPurchaseSync: () => api.post<HiBobPurchaseSyncLog>('/api/admin/hibob/purchase-sync'),
   getPurchaseSyncLogs: (params?: Record<string, string | number>) =>
     api.get<PaginatedResponse<HiBobPurchaseSyncLog>>('/api/admin/hibob/purchase-sync-log', { params }),
 
