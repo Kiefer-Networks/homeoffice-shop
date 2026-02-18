@@ -4,7 +4,7 @@ import type {
   AuditLogEntry, HiBobSyncLog, PaginatedResponse, NotificationPrefs,
   ProductCreateInput, ProductUpdateInput, CategoryCreateInput, CategoryUpdateInput,
   UserSearchResult, UserDetailResponse, RefreshPreviewResponse,
-  AmazonProductDetail,
+  AmazonProductDetail, BudgetRule, UserBudgetOverride,
 } from '@/types'
 
 export const adminApi = {
@@ -96,6 +96,27 @@ export const adminApi = {
     api.get<PaginatedResponse<AuditLogEntry>>('/api/admin/audit', { params }),
   exportAuditCsv: (params?: Record<string, string>) =>
     api.get('/api/admin/audit/export', { params, responseType: 'blob' }),
+
+  // Budget Rules
+  listBudgetRules: () => api.get<BudgetRule[]>('/api/admin/budget-rules'),
+  createBudgetRule: (data: { effective_from: string; initial_cents: number; yearly_increment_cents: number }) =>
+    api.post<BudgetRule>('/api/admin/budget-rules', data),
+  updateBudgetRule: (id: string, data: Partial<{ effective_from: string; initial_cents: number; yearly_increment_cents: number }>) =>
+    api.put<BudgetRule>(`/api/admin/budget-rules/${id}`, data),
+  deleteBudgetRule: (id: string) =>
+    api.delete(`/api/admin/budget-rules/${id}`),
+
+  // User Budget Overrides
+  createUserBudgetOverride: (userId: string, data: {
+    effective_from: string; effective_until?: string | null;
+    initial_cents: number; yearly_increment_cents: number; reason: string
+  }) => api.post<UserBudgetOverride>(`/api/admin/users/${userId}/budget-overrides`, data),
+  updateUserBudgetOverride: (userId: string, overrideId: string, data: Partial<{
+    effective_from: string; effective_until: string | null;
+    initial_cents: number; yearly_increment_cents: number; reason: string
+  }>) => api.put<UserBudgetOverride>(`/api/admin/users/${userId}/budget-overrides/${overrideId}`, data),
+  deleteUserBudgetOverride: (userId: string, overrideId: string) =>
+    api.delete(`/api/admin/users/${userId}/budget-overrides/${overrideId}`),
 
   // HiBob
   triggerSync: () => api.post('/api/admin/hibob/sync'),

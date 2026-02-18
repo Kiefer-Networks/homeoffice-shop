@@ -40,11 +40,43 @@ export interface BudgetSummary {
   available_cents: number
 }
 
+export interface BudgetTimelineEntry {
+  year: number
+  period_from: string
+  period_to: string
+  amount_cents: number
+  cumulative_cents: number
+  source: string
+}
+
+export interface BudgetRule {
+  id: string
+  effective_from: string
+  initial_cents: number
+  yearly_increment_cents: number
+  created_by: string
+  created_at: string
+}
+
+export interface UserBudgetOverride {
+  id: string
+  user_id: string
+  effective_from: string
+  effective_until: string | null
+  initial_cents: number
+  yearly_increment_cents: number
+  reason: string
+  created_by: string
+  created_at: string
+}
+
 export interface UserDetailResponse {
   user: UserAdmin
   orders: Order[]
   adjustments: BudgetAdjustment[]
   budget_summary: BudgetSummary
+  budget_timeline: BudgetTimelineEntry[]
+  budget_overrides: UserBudgetOverride[]
 }
 
 export interface Brand {

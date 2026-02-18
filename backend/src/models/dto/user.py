@@ -63,6 +63,8 @@ class UserDetailResponse(BaseModel):
     orders: list = []
     adjustments: list = []
     budget_summary: BudgetSummary
+    budget_timeline: list = []
+    budget_overrides: list = []
 
 
 class UserRoleUpdate(BaseModel):

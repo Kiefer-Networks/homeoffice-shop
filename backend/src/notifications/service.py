@@ -8,7 +8,7 @@ from src.repositories import user_repo, notification_pref_repo
 
 logger = logging.getLogger(__name__)
 
-ADMIN_ONLY_EVENTS = {"hibob.sync", "price.refresh"}
+ADMIN_ONLY_EVENTS = {"hibob.sync", "hibob.sync_error", "price.refresh"}
 
 
 async def notify_staff_email(

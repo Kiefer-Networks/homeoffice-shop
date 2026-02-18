@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Mail, Bell, Save, Loader2, User as UserIcon, Building, Calendar, Shield } from 'lucide-react'
+import { Mail, Save, Loader2, User as UserIcon, Building, Calendar, Shield } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
@@ -12,6 +12,7 @@ const EVENT_LABELS: Record<string, string> = {
   'order.status_changed': 'Order Status Changes',
   'order.cancelled': 'Order Cancellations',
   'hibob.sync': 'HiBob Sync Complete',
+  'hibob.sync_error': 'HiBob Sync Errors',
   'price.refresh': 'Price Refresh Complete',
 }
 
@@ -132,47 +133,6 @@ export function ProfilePage() {
             </div>
           ) : prefs ? (
             <div className="space-y-4">
-              {/* Slack Card */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <Bell className="h-5 w-5" />
-                      Slack Notifications
-                    </CardTitle>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <span className="text-sm text-[hsl(var(--muted-foreground))]">
-                        {prefs.slack_enabled ? 'Enabled' : 'Disabled'}
-                      </span>
-                      <input
-                        type="checkbox"
-                        checked={prefs.slack_enabled}
-                        onChange={e => handleToggle('slack', e.target.checked)}
-                        className="h-4 w-4 rounded border-gray-300"
-                      />
-                    </label>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {(prefs.available_slack_events || []).map(event => (
-                      <label key={event} className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={prefs.slack_events.includes(event)}
-                          onChange={e => handleEventToggle('slack', event, e.target.checked)}
-                          disabled={!prefs.slack_enabled}
-                          className="h-4 w-4 rounded border-gray-300"
-                        />
-                        <span className={!prefs.slack_enabled ? 'text-[hsl(var(--muted-foreground))]' : ''}>
-                          {EVENT_LABELS[event] || event}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Email Card */}
               <Card>
                 <CardHeader>

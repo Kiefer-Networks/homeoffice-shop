@@ -9,6 +9,7 @@ from src.services.budget_service import (
     calculate_total_budget_cents,
     check_budget_for_order,
     get_available_budget_cents,
+    get_budget_timeline,
     get_live_adjustment_cents,
     get_live_spent_cents,
     refresh_budget_cache,
@@ -165,3 +166,70 @@ class TestRefreshBudgetCache:
 
         await refresh_budget_cache(mock_db, user_id)
         assert mock_db.execute.call_count == 3
+
+
+def _make_rule(effective_from, initial_cents, yearly_increment_cents):
+    rule = MagicMock()
+    rule.effective_from = effective_from
+    rule.initial_cents = initial_cents
+    rule.yearly_increment_cents = yearly_increment_cents
+    return rule
+
+
+def _make_override(effective_from, effective_until, initial_cents, yearly_increment_cents):
+    ov = MagicMock()
+    ov.effective_from = effective_from
+    ov.effective_until = effective_until
+    ov.initial_cents = initial_cents
+    ov.yearly_increment_cents = yearly_increment_cents
+    return ov
+
+
+class TestGetBudgetTimeline:
+    def test_empty_for_no_start_date(self):
+        assert get_budget_timeline(None, [], []) == []
+
+    def test_empty_for_future_start_date(self):
+        assert get_budget_timeline(date(2099, 1, 1), [], []) == []
+
+    @patch("src.services.budget_service.get_setting_int", return_value=75000)
+    def test_single_year_with_no_rules(self, mock_setting):
+        today = date.today()
+        start = date(today.year, 1, 1)
+        timeline = get_budget_timeline(start, [], [])
+        assert len(timeline) >= 1
+        assert timeline[0]["year"] == today.year
+        assert timeline[0]["source"] == "global"
+
+    def test_uses_global_rule(self):
+        today = date.today()
+        start = date(today.year - 1, today.month, today.day)
+        rule = _make_rule(date(2020, 1, 1), 80000, 30000)
+        timeline = get_budget_timeline(start, [rule], [])
+        assert len(timeline) == 2
+        assert timeline[0]["amount_cents"] == 80000  # initial
+        assert timeline[0]["source"] == "global"
+        assert timeline[1]["amount_cents"] == 30000  # increment
+        assert timeline[-1]["cumulative_cents"] == 110000
+
+    def test_override_takes_precedence(self):
+        today = date.today()
+        start = date(today.year - 1, today.month, today.day)
+        rule = _make_rule(date(2020, 1, 1), 80000, 30000)
+        override = _make_override(start, None, 100000, 50000)
+        timeline = get_budget_timeline(start, [rule], [override])
+        assert timeline[0]["amount_cents"] == 100000  # override initial
+        assert timeline[0]["source"] == "override"
+        assert timeline[1]["amount_cents"] == 50000  # override increment
+        assert timeline[-1]["cumulative_cents"] == 150000
+
+    def test_multiple_rules_picks_latest_applicable(self):
+        today = date.today()
+        start = date(today.year - 2, today.month, today.day)
+        rule1 = _make_rule(date(2020, 1, 1), 75000, 25000)
+        rule2 = _make_rule(date(today.year - 1, 1, 1), 90000, 35000)
+        timeline = get_budget_timeline(start, [rule1, rule2], [])
+        # First year uses rule1, second and third use rule2
+        assert timeline[0]["amount_cents"] == 75000
+        assert timeline[1]["amount_cents"] == 35000  # rule2 increment
+        assert len(timeline) == 3

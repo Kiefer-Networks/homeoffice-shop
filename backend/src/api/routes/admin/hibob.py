@@ -37,23 +37,35 @@ async def trigger_sync(
         ip_address=ip,
     )
 
-    await notify_staff_email(
-        db, event="hibob.sync",
-        subject="HiBob Sync Complete",
-        template_name="hibob_sync_complete.html",
-        context={
-            "employees_synced": log.employees_synced,
-            "employees_created": log.employees_created,
-            "employees_updated": log.employees_updated,
-            "employees_deactivated": log.employees_deactivated,
-            "error_message": log.error_message,
-        },
-    )
-    await notify_staff_slack(
-        db, event="hibob.sync",
-        text=f"HiBob sync completed: {log.employees_synced} synced, "
-             f"{log.employees_created} created, {log.employees_updated} updated",
-    )
+    if log.status == "failed":
+        await notify_staff_email(
+            db, event="hibob.sync_error",
+            subject="HiBob Sync Failed",
+            template_name="hibob_sync_error.html",
+            context={"error_message": log.error_message},
+        )
+        await notify_staff_slack(
+            db, event="hibob.sync_error",
+            text=f"HiBob sync failed: {log.error_message}",
+        )
+    else:
+        await notify_staff_email(
+            db, event="hibob.sync",
+            subject="HiBob Sync Complete",
+            template_name="hibob_sync_complete.html",
+            context={
+                "employees_synced": log.employees_synced,
+                "employees_created": log.employees_created,
+                "employees_updated": log.employees_updated,
+                "employees_deactivated": log.employees_deactivated,
+                "error_message": log.error_message,
+            },
+        )
+        await notify_staff_slack(
+            db, event="hibob.sync",
+            text=f"HiBob sync completed: {log.employees_synced} synced, "
+                 f"{log.employees_created} created, {log.employees_updated} updated",
+        )
 
     return log
 

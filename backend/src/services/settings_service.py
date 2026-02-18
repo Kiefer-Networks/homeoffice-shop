@@ -23,7 +23,6 @@ DEFAULT_SETTINGS = {
     "smtp_password": "",
     "smtp_use_tls": "true",
     "smtp_from_address": "noreply@your-company.com",
-    "smtp_from_name": "Home Office Shop",
 }
 
 _cache: dict[str, str] = {}

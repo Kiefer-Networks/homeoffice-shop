@@ -20,6 +20,7 @@ from src.api.routes import auth, avatars, branding, cart, categories, health, or
 from src.api.routes.admin import (
     audit as admin_audit,
     brands as admin_brands,
+    budget_rules as admin_budget_rules,
     budgets as admin_budgets,
     categories as admin_categories,
     hibob as admin_hibob,
@@ -118,6 +119,7 @@ app.include_router(admin_notifications.router, prefix="/api/admin")
 app.include_router(admin_audit.router, prefix="/api/admin")
 app.include_router(admin_hibob.router, prefix="/api/admin")
 app.include_router(admin_amazon.router, prefix="/api/admin")
+app.include_router(admin_budget_rules.router, prefix="/api/admin")
 
 # Static files for uploaded product images only (invoices are served via authenticated endpoint)
 _products_upload_dir = settings.upload_dir / "products"

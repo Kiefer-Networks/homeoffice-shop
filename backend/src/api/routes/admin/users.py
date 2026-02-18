@@ -3,6 +3,7 @@ from uuid import UUID
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Query, Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin, require_staff
@@ -10,6 +11,11 @@ from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.exceptions import BadRequestError, NotFoundError
 from src.models.dto import DetailResponse
+from src.models.dto.budget import (
+    UserBudgetOverrideCreate,
+    UserBudgetOverrideResponse,
+    UserBudgetOverrideUpdate,
+)
 from src.models.dto.user import (
     UserAdminListResponse,
     UserDetailResponse,
@@ -17,12 +23,13 @@ from src.models.dto.user import (
     UserRoleUpdate,
     UserSearchResult,
 )
+from src.models.orm.budget_adjustment import BudgetAdjustment
 from src.models.orm.user import User
+from src.models.orm.user_budget_override import UserBudgetOverride
+from src.notifications.service import notify_user_email
 from src.repositories import user_repo
 from src.services import budget_service, order_service
 from src.services.auth_service import logout as revoke_user_sessions
-from src.models.orm.budget_adjustment import BudgetAdjustment
-from sqlalchemy import select
 
 router = APIRouter(prefix="/users", tags=["admin-users"])
 
@@ -101,6 +108,28 @@ async def get_user_detail(
     adjustment_total = await budget_service.get_live_adjustment_cents(db, user_id)
     available = target.total_budget_cents + adjustment_total - spent
 
+    # Budget timeline and overrides
+    rules = await budget_service.get_budget_rules(db)
+    overrides = await budget_service.get_user_overrides(db, user_id)
+    timeline = []
+    if target.start_date:
+        timeline = budget_service.get_budget_timeline(target.start_date, rules, overrides)
+
+    override_dicts = [
+        {
+            "id": o.id,
+            "user_id": o.user_id,
+            "effective_from": o.effective_from,
+            "effective_until": o.effective_until,
+            "initial_cents": o.initial_cents,
+            "yearly_increment_cents": o.yearly_increment_cents,
+            "reason": o.reason,
+            "created_by": o.created_by,
+            "created_at": o.created_at,
+        }
+        for o in overrides
+    ]
+
     return {
         "user": target,
         "orders": orders,
@@ -111,6 +140,8 @@ async def get_user_detail(
             "adjustment_cents": adjustment_total,
             "available_cents": available,
         },
+        "budget_timeline": timeline,
+        "budget_overrides": override_dicts,
     }
 
 
@@ -144,6 +175,13 @@ async def update_user_role(
         ip_address=ip,
     )
 
+    await notify_user_email(
+        target.email,
+        subject="Your Role Has Been Updated",
+        template_name="role_changed.html",
+        context={"old_role": old_role, "new_role": body.role},
+    )
+
     return {"detail": f"Role updated to {body.role}"}
 
 
@@ -175,3 +213,100 @@ async def update_probation_override(
     )
 
     return {"detail": f"Probation override set to {body.probation_override}"}
+
+
+# ── Budget Overrides ──────────────────────────────────────────────────────────
+
+@router.post("/{user_id}/budget-overrides", response_model=UserBudgetOverrideResponse, status_code=201)
+async def create_budget_override(
+    user_id: UUID,
+    body: UserBudgetOverrideCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    staff: User = Depends(require_staff),
+):
+    target = await user_repo.get_by_id(db, user_id)
+    if not target:
+        raise NotFoundError("User not found")
+
+    override = UserBudgetOverride(
+        user_id=user_id,
+        effective_from=body.effective_from,
+        effective_until=body.effective_until,
+        initial_cents=body.initial_cents,
+        yearly_increment_cents=body.yearly_increment_cents,
+        reason=body.reason,
+        created_by=staff.id,
+    )
+    db.add(override)
+    await db.flush()
+
+    ip = request.client.host if request.client else None
+    await write_audit_log(
+        db, user_id=staff.id, action="admin.budget_override.created",
+        resource_type="user_budget_override", resource_id=override.id,
+        details={"user_id": str(user_id), "reason": body.reason},
+        ip_address=ip,
+    )
+
+    return override
+
+
+@router.put("/{user_id}/budget-overrides/{override_id}", response_model=UserBudgetOverrideResponse)
+async def update_budget_override(
+    user_id: UUID,
+    override_id: UUID,
+    body: UserBudgetOverrideUpdate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    staff: User = Depends(require_staff),
+):
+    override = await db.get(UserBudgetOverride, override_id)
+    if not override or override.user_id != user_id:
+        raise NotFoundError("Budget override not found")
+
+    if body.effective_from is not None:
+        override.effective_from = body.effective_from
+    if body.effective_until is not None:
+        override.effective_until = body.effective_until
+    if body.initial_cents is not None:
+        override.initial_cents = body.initial_cents
+    if body.yearly_increment_cents is not None:
+        override.yearly_increment_cents = body.yearly_increment_cents
+    if body.reason is not None:
+        override.reason = body.reason
+    await db.flush()
+
+    ip = request.client.host if request.client else None
+    await write_audit_log(
+        db, user_id=staff.id, action="admin.budget_override.updated",
+        resource_type="user_budget_override", resource_id=override_id,
+        details=body.model_dump(exclude_none=True),
+        ip_address=ip,
+    )
+
+    return override
+
+
+@router.delete("/{user_id}/budget-overrides/{override_id}", status_code=204)
+async def delete_budget_override(
+    user_id: UUID,
+    override_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    staff: User = Depends(require_staff),
+):
+    override = await db.get(UserBudgetOverride, override_id)
+    if not override or override.user_id != user_id:
+        raise NotFoundError("Budget override not found")
+
+    await db.delete(override)
+    await db.flush()
+
+    ip = request.client.host if request.client else None
+    await write_audit_log(
+        db, user_id=staff.id, action="admin.budget_override.deleted",
+        resource_type="user_budget_override", resource_id=override_id,
+        details={"user_id": str(user_id)},
+        ip_address=ip,
+    )

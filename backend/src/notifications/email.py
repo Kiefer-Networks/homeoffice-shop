@@ -19,6 +19,8 @@ ALLOWED_TEMPLATES = {
     "order_created.html",
     "order_cancelled.html",
     "hibob_sync_complete.html",
+    "hibob_sync_error.html",
+    "role_changed.html",
 }
 
 
@@ -52,10 +54,15 @@ async def send_email(
         return False
 
     try:
+        # Inject branding context
+        context.setdefault("company_name", get_setting("company_name"))
+        from src.core.config import settings as app_settings
+        context.setdefault("frontend_url", app_settings.frontend_url)
+
         template = _jinja_env.get_template(template_name)
         html_body = template.render(**context)
 
-        from_name = get_setting("smtp_from_name")
+        from_name = get_setting("company_name")
         from_address = get_setting("smtp_from_address")
 
         message = MIMEMultipart("alternative")
@@ -80,7 +87,7 @@ async def send_test_email(to: str) -> bool:
     if not smtp["hostname"]:
         return False
 
-    from_name = get_setting("smtp_from_name")
+    from_name = get_setting("company_name")
     from_address = get_setting("smtp_from_address")
 
     message = MIMEMultipart("alternative")

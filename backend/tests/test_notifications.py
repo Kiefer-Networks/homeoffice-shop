@@ -123,6 +123,45 @@ class TestNotifyStaffEmail:
         )
 
 
+    @pytest.mark.asyncio
+    @patch("src.notifications.service.send_email", new_callable=AsyncMock)
+    @patch("src.notifications.service.notification_pref_repo")
+    @patch("src.notifications.service.user_repo")
+    async def test_admin_receives_sync_error_notification(
+        self, mock_user_repo, mock_pref_repo, mock_send, mock_db,
+    ):
+        admin = make_user(role="admin", email="admin@example.com")
+        mock_user_repo.get_active_staff = AsyncMock(return_value=[admin])
+        pref = make_pref(email_enabled=True, email_events=["hibob.sync_error"])
+        mock_pref_repo.get_all = AsyncMock(return_value={admin.id: pref})
+
+        await notify_staff_email(
+            mock_db, event="hibob.sync_error", subject="HiBob Sync Failed",
+            template_name="hibob_sync_error.html", context={"error_message": "Connection timeout"},
+        )
+        mock_send.assert_called_once_with(
+            "admin@example.com", "HiBob Sync Failed", "hibob_sync_error.html",
+            {"error_message": "Connection timeout"},
+        )
+
+    @pytest.mark.asyncio
+    @patch("src.notifications.service.send_email", new_callable=AsyncMock)
+    @patch("src.notifications.service.notification_pref_repo")
+    @patch("src.notifications.service.user_repo")
+    async def test_manager_without_prefs_skips_sync_error(
+        self, mock_user_repo, mock_pref_repo, mock_send, mock_db,
+    ):
+        manager = make_user(role="manager", email="manager@example.com")
+        mock_user_repo.get_active_staff = AsyncMock(return_value=[manager])
+        mock_pref_repo.get_all = AsyncMock(return_value={})  # no prefs
+
+        await notify_staff_email(
+            mock_db, event="hibob.sync_error", subject="HiBob Sync Failed",
+            template_name="hibob_sync_error.html", context={},
+        )
+        mock_send.assert_not_called()
+
+
 class TestNotifyStaffSlack:
     @pytest.mark.asyncio
     @patch("src.notifications.service.send_slack_message", new_callable=AsyncMock)
