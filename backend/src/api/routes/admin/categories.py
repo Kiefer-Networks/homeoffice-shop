@@ -53,6 +53,33 @@ async def create_category(
     return category
 
 
+@router.put("/reorder", response_model=DetailResponse)
+async def reorder_categories(
+    items: list[CategoryReorderItem],
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    ids = [item.id for item in items]
+    result = await db.execute(select(Category).where(Category.id.in_(ids)))
+    categories_map = {c.id: c for c in result.scalars().all()}
+
+    for item in items:
+        category = categories_map.get(item.id)
+        if not category:
+            raise NotFoundError(f"Category {item.id} not found")
+        category.sort_order = item.sort_order
+    await db.flush()
+
+    ip = request.client.host if request.client else None
+    await write_audit_log(
+        db, user_id=admin.id, action="admin.category.reordered",
+        resource_type="category",
+        details={"count": len(items)}, ip_address=ip,
+    )
+    return {"detail": "Categories reordered"}
+
+
 @router.put("/{category_id}", response_model=CategoryResponse)
 async def update_category(
     category_id: UUID,
@@ -79,33 +106,6 @@ async def update_category(
         details=changes, ip_address=ip,
     )
     return category
-
-
-@router.put("/reorder", response_model=DetailResponse)
-async def reorder_categories(
-    items: list[CategoryReorderItem],
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
-):
-    ids = [item.id for item in items]
-    result = await db.execute(select(Category).where(Category.id.in_(ids)))
-    categories_map = {c.id: c for c in result.scalars().all()}
-
-    for item in items:
-        category = categories_map.get(item.id)
-        if not category:
-            raise NotFoundError(f"Category {item.id} not found")
-        category.sort_order = item.sort_order
-    await db.flush()
-
-    ip = request.client.host if request.client else None
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.category.reordered",
-        resource_type="category",
-        details={"count": len(items)}, ip_address=ip,
-    )
-    return {"detail": "Categories reordered"}
 
 
 @router.delete("/{category_id}", status_code=204)
