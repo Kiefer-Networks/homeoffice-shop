@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { Download, Trash2, Plus, Clock, Save, Database, HardDrive, Calendar, Shield, ChevronLeft, ChevronRight, Repeat } from 'lucide-react'
@@ -41,6 +42,8 @@ export function AdminBackupPage() {
   const [scheduleDirty, setScheduleDirty] = useState(false)
   const [savingSchedule, setSavingSchedule] = useState(false)
   const [page, setPage] = useState(1)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const { addToast } = useUiStore()
 
   const loadBackups = () => {
@@ -102,14 +105,18 @@ export function AdminBackupPage() {
     }
   }
 
-  const handleDelete = async (filename: string) => {
-    if (!confirm(`Delete backup "${filename}"?`)) return
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
     try {
-      await adminApi.deleteBackup(filename)
+      await adminApi.deleteBackup(deleteTarget)
       addToast({ title: 'Backup deleted' })
+      setDeleteTarget(null)
       loadBackups()
     } catch (err: unknown) {
       addToast({ title: 'Delete failed', description: getErrorMessage(err), variant: 'destructive' })
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -409,7 +416,7 @@ export function AdminBackupPage() {
                         <Button size="sm" variant="ghost" onClick={() => handleDownload(backup.filename)} title="Download">
                           <Download className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleDelete(backup.filename)} title="Delete">
+                        <Button size="sm" variant="ghost" onClick={() => setDeleteTarget(backup.filename)} title="Delete">
                           <Trash2 className="h-3.5 w-3.5 text-red-500" />
                         </Button>
                       </div>
@@ -421,6 +428,23 @@ export function AdminBackupPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Backup</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <span className="font-mono font-medium text-[hsl(var(--foreground))]">{deleteTarget}</span>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
