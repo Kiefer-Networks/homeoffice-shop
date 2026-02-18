@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { orderApi } from '@/services/orderApi'
 import { formatCents, formatDate } from '@/lib/utils'
-import { ChevronRight, Package, AlertTriangle, CheckCircle2, XCircle, Clock, Truck } from 'lucide-react'
+import { ChevronRight, Package, AlertTriangle, CheckCircle2, XCircle, Clock } from 'lucide-react'
 import type { Order } from '@/types'
 
 const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'success' | 'destructive' | 'warning'; icon: typeof Clock; label: string }> = {

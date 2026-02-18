@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ShoppingBag, Users, Package, Wallet } from 'lucide-react'
+import { ShoppingBag, Users, Wallet } from 'lucide-react'
 import { adminApi } from '@/services/adminApi'
 
 export function DashboardPage() {
