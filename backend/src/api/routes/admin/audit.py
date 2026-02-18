@@ -71,5 +71,5 @@ async def export_audit_logs(
     return StreamingResponse(
         iter([csv_content]),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=audit_log.csv"},
+        headers={"Content-Disposition": 'attachment; filename="audit_log.csv"'},
     )

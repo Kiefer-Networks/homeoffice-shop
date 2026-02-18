@@ -22,7 +22,7 @@ async def get_cart(
     return await cart_service.get_cart(db, user.id)
 
 
-@router.post("/items", response_model=DetailResponse)
+@router.post("/items", response_model=DetailResponse, status_code=201)
 async def add_to_cart(
     body: CartItemAdd,
     request: Request,
