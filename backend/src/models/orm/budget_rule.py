@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, func
+from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -15,8 +15,8 @@ class BudgetRule(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     effective_from: Mapped[date] = mapped_column(Date, nullable=False, unique=True)
-    initial_cents: Mapped[int] = mapped_column(Integer, nullable=False)
-    yearly_increment_cents: Mapped[int] = mapped_column(Integer, nullable=False)
+    initial_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    yearly_increment_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     created_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )

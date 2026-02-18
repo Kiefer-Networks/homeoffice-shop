@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Text, func
+from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -19,8 +19,8 @@ class UserBudgetOverride(Base):
     )
     effective_from: Mapped[date] = mapped_column(Date, nullable=False)
     effective_until: Mapped[date | None] = mapped_column(Date, nullable=True)
-    initial_cents: Mapped[int] = mapped_column(Integer, nullable=False)
-    yearly_increment_cents: Mapped[int] = mapped_column(Integer, nullable=False)
+    initial_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    yearly_increment_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     created_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False

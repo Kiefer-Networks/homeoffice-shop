@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Integer, String, func
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -21,10 +21,10 @@ class User(Base):
     manager_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     manager_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    total_budget_cents: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    cached_spent_cents: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_budget_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    cached_spent_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     cached_adjustment_cents: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0
+        BigInteger, nullable=False, default=0
     )
     budget_cache_updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
