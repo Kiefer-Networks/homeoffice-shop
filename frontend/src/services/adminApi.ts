@@ -120,12 +120,12 @@ export const adminApi = {
     api.delete(`/api/admin/users/${userId}/budget-overrides/${overrideId}`),
 
   // HiBob
-  triggerSync: () => api.post('/api/admin/hibob/sync'),
+  triggerSync: () => api.post<{ detail: string }>('/api/admin/hibob/sync'),
   getSyncLogs: (params?: Record<string, string | number>) =>
     api.get<PaginatedResponse<HiBobSyncLog>>('/api/admin/hibob/sync-log', { params }),
 
   // Purchase Sync
-  triggerPurchaseSync: () => api.post<HiBobPurchaseSyncLog>('/api/admin/hibob/purchase-sync'),
+  triggerPurchaseSync: () => api.post<{ detail: string }>('/api/admin/hibob/purchase-sync'),
   getPurchaseSyncLogs: (params?: Record<string, string | number>) =>
     api.get<PaginatedResponse<HiBobPurchaseSyncLog>>('/api/admin/hibob/purchase-sync-log', { params }),
 

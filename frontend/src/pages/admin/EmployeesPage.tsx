@@ -142,11 +142,11 @@ export function AdminEmployeesPage() {
     setSyncing(true)
     try {
       await adminApi.triggerSync()
-      load()
-      addToast({ title: 'Sync complete' })
+      addToast({ title: 'Sync started', description: 'Running in background. Results will appear shortly.' })
+      setTimeout(() => { load(); setSyncing(false) }, 5000)
+      setTimeout(() => load(), 15000)
     } catch (err: unknown) {
       addToast({ title: 'Sync failed', description: getErrorMessage(err), variant: 'destructive' })
-    } finally {
       setSyncing(false)
     }
   }

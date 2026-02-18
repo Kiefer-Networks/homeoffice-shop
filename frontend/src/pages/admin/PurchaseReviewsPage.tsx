@@ -53,19 +53,13 @@ export function PurchaseReviewsPage() {
   const handleSync = async () => {
     setSyncing(true)
     try {
-      const { data } = await adminApi.triggerPurchaseSync()
-      if (data.status === 'failed') {
-        addToast({ title: 'Purchase sync failed', description: data.error_message || 'Unknown error', variant: 'destructive' })
-      } else {
-        addToast({
-          title: 'Purchase sync completed',
-          description: `Found: ${data.entries_found}, Matched: ${data.matched}, Adjusted: ${data.auto_adjusted}, Pending: ${data.pending_review}`,
-        })
-      }
-      loadReviews()
+      await adminApi.triggerPurchaseSync()
+      addToast({ title: 'Purchase sync started', description: 'Running in background. Results will appear shortly.' })
+      // Poll for new results after a delay
+      setTimeout(() => { loadReviews(); setSyncing(false) }, 5000)
+      setTimeout(() => loadReviews(), 15000)
     } catch (err: unknown) {
       addToast({ title: 'Sync failed', description: getErrorMessage(err), variant: 'destructive' })
-    } finally {
       setSyncing(false)
     }
   }
