@@ -19,6 +19,7 @@ from src.models.orm.cart_item import CartItem
 from src.models.orm.order import Order, OrderInvoice, OrderItem
 from src.models.orm.product import Product
 from src.models.orm.user import User
+from src.notifications.service import notify_staff_slack, notify_user_email
 from src.services.budget_service import check_budget_for_order, refresh_budget_cache
 
 logger = logging.getLogger(__name__)
@@ -159,6 +160,40 @@ async def transition_order(
     await refresh_budget_cache(db, order.user_id)
 
     return order
+
+
+async def notify_status_changed(
+    db: AsyncSession,
+    order: Order,
+    order_data: dict | None,
+    new_status: str,
+    admin_note: str | None = None,
+) -> None:
+    """Send email and Slack notifications after a status change."""
+    if order_data and order_data.get("user_email"):
+        await notify_user_email(
+            order_data["user_email"],
+            subject=f"Order Status Updated: {new_status.title()}",
+            template_name="order_status_changed.html",
+            context={
+                "order_id_short": str(order.id)[:8],
+                "new_status": new_status,
+                "admin_note": admin_note,
+                "items": order_data.get("items", []),
+                "total_cents": order.total_cents,
+            },
+        )
+
+    if new_status == "cancelled":
+        await notify_staff_slack(
+            db, event="order.cancelled",
+            text=f"Order {str(order.id)[:8]} has been cancelled.",
+        )
+    else:
+        await notify_staff_slack(
+            db, event="order.status_changed",
+            text=f"Order {str(order.id)[:8]} status changed to {new_status}.",
+        )
 
 
 def _order_item_to_dict(item: OrderItem, product_name: str | None) -> dict:
