@@ -15,7 +15,7 @@ def rate_limit(limit: int = 60, window_seconds: int = 60, key_prefix: str = "end
             client_ip = request.client.host if request.client else "unknown"
             key = f"{key_prefix}:ip:{client_ip}"
 
-        allowed, retry_after = _limiter.is_allowed(key, limit, window_seconds)
+        allowed, retry_after, _remaining = _limiter.is_allowed(key, limit, window_seconds)
         if not allowed:
             raise RateLimitError(retry_after=retry_after)
 
