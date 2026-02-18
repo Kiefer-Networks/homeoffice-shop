@@ -38,6 +38,7 @@ REFRESHABLE_FIELDS = {
     "item_model_number": "Model Number",
     "specifications": "Specifications",
     "product_information": "Product Information",
+    "variants": "Variants",
 }
 
 
@@ -51,7 +52,7 @@ async def create_product(
     if body.price_cents == 0:
         body.is_active = False
 
-    # Auto-create or lookup Brand if brand text provided without brand_id
+    # Auto-create or lookup Brand if brand text provided
     brand_id = body.brand_id
     if body.brand and not brand_id:
         result = await db.execute(
@@ -108,6 +109,14 @@ async def create_product(
                 product.item_weight = amazon_data.item_weight
                 product.item_model_number = amazon_data.item_model_number
                 product.product_information = amazon_data.product_information
+
+                # Store variants
+                if amazon_data.variants:
+                    product.variants = [v.model_dump() for v in amazon_data.variants]
+                    variant_prices = [v.price_cents for v in amazon_data.variants if v.price_cents > 0]
+                    if variant_prices:
+                        product.price_min_cents = min(variant_prices)
+                        product.price_max_cents = max(variant_prices)
 
                 await db.flush()
         except Exception:
@@ -296,9 +305,30 @@ async def refresh_preview(
     except Exception:
         logger.exception("Image download failed for product %s", product.id)
 
+    # Refresh variant prices if product has variants
+    if amazon_data.variants:
+        variant_asins = [v.asin for v in amazon_data.variants if v.price_cents == 0]
+        if variant_asins:
+            try:
+                prices = await client.get_variant_prices(variant_asins)
+                for v in amazon_data.variants:
+                    if v.asin in prices:
+                        v.price_cents = prices[v.asin]
+            except Exception:
+                logger.exception("Failed to fetch variant prices")
+
     # Build diffs for reviewable fields
     diffs: list[ProductFieldDiff] = []
     for field, label in REFRESHABLE_FIELDS.items():
+        if field == "variants":
+            new_variants = [v.model_dump() for v in amazon_data.variants] if amazon_data.variants else None
+            old_variants = product.variants
+            if new_variants and new_variants != old_variants:
+                diffs.append(ProductFieldDiff(
+                    field=field, label=label,
+                    old_value=old_variants, new_value=new_variants,
+                ))
+            continue
         old_value = getattr(product, field)
         new_value = getattr(amazon_data, field, None)
         if new_value is not None and old_value != new_value:
@@ -348,6 +378,13 @@ async def refresh_apply(
         new_value = body.values[field]
         setattr(product, field, new_value)
         changes[field] = {"old": old_value, "new": new_value}
+
+    # Update price_min/max from variants
+    if "variants" in changes and product.variants:
+        variant_prices = [v.get("price_cents", 0) for v in product.variants if v.get("price_cents", 0) > 0]
+        if variant_prices:
+            product.price_min_cents = min(variant_prices)
+            product.price_max_cents = max(variant_prices)
 
     # Brand ID resolution: auto-create/lookup Brand entity
     if "brand" in changes and product.brand:

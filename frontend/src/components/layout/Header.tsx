@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { ShoppingCart, LogOut, Settings, Menu, ClipboardList } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -9,6 +10,50 @@ import { useBrandingStore } from '@/stores/brandingStore'
 import { formatCents } from '@/lib/utils'
 import { authApi } from '@/services/authApi'
 import { setAccessToken } from '@/lib/token'
+
+function UserAvatar({ name, avatarUrl, size = 32 }: { name: string; avatarUrl?: string | null; size?: number }) {
+  const [imgError, setImgError] = useState(false)
+
+  const initials = name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+
+  // Deterministic color from name
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const hue = Math.abs(hash) % 360
+
+  if (avatarUrl && !imgError) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        className="rounded-full object-cover shrink-0"
+        style={{ width: size, height: size }}
+        onError={() => setImgError(true)}
+      />
+    )
+  }
+
+  return (
+    <div
+      className="rounded-full flex items-center justify-center text-white font-medium shrink-0"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size * 0.38,
+        backgroundColor: `hsl(${hue}, 55%, 50%)`,
+      }}
+    >
+      {initials}
+    </div>
+  )
+}
 
 export function Header() {
   const { user, logout: logoutStore } = useAuthStore()
@@ -45,9 +90,10 @@ export function Header() {
           </Link>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4">
-          <div className="hidden sm:block text-sm text-[hsl(var(--muted-foreground))]">
-            Budget: <span className="font-semibold text-[hsl(var(--foreground))]">{formatCents(availableBudget)}</span>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(var(--muted))] text-sm">
+            <span className="text-[hsl(var(--muted-foreground))]">Budget</span>
+            <span className="font-semibold text-[hsl(var(--foreground))]">{formatCents(availableBudget)}</span>
           </div>
 
           <Link to="/orders">
@@ -71,10 +117,13 @@ export function Header() {
             </Link>
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5 ml-1 pl-3 border-l border-[hsl(var(--border))]">
+            {user && (
+              <UserAvatar name={user.display_name} avatarUrl={user.avatar_url} size={34} />
+            )}
             <div className="hidden md:block text-sm">
-              <div className="font-medium">{user?.display_name}</div>
-              <div className="text-xs text-[hsl(var(--muted-foreground))]">{user?.department}</div>
+              <div className="font-medium leading-tight">{user?.display_name}</div>
+              <div className="text-xs text-[hsl(var(--muted-foreground))] leading-tight">{user?.department}</div>
             </div>
             <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Log out">
               <LogOut className="h-4 w-4" />

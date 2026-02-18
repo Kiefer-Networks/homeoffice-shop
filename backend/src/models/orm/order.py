@@ -23,6 +23,8 @@ class Order(Base):
     total_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     delivery_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     admin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expected_delivery: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    purchase_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     reviewed_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
@@ -49,6 +51,9 @@ class Order(Base):
     items: Mapped[list["OrderItem"]] = relationship(
         "OrderItem", back_populates="order", cascade="all, delete-orphan"
     )
+    invoices: Mapped[list["OrderInvoice"]] = relationship(
+        "OrderInvoice", back_populates="order", cascade="all, delete-orphan"
+    )
 
 
 class OrderItem(Base):
@@ -67,5 +72,28 @@ class OrderItem(Base):
     price_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     external_url: Mapped[str] = mapped_column(Text, nullable=False)
     vendor_ordered: Mapped[bool] = mapped_column(default=False, nullable=False)
+    variant_asin: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    variant_value: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     order: Mapped["Order"] = relationship("Order", back_populates="items")
+
+
+class OrderInvoice(Base):
+    __tablename__ = "order_invoices"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
+    )
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_path: Mapped[str] = mapped_column(Text, nullable=False)
+    uploaded_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    order: Mapped["Order"] = relationship("Order", back_populates="invoices")

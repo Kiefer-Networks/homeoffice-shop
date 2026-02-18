@@ -30,7 +30,14 @@ async def get_cart(db: AsyncSession, user_id: UUID) -> dict:
     has_unavailable = False
 
     for cart_item, product in rows:
+        # If cart item has a variant, use variant price as current price
         current_price = product.price_cents
+        if cart_item.variant_asin and product.variants:
+            for v in product.variants:
+                if v.get("asin") == cart_item.variant_asin and v.get("price_cents", 0) > 0:
+                    current_price = v["price_cents"]
+                    break
+
         price_changed = cart_item.price_at_add_cents != current_price
         price_diff = current_price - cart_item.price_at_add_cents
         product_active = product.is_active
@@ -58,6 +65,8 @@ async def get_cart(db: AsyncSession, user_id: UUID) -> dict:
             "image_url": product.image_url,
             "external_url": product.external_url,
             "max_quantity_per_user": product.max_quantity_per_user,
+            "variant_asin": cart_item.variant_asin,
+            "variant_value": cart_item.variant_value,
         })
 
     available_budget = await get_available_budget_cents(db, user_id)
@@ -74,16 +83,29 @@ async def get_cart(db: AsyncSession, user_id: UUID) -> dict:
 
 
 async def add_to_cart(
-    db: AsyncSession, user_id: UUID, product_id: UUID, quantity: int = 1
+    db: AsyncSession, user_id: UUID, product_id: UUID, quantity: int = 1,
+    variant_asin: str | None = None,
 ) -> CartItem:
     product = await db.get(Product, product_id)
     if not product or not product.is_active:
         raise BadRequestError("Product not available")
 
+    # Resolve variant info
+    price = product.price_cents
+    variant_value: str | None = None
+    if variant_asin and product.variants:
+        matched = next((v for v in product.variants if v.get("asin") == variant_asin), None)
+        if not matched:
+            raise BadRequestError("Invalid variant")
+        if matched.get("price_cents", 0) > 0:
+            price = matched["price_cents"]
+        variant_value = matched.get("value")
+
     existing = await db.execute(
         select(CartItem).where(
             CartItem.user_id == user_id,
             CartItem.product_id == product_id,
+            CartItem.variant_asin == variant_asin,
         )
     )
     cart_item = existing.scalar_one_or_none()
@@ -104,7 +126,9 @@ async def add_to_cart(
             user_id=user_id,
             product_id=product_id,
             quantity=quantity,
-            price_at_add_cents=product.price_cents,
+            price_at_add_cents=price,
+            variant_asin=variant_asin,
+            variant_value=variant_value,
         )
         db.add(cart_item)
 

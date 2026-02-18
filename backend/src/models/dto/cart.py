@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 class CartItemAdd(BaseModel):
     product_id: UUID
     quantity: int = Field(default=1, ge=1, le=100)
+    variant_asin: str | None = None
 
 
 class CartItemUpdate(BaseModel):
@@ -25,6 +26,8 @@ class CartItemResponse(BaseModel):
     image_url: str | None = None
     external_url: str = ""
     max_quantity_per_user: int = 1
+    variant_asin: str | None = None
+    variant_value: str | None = None
 
 
 class CartResponse(BaseModel):

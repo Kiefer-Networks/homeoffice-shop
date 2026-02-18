@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { ProductRefreshModal } from '@/components/admin/ProductRefreshModal'
-import type { Product, Category, AmazonSearchResult } from '@/types'
+import type { Product, Category, AmazonSearchResult, Brand, ProductVariant } from '@/types'
 
 const PER_PAGE = 20
 
@@ -62,8 +62,11 @@ export function AdminProductsPage() {
   const [editProduct, setEditProduct] = useState<Product | null>(null)
   const [archiveFilter, setArchiveFilter] = useState<'live' | 'archived'>('live')
 
+  const [brands, setBrands] = useState<Brand[]>([])
+
   // Create form
-  const [form, setForm] = useState({ name: '', category_id: '', price_euro: '', external_url: '', amazon_asin: '', brand: '', description: '' })
+  const [form, setForm] = useState({ name: '', category_id: '', price_euro: '', external_url: '', amazon_asin: '', brand: '', brand_id: '', description: '' })
+  const [loadedVariants, setLoadedVariants] = useState<ProductVariant[]>([])
   const [amazonUrl, setAmazonUrl] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<AmazonSearchResult[]>([])
@@ -87,6 +90,7 @@ export function AdminProductsPage() {
 
   useEffect(() => {
     productApi.getCategories().then(({ data }) => setCategories(data))
+    adminApi.listBrands().then(({ data }) => setBrands(data))
   }, [])
 
   const load = useCallback(() => {
@@ -130,15 +134,18 @@ export function AdminProductsPage() {
     setLoadingProduct(true)
     try {
       const { data } = await adminApi.amazonProduct(asin)
+      const matchedBrand = data.brand ? brands.find(b => b.name.toLowerCase() === data.brand!.toLowerCase()) : null
       setForm(f => ({
         ...f,
         name: data.name || f.name,
         brand: data.brand || f.brand,
+        brand_id: matchedBrand?.id || f.brand_id,
         description: data.description || (data.feature_bullets?.length ? data.feature_bullets.join('\n') : '') || f.description,
         price_euro: data.price_cents ? centsToEuroInput(data.price_cents) : f.price_euro,
         amazon_asin: asin,
         external_url: data.url || f.external_url,
       }))
+      setLoadedVariants(data.variants || [])
       addToast({ title: 'Product data loaded' })
     } catch {
       addToast({ title: 'Failed to load', variant: 'destructive' })
@@ -166,15 +173,18 @@ export function AdminProductsPage() {
     setLoadingProduct(true)
     try {
       const { data } = await adminApi.amazonProduct(result.asin)
+      const matchedBrand = data.brand ? brands.find(b => b.name.toLowerCase() === data.brand!.toLowerCase()) : null
       setForm(f => ({
         ...f,
         name: data.name || result.name || f.name,
         brand: data.brand || f.brand,
+        brand_id: matchedBrand?.id || f.brand_id,
         description: data.description || (data.feature_bullets?.length ? data.feature_bullets.join('\n') : '') || f.description,
         price_euro: data.price_cents ? centsToEuroInput(data.price_cents) : (result.price_cents ? centsToEuroInput(result.price_cents) : f.price_euro),
         amazon_asin: result.asin,
         external_url: data.url || result.url || f.external_url,
       }))
+      setLoadedVariants(data.variants || [])
       setSearchResults([])
       addToast({ title: 'Product data loaded' })
     } catch {
@@ -187,6 +197,7 @@ export function AdminProductsPage() {
   const handleCreate = async () => {
     if (!form.name.trim()) return addToast({ title: 'Name is required', variant: 'destructive' })
     if (!form.category_id) return addToast({ title: 'Category is required', variant: 'destructive' })
+    if (!form.brand_id) return addToast({ title: 'Brand is required', variant: 'destructive' })
     if (!form.external_url.trim()) return addToast({ title: 'URL is required', variant: 'destructive' })
     const priceCents = parseEuroToCents(form.price_euro)
     setCreating(true)
@@ -194,11 +205,13 @@ export function AdminProductsPage() {
       await adminApi.createProduct({
         ...form,
         category_id: form.category_id,
+        brand_id: form.brand_id,
         price_cents: priceCents,
         amazon_asin: form.amazon_asin || undefined,
       })
       setShowCreate(false)
-      setForm({ name: '', category_id: '', price_euro: '', external_url: '', amazon_asin: '', brand: '', description: '' })
+      setForm({ name: '', category_id: '', price_euro: '', external_url: '', amazon_asin: '', brand: '', brand_id: '', description: '' })
+      setLoadedVariants([])
       setAmazonUrl('')
       setSearchResults([])
       setSearchQuery('')
@@ -375,7 +388,12 @@ export function AdminProductsPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="font-medium">{p.name}</div>
+                        <div className="font-medium">
+                          {p.name}
+                          {p.variants && p.variants.length > 0 && (
+                            <Badge variant="secondary" className="ml-2 text-xs">{p.variants.length} variants</Badge>
+                          )}
+                        </div>
                         <div className="text-xs text-[hsl(var(--muted-foreground))]">
                           {p.brand}{p.amazon_asin && ` · ${p.amazon_asin}`}
                         </div>
@@ -496,7 +514,11 @@ export function AdminProductsPage() {
             )}
 
             <Input placeholder="Product name *" value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />
-            <Input placeholder="Brand" value={form.brand} onChange={(e) => setForm(f => ({ ...f, brand: e.target.value }))} />
+            <select value={form.brand_id} onChange={(e) => setForm(f => ({ ...f, brand_id: e.target.value }))}
+              className="w-full rounded-md border px-3 py-2 text-sm">
+              <option value="">Select brand *</option>
+              {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
             <select value={form.category_id} onChange={(e) => setForm(f => ({ ...f, category_id: e.target.value }))}
               className="w-full rounded-md border px-3 py-2 text-sm">
               <option value="">Select category *</option>
@@ -506,10 +528,39 @@ export function AdminProductsPage() {
             <Input placeholder="External URL *" value={form.external_url} onChange={(e) => setForm(f => ({ ...f, external_url: e.target.value }))} />
             <textarea placeholder="Description" value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
               className="w-full rounded-md border px-3 py-2 text-sm min-h-[80px]" />
+
+            {/* Variants section */}
+            {loadedVariants.length > 0 && (
+              <div>
+                <h4 className="font-medium text-sm mb-2">Variants ({loadedVariants.length})</h4>
+                <div className="border rounded-md max-h-48 overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b bg-[hsl(var(--muted))]">
+                        <th className="text-left px-2 py-1">Group</th>
+                        <th className="text-left px-2 py-1">Value</th>
+                        <th className="text-left px-2 py-1">ASIN</th>
+                        <th className="text-right px-2 py-1">Price</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loadedVariants.map((v) => (
+                        <tr key={v.asin} className="border-b last:border-b-0">
+                          <td className="px-2 py-1 capitalize">{v.group}</td>
+                          <td className="px-2 py-1">{v.value}</td>
+                          <td className="px-2 py-1 font-mono">{v.asin}</td>
+                          <td className="px-2 py-1 text-right">{v.price_cents > 0 ? formatCents(v.price_cents) : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={creating || !form.name || !form.category_id || !form.external_url}>
+            <Button onClick={handleCreate} disabled={creating || !form.name || !form.category_id || !form.brand_id || !form.external_url}>
               {creating ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Creating...</> : 'Create'}
             </Button>
           </DialogFooter>
@@ -532,6 +583,35 @@ export function AdminProductsPage() {
             <Input placeholder="External URL *" value={editForm.external_url} onChange={(e) => setEditForm(f => ({ ...f, external_url: e.target.value }))} />
             <textarea placeholder="Description" value={editForm.description} onChange={(e) => setEditForm(f => ({ ...f, description: e.target.value }))}
               className="w-full rounded-md border px-3 py-2 text-sm min-h-[80px]" />
+
+            {/* Read-only variants */}
+            {editProduct?.variants && editProduct.variants.length > 0 && (
+              <div>
+                <h4 className="font-medium text-sm mb-2">Variants ({editProduct.variants.length})</h4>
+                <div className="border rounded-md max-h-48 overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b bg-[hsl(var(--muted))]">
+                        <th className="text-left px-2 py-1">Group</th>
+                        <th className="text-left px-2 py-1">Value</th>
+                        <th className="text-left px-2 py-1">ASIN</th>
+                        <th className="text-right px-2 py-1">Price</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {editProduct.variants.map((v) => (
+                        <tr key={v.asin} className="border-b last:border-b-0">
+                          <td className="px-2 py-1 capitalize">{v.group}</td>
+                          <td className="px-2 py-1">{v.value}</td>
+                          <td className="px-2 py-1 font-mono">{v.asin}</td>
+                          <td className="px-2 py-1 text-right">{v.price_cents > 0 ? formatCents(v.price_cents) : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditProduct(null)}>Cancel</Button>

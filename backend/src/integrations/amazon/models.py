@@ -11,6 +11,15 @@ class AmazonSearchResult(BaseModel):
     reviews: int | None = None
 
 
+class AmazonVariant(BaseModel):
+    group: str
+    value: str
+    asin: str
+    is_selected: bool = False
+    image_url: str | None = None
+    price_cents: int = 0
+
+
 class AmazonProduct(BaseModel):
     name: str
     description: str | None = None
@@ -26,3 +35,4 @@ class AmazonProduct(BaseModel):
     item_weight: str | None = None
     item_model_number: str | None = None
     product_information: dict | None = None
+    variants: list[AmazonVariant] = []

@@ -62,4 +62,5 @@ async def amazon_product(
         specifications=product.specifications,
         feature_bullets=product.feature_bullets,
         url=product.url,
+        variants=[v.model_dump() for v in product.variants],
     )

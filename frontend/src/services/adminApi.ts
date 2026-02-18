@@ -1,9 +1,10 @@
 import api from './api'
 import type {
-  Product, Category, Order, UserAdmin, BudgetAdjustment, Brand,
+  Product, Category, Order, OrderInvoice, UserAdmin, BudgetAdjustment, Brand,
   AuditLogEntry, HiBobSyncLog, PaginatedResponse, NotificationPrefs,
   ProductCreateInput, ProductUpdateInput, CategoryCreateInput, CategoryUpdateInput,
   UserSearchResult, UserDetailResponse, RefreshPreviewResponse,
+  AmazonProductDetail,
 } from '@/types'
 
 export const adminApi = {
@@ -19,7 +20,7 @@ export const adminApi = {
   refreshApply: (id: string, data: { fields: string[]; values: Record<string, unknown> }) =>
     api.post<Product>(`/api/admin/products/${id}/refresh-apply`, data),
   amazonSearch: (query: string) => api.get('/api/admin/amazon/search', { params: { query } }),
-  amazonProduct: (asin: string) => api.get('/api/admin/amazon/product', { params: { asin } }),
+  amazonProduct: (asin: string) => api.get<AmazonProductDetail>('/api/admin/amazon/product', { params: { asin } }),
 
   // Brands
   listBrands: () => api.get<Brand[]>('/api/admin/brands'),
@@ -40,8 +41,20 @@ export const adminApi = {
   listOrders: (params?: Record<string, string | number>) =>
     api.get<PaginatedResponse<Order>>('/api/admin/orders', { params }),
   getOrder: (id: string) => api.get<Order>(`/api/admin/orders/${id}`),
-  updateOrderStatus: (id: string, data: { status: string; admin_note?: string }) =>
-    api.put(`/api/admin/orders/${id}/status`, data),
+  updateOrderStatus: (id: string, data: {
+    status: string; admin_note?: string; expected_delivery?: string; purchase_url?: string
+  }) => api.put(`/api/admin/orders/${id}/status`, data),
+  updatePurchaseUrl: (orderId: string, purchase_url: string | null) =>
+    api.put(`/api/admin/orders/${orderId}/purchase-url`, { purchase_url }),
+  uploadInvoice: (orderId: string, file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post<OrderInvoice>(`/api/admin/orders/${orderId}/invoices`, formData)
+  },
+  downloadInvoiceUrl: (orderId: string, invoiceId: string) =>
+    `/api/admin/orders/${orderId}/invoices/${invoiceId}/download`,
+  deleteInvoice: (orderId: string, invoiceId: string) =>
+    api.delete(`/api/admin/orders/${orderId}/invoices/${invoiceId}`),
   checkOrderItem: (orderId: string, itemId: string, vendor_ordered: boolean) =>
     api.put(`/api/admin/orders/${orderId}/items/${itemId}/check`, { vendor_ordered }),
 

@@ -30,7 +30,8 @@ async def add_to_cart(
     user: User = Depends(get_current_user),
 ):
     item = await cart_service.add_to_cart(
-        db, user.id, body.product_id, body.quantity
+        db, user.id, body.product_id, body.quantity,
+        variant_asin=body.variant_asin,
     )
     ip = request.client.host if request.client else None
     await write_audit_log(

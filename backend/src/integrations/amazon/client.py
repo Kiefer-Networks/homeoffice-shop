@@ -6,7 +6,7 @@ from typing import Protocol, runtime_checkable
 import httpx
 
 from src.core.config import settings
-from src.integrations.amazon.models import AmazonProduct, AmazonSearchResult
+from src.integrations.amazon.models import AmazonProduct, AmazonSearchResult, AmazonVariant
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,7 @@ class AmazonClientProtocol(Protocol):
     async def search(self, query: str) -> list[AmazonSearchResult]: ...
     async def get_product(self, asin: str) -> AmazonProduct | None: ...
     async def get_current_price(self, asin: str) -> int | None: ...
+    async def get_variant_prices(self, asins: list[str]) -> dict[str, int]: ...
 
 
 class AmazonClient:
@@ -179,6 +180,28 @@ class AmazonClient:
             or product_info.get("Hersteller")
         )
 
+        # Parse customization_options into variants
+        variants: list[AmazonVariant] = []
+        customization = data.get("customization_options", {})
+        if isinstance(customization, dict):
+            for group_name, options in customization.items():
+                if not isinstance(options, list):
+                    continue
+                for opt in options:
+                    if not isinstance(opt, dict):
+                        continue
+                    opt_asin = opt.get("asin", "")
+                    if not opt_asin:
+                        continue
+                    variants.append(AmazonVariant(
+                        group=group_name,
+                        value=opt.get("value", ""),
+                        asin=opt_asin,
+                        is_selected=bool(opt.get("is_selected", False)),
+                        image_url=opt.get("image"),
+                        price_cents=_parse_price_cents(str(opt["price"])) if opt.get("price") else 0,
+                    ))
+
         result = AmazonProduct(
             name=data.get("name", ""),
             description=data.get("description"),
@@ -194,6 +217,7 @@ class AmazonClient:
             item_weight=product_info.get("item_weight") or product_info.get("Item Weight") or product_info.get("Item weight"),
             item_model_number=product_info.get("item_model_number") or product_info.get("Item model number") or product_info.get("model_number"),
             product_information=product_info or None,
+            variants=variants,
         )
 
         # Cache the result
@@ -212,6 +236,15 @@ class AmazonClient:
         if product and product.price_cents > 0:
             return product.price_cents
         return None
+
+    async def get_variant_prices(self, asins: list[str]) -> dict[str, int]:
+        """Fetch current price for multiple ASINs. Returns {asin: price_cents}."""
+        prices: dict[str, int] = {}
+        for asin in asins:
+            product = await self.get_product(asin)
+            if product and product.price_cents > 0:
+                prices[asin] = product.price_cents
+        return prices
 
 
 class FakeAmazonClient:
@@ -241,3 +274,11 @@ class FakeAmazonClient:
         if product and product.price_cents > 0:
             return product.price_cents
         return None
+
+    async def get_variant_prices(self, asins: list[str]) -> dict[str, int]:
+        prices: dict[str, int] = {}
+        for asin in asins:
+            product = self._products.get(asin)
+            if product and product.price_cents > 0:
+                prices[asin] = product.price_cents
+        return prices

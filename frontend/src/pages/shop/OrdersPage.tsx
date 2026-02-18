@@ -174,7 +174,12 @@ export function OrdersPage() {
                     {selectedOrder.items.map((item) => (
                       <div key={item.id} className="flex justify-between items-center p-2 rounded bg-[hsl(var(--muted)/0.5)]">
                         <div>
-                          <div className="text-sm font-medium">{item.product_name || 'Product'}</div>
+                          <div className="text-sm font-medium">
+                            {item.product_name || 'Product'}
+                            {item.variant_value && (
+                              <span className="text-[hsl(var(--muted-foreground))] font-normal"> — {item.variant_value}</span>
+                            )}
+                          </div>
                           <div className="text-xs text-[hsl(var(--muted-foreground))]">Qty: {item.quantity}</div>
                         </div>
                         <div className="text-sm font-medium">{formatCents(item.price_cents * item.quantity)}</div>
@@ -204,7 +209,9 @@ export function OrdersPage() {
                         ) : (
                           <Clock className="h-4 w-4 text-yellow-500" />
                         )}
-                        <span>{item.product_name}: {item.vendor_ordered ? 'Ordered from vendor' : 'Pending order'}</span>
+                        <span>
+                          {item.product_name}{item.variant_value ? ` — ${item.variant_value}` : ''}: {item.vendor_ordered ? 'Ordered from vendor' : 'Pending order'}
+                        </span>
                       </div>
                     ))}
                   </div>

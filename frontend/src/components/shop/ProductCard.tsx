@@ -52,8 +52,18 @@ export function ProductCard({ product, onRefreshCart, onShowDetail }: Props) {
         {product.brand && (
           <p className="text-xs text-[hsl(var(--muted-foreground))] mb-2">{product.brand}</p>
         )}
+        {product.variants && product.variants.length > 0 && (
+          <p className="text-xs text-[hsl(var(--muted-foreground))] mb-1">
+            {product.variants.length} {product.variants[0]?.group || 'variants'}
+          </p>
+        )}
         <div className="flex items-center justify-between mt-auto">
-          <span className="text-lg font-bold">{formatCents(product.price_cents)}</span>
+          <span className="text-lg font-bold">
+            {product.price_min_cents && product.price_max_cents && product.price_min_cents !== product.price_max_cents
+              ? `${formatCents(product.price_min_cents)} — ${formatCents(product.price_max_cents)}`
+              : formatCents(product.price_cents)
+            }
+          </span>
           <Button size="sm" onClick={handleAddToCart} disabled={!product.is_active}>
             <ShoppingCart className="h-4 w-4 mr-1" />
             Add

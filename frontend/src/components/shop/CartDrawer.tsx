@@ -59,7 +59,12 @@ export function CartDrawer({ onRefreshCart, onCheckout }: Props) {
             cart.items.map((item) => (
               <div key={item.id} className="flex gap-3 border-b pb-4">
                 <div className="flex-1">
-                  <h4 className="font-medium text-sm">{item.product_name}</h4>
+                  <h4 className="font-medium text-sm">
+                    {item.product_name}
+                    {item.variant_value && (
+                      <span className="text-[hsl(var(--muted-foreground))] font-normal"> — {item.variant_value}</span>
+                    )}
+                  </h4>
                   <p className="text-sm font-semibold mt-1">{formatCents(item.current_price_cents)}</p>
                   {item.price_changed && (
                     <div className="flex items-center gap-1 mt-1">

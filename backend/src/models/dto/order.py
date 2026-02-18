@@ -13,10 +13,16 @@ class OrderCreate(BaseModel):
 class OrderStatusUpdate(BaseModel):
     status: Literal["ordered", "delivered", "rejected", "cancelled"]
     admin_note: str | None = None
+    expected_delivery: str | None = None
+    purchase_url: str | None = None
 
 
 class OrderCancelRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=1000)
+
+
+class OrderPurchaseUrlUpdate(BaseModel):
+    purchase_url: str | None = None
 
 
 class OrderItemResponse(BaseModel):
@@ -27,6 +33,17 @@ class OrderItemResponse(BaseModel):
     price_cents: int
     external_url: str
     vendor_ordered: bool = False
+    variant_asin: str | None = None
+    variant_value: str | None = None
+
+
+class OrderInvoiceResponse(BaseModel):
+    id: UUID
+    filename: str
+    uploaded_by: UUID
+    uploaded_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 class OrderResponse(BaseModel):
@@ -38,12 +55,15 @@ class OrderResponse(BaseModel):
     total_cents: int
     delivery_note: str | None = None
     admin_note: str | None = None
+    expected_delivery: str | None = None
+    purchase_url: str | None = None
     reviewed_by: UUID | None = None
     reviewed_at: datetime | None = None
     cancellation_reason: str | None = None
     cancelled_by: UUID | None = None
     cancelled_at: datetime | None = None
     items: list[OrderItemResponse] = []
+    invoices: list[OrderInvoiceResponse] = []
     created_at: datetime
     updated_at: datetime
 

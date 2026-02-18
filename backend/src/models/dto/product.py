@@ -10,7 +10,7 @@ class ProductCreate(BaseModel):
     name: str = Field(min_length=1, max_length=500)
     description: str | None = None
     brand: str | None = None
-    brand_id: UUID | None = None
+    brand_id: UUID
     model: str | None = None
     price_cents: int = Field(ge=0)
     amazon_asin: str | None = None
@@ -66,6 +66,7 @@ class ProductResponse(BaseModel):
     item_weight: str | None = None
     item_model_number: str | None = None
     product_information: dict | None = None
+    variants: list[dict] | None = None
     amazon_asin: str | None = None
     external_url: str
     brand_id: UUID | None = None
@@ -111,6 +112,7 @@ class AmazonProductResponse(BaseModel):
     item_weight: str | None = None
     item_model_number: str | None = None
     product_information: dict | None = None
+    variants: list[dict] = []
 
 
 class ProductFieldDiff(BaseModel):

@@ -55,6 +55,15 @@ export interface Brand {
   created_at: string
 }
 
+export interface ProductVariant {
+  group: string
+  value: string
+  asin: string
+  price_cents: number
+  image_url: string | null
+  is_selected?: boolean
+}
+
 export interface Product {
   id: string
   category_id: string
@@ -75,6 +84,7 @@ export interface Product {
   item_weight: string | null
   item_model_number: string | null
   product_information: Record<string, unknown> | null
+  variants: ProductVariant[] | null
   amazon_asin: string | null
   external_url: string
   is_active: boolean
@@ -107,6 +117,8 @@ export interface CartItem {
   image_url: string | null
   external_url: string
   max_quantity_per_user: number
+  variant_asin: string | null
+  variant_value: string | null
 }
 
 export interface Cart {
@@ -127,6 +139,15 @@ export interface OrderItem {
   price_cents: number
   external_url: string
   vendor_ordered: boolean
+  variant_asin: string | null
+  variant_value: string | null
+}
+
+export interface OrderInvoice {
+  id: string
+  filename: string
+  uploaded_by: string
+  uploaded_at: string
 }
 
 export interface Order {
@@ -138,12 +159,15 @@ export interface Order {
   total_cents: number
   delivery_note: string | null
   admin_note: string | null
+  expected_delivery: string | null
+  purchase_url: string | null
   reviewed_by: string | null
   reviewed_at: string | null
   cancellation_reason: string | null
   cancelled_by: string | null
   cancelled_at: string | null
   items: OrderItem[]
+  invoices: OrderInvoice[]
   created_at: string
   updated_at: string
 }
@@ -229,12 +253,24 @@ export interface AmazonSearchResult {
   reviews: number | null
 }
 
+export interface AmazonProductDetail {
+  name: string
+  description: string | null
+  brand: string | null
+  images: string[]
+  price_cents: number
+  specifications: Record<string, unknown> | null
+  feature_bullets: string[]
+  url: string | null
+  variants: ProductVariant[]
+}
+
 export interface ProductCreateInput {
   category_id: string
   name: string
   description?: string | null
   brand?: string | null
-  brand_id?: string | null
+  brand_id: string
   model?: string | null
   price_cents: number
   amazon_asin?: string | null

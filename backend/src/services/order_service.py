@@ -1,8 +1,10 @@
 import logging
+import os
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import and_, delete, select, func
+import sqlalchemy as sa
+from sqlalchemy import and_, delete, or_, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -13,7 +15,7 @@ from src.core.exceptions import (
     NotFoundError,
 )
 from src.models.orm.cart_item import CartItem
-from src.models.orm.order import Order, OrderItem
+from src.models.orm.order import Order, OrderInvoice, OrderItem
 from src.models.orm.product import Product
 from src.models.orm.user import User
 from src.services.budget_service import check_budget_for_order, refresh_budget_cache
@@ -54,14 +56,21 @@ async def create_order_from_cart(
             "Some items are no longer available. Please remove them from your cart."
         )
 
-    has_price_changes = any(ci.price_at_add_cents != p.price_cents for ci, p in rows)
+    def _current_price(ci: CartItem, p: Product) -> int:
+        if ci.variant_asin and p.variants:
+            for v in p.variants:
+                if v.get("asin") == ci.variant_asin and v.get("price_cents", 0) > 0:
+                    return v["price_cents"]
+        return p.price_cents
+
+    has_price_changes = any(ci.price_at_add_cents != _current_price(ci, p) for ci, p in rows)
     if has_price_changes and not confirm_price_changes:
         raise ConflictError(
             "Prices have changed since items were added to cart. "
             "Please confirm the updated prices."
         )
 
-    total_cents = sum(p.price_cents * ci.quantity for ci, p in rows)
+    total_cents = sum(_current_price(ci, p) * ci.quantity for ci, p in rows)
 
     has_budget = await check_budget_for_order(db, user_id, total_cents)
     if not has_budget:
@@ -77,12 +86,25 @@ async def create_order_from_cart(
     await db.flush()
 
     for cart_item, product in rows:
+        # Use variant-specific price and URL if applicable
+        item_price = product.price_cents
+        item_url = product.external_url
+        if cart_item.variant_asin:
+            if product.variants:
+                for v in product.variants:
+                    if v.get("asin") == cart_item.variant_asin and v.get("price_cents", 0) > 0:
+                        item_price = v["price_cents"]
+                        break
+            item_url = f"https://www.amazon.de/dp/{cart_item.variant_asin}"
+
         order_item = OrderItem(
             order_id=order.id,
             product_id=product.id,
             quantity=cart_item.quantity,
-            price_cents=product.price_cents,
-            external_url=product.external_url,
+            price_cents=item_price,
+            external_url=item_url,
+            variant_asin=cart_item.variant_asin,
+            variant_value=cart_item.variant_value,
         )
         db.add(order_item)
 
@@ -100,6 +122,8 @@ async def transition_order(
     new_status: str,
     admin_id: UUID,
     admin_note: str | None = None,
+    expected_delivery: str | None = None,
+    purchase_url: str | None = None,
 ) -> Order:
     result = await db.execute(
         select(Order).where(Order.id == order_id).with_for_update()
@@ -123,6 +147,11 @@ async def transition_order(
     order.reviewed_by = admin_id
     order.admin_note = admin_note
 
+    if expected_delivery is not None:
+        order.expected_delivery = expected_delivery
+    if purchase_url is not None:
+        order.purchase_url = purchase_url
+
     order.reviewed_at = datetime.now(timezone.utc)
 
     await db.flush()
@@ -140,10 +169,26 @@ def _order_item_to_dict(item: OrderItem, product_name: str | None) -> dict:
         "price_cents": item.price_cents,
         "external_url": item.external_url,
         "vendor_ordered": item.vendor_ordered,
+        "variant_asin": item.variant_asin,
+        "variant_value": item.variant_value,
     }
 
 
-def _order_to_dict(order: Order, user: User | None, items: list[dict]) -> dict:
+def _invoice_to_dict(invoice: OrderInvoice) -> dict:
+    return {
+        "id": invoice.id,
+        "filename": invoice.filename,
+        "uploaded_by": invoice.uploaded_by,
+        "uploaded_at": invoice.uploaded_at,
+    }
+
+
+def _order_to_dict(
+    order: Order,
+    user: User | None,
+    items: list[dict],
+    invoices: list[dict] | None = None,
+) -> dict:
     return {
         "id": order.id,
         "user_id": order.user_id,
@@ -153,12 +198,15 @@ def _order_to_dict(order: Order, user: User | None, items: list[dict]) -> dict:
         "total_cents": order.total_cents,
         "delivery_note": order.delivery_note,
         "admin_note": order.admin_note,
+        "expected_delivery": order.expected_delivery,
+        "purchase_url": order.purchase_url,
         "reviewed_by": order.reviewed_by,
         "reviewed_at": order.reviewed_at,
         "cancellation_reason": order.cancellation_reason,
         "cancelled_by": order.cancelled_by,
         "cancelled_at": order.cancelled_at,
         "items": items,
+        "invoices": invoices or [],
         "created_at": order.created_at,
         "updated_at": order.updated_at,
     }
@@ -195,7 +243,9 @@ async def cancel_order_by_user(
     return order
 
 
-async def get_order_with_items(db: AsyncSession, order_id: UUID) -> dict | None:
+async def get_order_with_items(
+    db: AsyncSession, order_id: UUID, *, include_invoices: bool = False
+) -> dict | None:
     result = await db.execute(
         select(Order).where(Order.id == order_id)
     )
@@ -216,7 +266,16 @@ async def get_order_with_items(db: AsyncSession, order_id: UUID) -> dict | None:
         for item, product_name in items_result.all()
     ]
 
-    return _order_to_dict(order, user, items)
+    invoices: list[dict] = []
+    if include_invoices:
+        inv_result = await db.execute(
+            select(OrderInvoice)
+            .where(OrderInvoice.order_id == order_id)
+            .order_by(OrderInvoice.uploaded_at.desc())
+        )
+        invoices = [_invoice_to_dict(inv) for inv in inv_result.scalars().all()]
+
+    return _order_to_dict(order, user, items, invoices)
 
 
 async def get_orders(
@@ -224,14 +283,34 @@ async def get_orders(
     *,
     user_id: UUID | None = None,
     status: str | None = None,
+    q: str | None = None,
+    sort: str | None = None,
     page: int = 1,
     per_page: int = 20,
+    include_invoices: bool = False,
 ) -> tuple[list[dict], int]:
     conditions = []
     if user_id:
         conditions.append(Order.user_id == user_id)
     if status:
         conditions.append(Order.status == status)
+
+    # Text search: filter by user name, email, or order ID prefix
+    if q:
+        search_term = f"%{q}%"
+        # Subquery to find matching user IDs
+        user_subq = select(User.id).where(
+            or_(
+                User.display_name.ilike(search_term),
+                User.email.ilike(search_term),
+            )
+        ).scalar_subquery()
+        conditions.append(
+            or_(
+                Order.user_id.in_(user_subq),
+                func.cast(Order.id, sa.String).ilike(search_term),
+            )
+        )
 
     where = and_(*conditions) if conditions else True
 
@@ -240,14 +319,27 @@ async def get_orders(
     )
     total = count_result.scalar() or 0
 
-    result = await db.execute(
+    # Sorting
+    order_clause = Order.created_at.desc()  # default: newest
+    if sort == "oldest":
+        order_clause = Order.created_at.asc()
+    elif sort == "total_asc":
+        order_clause = Order.total_cents.asc()
+    elif sort == "total_desc":
+        order_clause = Order.total_cents.desc()
+
+    query = (
         select(Order)
         .options(selectinload(Order.items))
         .where(where)
-        .order_by(Order.created_at.desc())
+        .order_by(order_clause)
         .offset((page - 1) * per_page)
         .limit(per_page)
     )
+    if include_invoices:
+        query = query.options(selectinload(Order.invoices))
+
+    result = await db.execute(query)
     orders = result.scalars().unique().all()
 
     # Batch-fetch product names and user info
@@ -275,7 +367,12 @@ async def get_orders(
             _order_item_to_dict(item, product_names.get(item.product_id))
             for item in order.items
         ]
-        result_list.append(_order_to_dict(order, user, order_items))
+        invoices = (
+            [_invoice_to_dict(inv) for inv in order.invoices]
+            if include_invoices
+            else []
+        )
+        result_list.append(_order_to_dict(order, user, order_items, invoices))
 
     return result_list, total
 
@@ -304,3 +401,67 @@ async def update_order_item_check(
         item.vendor_ordered = vendor_ordered
         await db.flush()
     return item
+
+
+async def update_purchase_url(
+    db: AsyncSession, order_id: UUID, purchase_url: str | None
+) -> Order:
+    result = await db.execute(
+        select(Order).where(Order.id == order_id).with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise NotFoundError("Order not found")
+    order.purchase_url = purchase_url
+    await db.flush()
+    return order
+
+
+async def add_invoice(
+    db: AsyncSession,
+    order_id: UUID,
+    filename: str,
+    file_path: str,
+    uploaded_by: UUID,
+) -> OrderInvoice:
+    # Verify order exists
+    order_result = await db.execute(
+        select(Order).where(Order.id == order_id)
+    )
+    if not order_result.scalar_one_or_none():
+        raise NotFoundError("Order not found")
+
+    invoice = OrderInvoice(
+        order_id=order_id,
+        filename=filename,
+        file_path=file_path,
+        uploaded_by=uploaded_by,
+    )
+    db.add(invoice)
+    await db.flush()
+    return invoice
+
+
+async def delete_invoice(
+    db: AsyncSession, order_id: UUID, invoice_id: UUID
+) -> str:
+    """Delete invoice DB record and return file_path for cleanup."""
+    result = await db.execute(
+        select(OrderInvoice).where(
+            OrderInvoice.id == invoice_id,
+            OrderInvoice.order_id == order_id,
+        )
+    )
+    invoice = result.scalar_one_or_none()
+    if not invoice:
+        raise NotFoundError("Invoice not found")
+
+    file_path = invoice.file_path
+    await db.delete(invoice)
+    await db.flush()
+
+    # Clean up file on disk
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+    return file_path
