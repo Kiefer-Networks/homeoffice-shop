@@ -158,8 +158,8 @@ class TestGetExtension:
     def test_webp_content_type(self):
         assert _get_extension("", "image/webp") == ".webp"
 
-    def test_svg_content_type(self):
-        assert _get_extension("", "image/svg+xml") == ".svg"
+    def test_svg_content_type_rejected(self):
+        assert _get_extension("", "image/svg+xml") == ".jpg"  # SVG not allowed
 
     def test_fallback_to_url_extension(self):
         assert _get_extension("https://example.com/image.png", "") == ".png"

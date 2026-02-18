@@ -23,7 +23,7 @@ ALLOWED_IMAGE_HOSTS = {
 
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB per image
 MAX_GALLERY_IMAGES = 20
-ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"}
+ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 
 async def _validate_image_url(url: str) -> None:
@@ -137,13 +137,12 @@ def _get_extension(url: str, content_type: str) -> str:
         "image/png": ".png",
         "image/webp": ".webp",
         "image/gif": ".gif",
-        "image/svg+xml": ".svg",
     }
     for ct, ext in ct_map.items():
         if ct in content_type:
             return ext
 
-    for ext in (".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"):
+    for ext in (".jpg", ".jpeg", ".png", ".webp", ".gif"):
         if ext in url.lower():
             return ext
 

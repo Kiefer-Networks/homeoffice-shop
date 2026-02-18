@@ -1,8 +1,9 @@
+import asyncio
 import uuid
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request, UploadFile, File
+from fastapi import APIRouter, Depends, Query, Request, Response, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -175,8 +176,8 @@ async def upload_invoice(
     stored_name = f"{uuid.uuid4()}{ext}"
     file_path = invoice_dir / stored_name
 
-    # Write file
-    file_path.write_bytes(content)
+    # Write file (non-blocking)
+    await asyncio.to_thread(file_path.write_bytes, content)
 
     invoice = await order_service.add_invoice(
         db, order_id, filename, str(file_path), admin.id
@@ -247,6 +248,8 @@ async def delete_invoice(
         details={"invoice_id": str(invoice_id)},
         ip_address=ip,
     )
+
+    return Response(status_code=204)
 
 
 @router.put("/{order_id}/items/{item_id}/check")

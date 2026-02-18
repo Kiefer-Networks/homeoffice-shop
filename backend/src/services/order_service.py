@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
@@ -464,6 +465,6 @@ async def delete_invoice(
     from src.core.config import settings
     upload_root = settings.upload_dir.resolve()
     if file_path.is_relative_to(upload_root) and file_path.exists():
-        file_path.unlink()
+        await asyncio.to_thread(file_path.unlink)
 
     return str(file_path)
