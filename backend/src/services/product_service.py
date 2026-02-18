@@ -1,12 +1,15 @@
 import asyncio
 import logging
 import re
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import select, func, and_, or_, literal_column
 from sqlalchemy.exc import DataError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.exceptions import BadRequestError, NotFoundError
+from src.models.orm.brand import Brand
 from src.models.orm.product import Product
 from src.models.orm.category import Category
 
@@ -328,3 +331,113 @@ async def refresh_all_prices(
 
     await db.flush()
     return {"total": len(products), "updated": updated, "errors": errors}
+
+
+# ── Product CRUD ─────────────────────────────────────────────────────────────
+
+async def get_by_id(db: AsyncSession, product_id: UUID) -> Product:
+    product = await db.get(Product, product_id)
+    if not product:
+        raise NotFoundError("Product not found")
+    return product
+
+
+async def resolve_brand_id(db: AsyncSession, brand_name: str) -> UUID:
+    result = await db.execute(select(Brand).where(Brand.name == brand_name))
+    existing = result.scalar_one_or_none()
+    if existing:
+        return existing.id
+    slug = brand_name.lower().replace(" ", "-").replace(".", "")
+    new_brand = Brand(name=brand_name, slug=slug)
+    db.add(new_brand)
+    await db.flush()
+    return new_brand.id
+
+
+async def create_product(
+    db: AsyncSession,
+    *,
+    category_id: UUID,
+    name: str,
+    description: str | None = None,
+    brand: str | None = None,
+    brand_id: UUID | None = None,
+    model: str | None = None,
+    price_cents: int,
+    amazon_asin: str | None = None,
+    external_url: str,
+    is_active: bool = True,
+    max_quantity_per_user: int = 1,
+) -> Product:
+    if price_cents == 0:
+        is_active = False
+
+    if brand and not brand_id:
+        brand_id = await resolve_brand_id(db, brand)
+
+    product = Product(
+        category_id=category_id,
+        name=name,
+        description=description,
+        brand=brand,
+        brand_id=brand_id,
+        model=model,
+        price_cents=price_cents,
+        amazon_asin=amazon_asin,
+        external_url=external_url,
+        is_active=is_active,
+        max_quantity_per_user=max_quantity_per_user,
+    )
+    db.add(product)
+    await db.flush()
+    return product
+
+
+async def update_product(
+    db: AsyncSession, product_id: UUID, data: dict,
+) -> tuple[Product, dict]:
+    product = await get_by_id(db, product_id)
+
+    changes = {}
+    for field, value in data.items():
+        old_value = getattr(product, field)
+        if old_value != value:
+            changes[field] = {"old": old_value, "new": value}
+            setattr(product, field, value)
+
+    if product.price_cents == 0 and product.is_active:
+        product.is_active = False
+        changes["is_active"] = {"old": True, "new": False}
+
+    await db.flush()
+    await db.refresh(product)
+    return product, changes
+
+
+async def set_active(db: AsyncSession, product_id: UUID, active: bool) -> Product:
+    product = await get_by_id(db, product_id)
+    if active and product.price_cents == 0:
+        raise BadRequestError("Cannot activate product with price 0")
+    product.is_active = active
+    await db.flush()
+    await db.refresh(product)
+    return product
+
+
+async def archive(db: AsyncSession, product_id: UUID) -> Product:
+    product = await get_by_id(db, product_id)
+    product.archived_at = datetime.now(timezone.utc)
+    product.is_active = False
+    await db.flush()
+    await db.refresh(product)
+    return product
+
+
+async def restore(db: AsyncSession, product_id: UUID) -> Product:
+    product = await get_by_id(db, product_id)
+    if not product.archived_at:
+        raise BadRequestError("Product is not archived")
+    product.archived_at = None
+    await db.flush()
+    await db.refresh(product)
+    return product
