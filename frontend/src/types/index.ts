@@ -266,3 +266,18 @@ export interface CategoryUpdateInput {
   icon?: string | null
   sort_order?: number
 }
+
+export interface ProductFieldDiff {
+  field: string
+  label: string
+  old_value: string | number | Record<string, unknown> | unknown[] | null
+  new_value: string | number | Record<string, unknown> | unknown[] | null
+}
+
+export interface RefreshPreviewResponse {
+  product_id: string
+  images_updated: boolean
+  image_url: string | null
+  image_gallery: string[] | null
+  diffs: ProductFieldDiff[]
+}

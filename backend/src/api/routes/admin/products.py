@@ -14,7 +14,10 @@ from src.core.exceptions import BadRequestError, NotFoundError
 from src.models.dto import DetailResponse
 from src.integrations.amazon.client import AmazonClient
 from src.services.image_service import download_and_store_product_images
-from src.models.dto.product import ProductCreate, ProductResponse, ProductUpdate
+from src.models.dto.product import (
+    ProductCreate, ProductResponse, ProductUpdate,
+    ProductFieldDiff, RefreshPreviewResponse, RefreshApplyRequest,
+)
 from src.models.orm.brand import Brand
 from src.models.orm.product import Product
 from src.models.orm.user import User
@@ -22,6 +25,20 @@ from src.models.orm.user import User
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/products", tags=["admin-products"])
+
+REFRESHABLE_FIELDS = {
+    "name": "Name",
+    "description": "Description",
+    "brand": "Brand",
+    "price_cents": "Price",
+    "color": "Color",
+    "material": "Material",
+    "product_dimensions": "Dimensions",
+    "item_weight": "Weight",
+    "item_model_number": "Model Number",
+    "specifications": "Specifications",
+    "product_information": "Product Information",
+}
 
 
 @router.post("", response_model=ProductResponse, status_code=201)
@@ -240,8 +257,8 @@ async def restore_product(
     return product
 
 
-@router.post("/{product_id}/redownload-images", response_model=ProductResponse)
-async def redownload_images(
+@router.post("/{product_id}/refresh-preview", response_model=RefreshPreviewResponse)
+async def refresh_preview(
     product_id: UUID,
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -263,39 +280,97 @@ async def redownload_images(
     if not amazon_data:
         raise BadRequestError("Amazon lookup returned no data")
 
+    # Auto-apply images immediately
+    images_updated = False
     main_image = amazon_data.images[0] if amazon_data.images else None
     gallery = amazon_data.images[1:] if len(amazon_data.images) > 1 else []
 
     try:
         paths = await download_and_store_product_images(
-            product.id,
-            main_image,
-            gallery,
-            settings.upload_dir,
-            product.name,
+            product.id, main_image, gallery, settings.upload_dir, product.name,
         )
         product.image_url = paths.main_image
         product.image_gallery = paths.gallery
-    except Exception as exc:
+        images_updated = True
+        await db.flush()
+    except Exception:
         logger.exception("Image download failed for product %s", product.id)
-        raise BadRequestError(f"Failed to download images: {exc}")
 
-    # Update product information fields from Amazon data
-    product.color = amazon_data.color
-    product.material = amazon_data.material
-    product.product_dimensions = amazon_data.product_dimensions
-    product.item_weight = amazon_data.item_weight
-    product.item_model_number = amazon_data.item_model_number
-    product.product_information = amazon_data.product_information
-    if amazon_data.brand:
-        product.brand = amazon_data.brand
+    # Build diffs for reviewable fields
+    diffs: list[ProductFieldDiff] = []
+    for field, label in REFRESHABLE_FIELDS.items():
+        old_value = getattr(product, field)
+        new_value = getattr(amazon_data, field, None)
+        if new_value is not None and old_value != new_value:
+            diffs.append(ProductFieldDiff(
+                field=field, label=label,
+                old_value=old_value, new_value=new_value,
+            ))
+
+    ip = request.client.host if request.client else None
+    await write_audit_log(
+        db, user_id=admin.id, action="admin.product.refresh_previewed",
+        resource_type="product", resource_id=product.id,
+        details={"diff_fields": [d.field for d in diffs], "images_updated": images_updated},
+        ip_address=ip,
+    )
+
+    return RefreshPreviewResponse(
+        product_id=product.id,
+        images_updated=images_updated,
+        image_url=product.image_url,
+        image_gallery=product.image_gallery,
+        diffs=diffs,
+    )
+
+
+@router.post("/{product_id}/refresh-apply", response_model=ProductResponse)
+async def refresh_apply(
+    product_id: UUID,
+    body: RefreshApplyRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_staff),
+):
+    product = await db.get(Product, product_id)
+    if not product:
+        raise NotFoundError("Product not found")
+
+    unknown = [f for f in body.fields if f not in REFRESHABLE_FIELDS]
+    if unknown:
+        raise BadRequestError(f"Unknown fields: {', '.join(unknown)}")
+
+    changes: dict[str, dict] = {}
+    for field in body.fields:
+        if field not in body.values:
+            continue
+        old_value = getattr(product, field)
+        new_value = body.values[field]
+        setattr(product, field, new_value)
+        changes[field] = {"old": old_value, "new": new_value}
+
+    # Brand ID resolution: auto-create/lookup Brand entity
+    if "brand" in changes and product.brand:
+        result = await db.execute(
+            select(Brand).where(Brand.name == product.brand)
+        )
+        existing_brand = result.scalar_one_or_none()
+        if existing_brand:
+            product.brand_id = existing_brand.id
+        else:
+            slug = product.brand.lower().replace(" ", "-").replace(".", "")
+            new_brand = Brand(name=product.brand, slug=slug)
+            db.add(new_brand)
+            await db.flush()
+            product.brand_id = new_brand.id
 
     await db.flush()
 
     ip = request.client.host if request.client else None
     await write_audit_log(
-        db, user_id=admin.id, action="admin.product.images_redownloaded",
-        resource_type="product", resource_id=product.id, ip_address=ip,
+        db, user_id=admin.id, action="admin.product.refresh_applied",
+        resource_type="product", resource_id=product.id,
+        details=changes, ip_address=ip,
     )
 
     await db.refresh(product)

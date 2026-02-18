@@ -13,6 +13,7 @@ import {
   Archive, ArchiveRestore, Pencil, Eye, EyeOff,
 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
+import { ProductRefreshModal } from '@/components/admin/ProductRefreshModal'
 import type { Product, Category, AmazonSearchResult } from '@/types'
 
 const PER_PAGE = 20
@@ -72,6 +73,7 @@ export function AdminProductsPage() {
 
   const [creating, setCreating] = useState(false)
   const [updating, setUpdating] = useState(false)
+  const [refreshProduct, setRefreshProduct] = useState<Product | null>(null)
 
   // Edit form
   const [editForm, setEditForm] = useState({ name: '', category_id: '', price_euro: '', external_url: '', brand: '', description: '', is_active: true })
@@ -282,15 +284,9 @@ export function AdminProductsPage() {
     }
   }
 
-  const redownloadImages = async (id: string, e: React.MouseEvent) => {
+  const openRefresh = (product: Product, e: React.MouseEvent) => {
     e.stopPropagation()
-    try {
-      await adminApi.redownloadImages(id)
-      load()
-      addToast({ title: 'Images reloaded' })
-    } catch (err: unknown) {
-      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
-    }
+    setRefreshProduct(product)
   }
 
   const apiUrl = import.meta.env.VITE_API_URL || ''
@@ -406,7 +402,7 @@ export function AdminProductsPage() {
                                 {p.is_active ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                               </Button>
                               {p.amazon_asin && (
-                                <Button size="sm" variant="ghost" onClick={(e) => redownloadImages(p.id, e)}>
+                                <Button size="sm" variant="ghost" onClick={(e) => openRefresh(p, e)}>
                                   <RefreshCcw className="h-3 w-3" />
                                 </Button>
                               )}
@@ -545,6 +541,17 @@ export function AdminProductsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Refresh Modal */}
+      {refreshProduct && (
+        <ProductRefreshModal
+          open={!!refreshProduct}
+          onClose={() => setRefreshProduct(null)}
+          onApplied={() => { setRefreshProduct(null); load() }}
+          productId={refreshProduct.id}
+          productName={refreshProduct.name}
+        />
+      )}
 
     </div>
   )

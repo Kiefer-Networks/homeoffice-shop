@@ -171,8 +171,13 @@ class AmazonClient:
         elif not isinstance(product_info, dict):
             product_info = {}
 
-        # Prefer clean brand from product_information over polluted top-level brand
-        brand = product_info.get("brand") or product_info.get("Brand") or data.get("brand")
+        # Prefer clean brand from product_information only (top-level brand is polluted)
+        brand = (
+            product_info.get("brand")
+            or product_info.get("Brand")
+            or product_info.get("Marke")
+            or product_info.get("Hersteller")
+        )
 
         result = AmazonProduct(
             name=data.get("name", ""),

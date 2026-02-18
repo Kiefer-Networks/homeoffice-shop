@@ -3,7 +3,7 @@ import type {
   Product, Category, Order, UserAdmin, BudgetAdjustment, Brand,
   AuditLogEntry, HiBobSyncLog, PaginatedResponse, NotificationPrefs,
   ProductCreateInput, ProductUpdateInput, CategoryCreateInput, CategoryUpdateInput,
-  UserSearchResult, UserDetailResponse,
+  UserSearchResult, UserDetailResponse, RefreshPreviewResponse,
 } from '@/types'
 
 export const adminApi = {
@@ -14,7 +14,10 @@ export const adminApi = {
   deactivateProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/deactivate`),
   archiveProduct: (id: string) => api.delete<Product>(`/api/admin/products/${id}`),
   restoreProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/restore`),
-  redownloadImages: (id: string) => api.post(`/api/admin/products/${id}/redownload-images`),
+  refreshPreview: (id: string) =>
+    api.post<RefreshPreviewResponse>(`/api/admin/products/${id}/refresh-preview`),
+  refreshApply: (id: string, data: { fields: string[]; values: Record<string, unknown> }) =>
+    api.post<Product>(`/api/admin/products/${id}/refresh-apply`, data),
   amazonSearch: (query: string) => api.get('/api/admin/amazon/search', { params: { query } }),
   amazonProduct: (asin: string) => api.get('/api/admin/amazon/product', { params: { asin } }),
 

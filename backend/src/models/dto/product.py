@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -110,3 +111,23 @@ class AmazonProductResponse(BaseModel):
     item_weight: str | None = None
     item_model_number: str | None = None
     product_information: dict | None = None
+
+
+class ProductFieldDiff(BaseModel):
+    field: str
+    label: str
+    old_value: Any
+    new_value: Any
+
+
+class RefreshPreviewResponse(BaseModel):
+    product_id: UUID
+    images_updated: bool
+    image_url: str | None = None
+    image_gallery: list[str] | None = None
+    diffs: list[ProductFieldDiff]
+
+
+class RefreshApplyRequest(BaseModel):
+    fields: list[str]
+    values: dict[str, Any]
