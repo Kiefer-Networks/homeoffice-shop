@@ -2,7 +2,7 @@ import asyncio
 import logging
 from uuid import UUID
 
-from sqlalchemy import select, func, text, and_, or_
+from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.orm.product import Product
@@ -149,9 +149,12 @@ async def search_products(
         row = r.one_or_none()
         return {"min_cents": row[0] or 0, "max_cents": row[1] or 0} if row else {"min_cents": 0, "max_cents": 0}
 
-    brands, categories, colors, materials, price_range = await asyncio.gather(
-        _brand_facets(), _cat_facets(), _color_facets(), _material_facets(), _price_range()
-    )
+    # Execute sequentially — all coroutines share the same db session
+    brands = await _brand_facets()
+    categories = await _cat_facets()
+    colors = await _color_facets()
+    materials = await _material_facets()
+    price_range = await _price_range()
 
     return {
         "items": products,
