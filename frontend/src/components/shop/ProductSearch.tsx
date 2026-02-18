@@ -58,7 +58,7 @@ export function ProductSearch() {
         className="pl-10"
       />
       {showTips && (
-        <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-md border bg-popover p-3 text-sm shadow-md">
+        <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-md border bg-background p-3 text-sm shadow-md">
           <p className="font-medium mb-2 text-popover-foreground">Search tips</p>
           <ul className="space-y-1">
             {SEARCH_TIPS.map((tip) => (
