@@ -1,5 +1,11 @@
-# Pin to specific version for reproducible builds
-FROM python:3.12-slim AS base
+FROM python:3.12-slim AS builder
+
+WORKDIR /build
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -9,15 +15,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --from=builder /install /usr/local
 
 COPY . .
 
-RUN mkdir -p /app/uploads && \
+RUN mkdir -p /app/uploads /app/backups && \
     addgroup --system appgroup && \
     adduser --system --ingroup appgroup appuser && \
-    chown -R appuser:appgroup /app/uploads
+    chown -R appuser:appgroup /app/uploads /app/backups
 
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
