@@ -86,10 +86,13 @@ async def get_user_detail(
     # Get orders
     orders, _ = await order_service.get_orders(db, user_id=user_id, page=1, per_page=100)
 
-    # Get adjustments
+    # Get adjustments (exclude HiBob-sourced, shown in purchase_reviews)
     result = await db.execute(
         select(BudgetAdjustment)
-        .where(BudgetAdjustment.user_id == user_id)
+        .where(
+            BudgetAdjustment.user_id == user_id,
+            BudgetAdjustment.source != "hibob",
+        )
         .order_by(BudgetAdjustment.created_at.desc())
     )
     adjustments = [
