@@ -104,10 +104,11 @@ class TestFindMatchingOrders:
 
 class TestSyncPurchases:
     @pytest.mark.asyncio
+    @patch("src.services.purchase_sync.load_settings", new_callable=AsyncMock)
     @patch("src.services.purchase_sync.get_setting")
     @patch("src.services.purchase_sync.refresh_budget_cache")
     async def test_fails_when_table_not_configured(
-        self, mock_refresh, mock_get_setting, mock_db,
+        self, mock_refresh, mock_get_setting, mock_load, mock_db,
     ):
         mock_get_setting.return_value = ""  # empty table_id
 
@@ -117,10 +118,11 @@ class TestSyncPurchases:
         assert "not configured" in log.error_message
 
     @pytest.mark.asyncio
+    @patch("src.services.purchase_sync.load_settings", new_callable=AsyncMock)
     @patch("src.services.purchase_sync.get_setting")
     @patch("src.services.purchase_sync.refresh_budget_cache")
     async def test_no_users_with_hibob_id(
-        self, mock_refresh, mock_get_setting, mock_db,
+        self, mock_refresh, mock_get_setting, mock_load, mock_db,
     ):
         def setting_side_effect(key):
             return {
@@ -144,10 +146,11 @@ class TestSyncPurchases:
         assert log.entries_found == 0
 
     @pytest.mark.asyncio
+    @patch("src.services.purchase_sync.load_settings", new_callable=AsyncMock)
     @patch("src.services.purchase_sync.get_setting")
     @patch("src.services.purchase_sync.refresh_budget_cache")
     async def test_skips_already_processed_entries(
-        self, mock_refresh, mock_get_setting, mock_db,
+        self, mock_refresh, mock_get_setting, mock_load, mock_db,
     ):
         def setting_side_effect(key):
             return {
@@ -196,10 +199,11 @@ class TestSyncPurchases:
         assert log.entries_found == 0  # Skipped because already exists
 
     @pytest.mark.asyncio
+    @patch("src.services.purchase_sync.load_settings", new_callable=AsyncMock)
     @patch("src.services.purchase_sync.get_setting")
     @patch("src.services.purchase_sync.refresh_budget_cache")
     async def test_auto_adjust_no_matching_order(
-        self, mock_refresh, mock_get_setting, mock_db,
+        self, mock_refresh, mock_get_setting, mock_load, mock_db,
     ):
         def setting_side_effect(key):
             return {

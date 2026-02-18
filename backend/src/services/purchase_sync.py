@@ -13,7 +13,7 @@ from src.models.orm.hibob_purchase_sync_log import HiBobPurchaseSyncLog
 from src.models.orm.order import Order
 from src.models.orm.user import User
 from src.services.budget_service import refresh_budget_cache
-from src.services.settings_service import get_setting
+from src.services.settings_service import get_setting, load_settings
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,8 @@ async def sync_purchases(
     await db.flush()
 
     try:
-        # Read settings
+        # Reload settings from DB to handle multi-worker cache
+        await load_settings(db)
         table_id = get_setting("hibob_purchase_table_id")
         if not table_id:
             raise ValueError("HiBob purchase table not configured")
