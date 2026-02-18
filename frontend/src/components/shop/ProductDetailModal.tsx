@@ -25,6 +25,8 @@ function formatVariantValue(value: string): string {
 }
 
 const INFO_FIELDS: { key: string; label: string }[] = [
+  { key: 'brand', label: 'Brand' },
+  { key: 'model', label: 'Model' },
   { key: 'material', label: 'Material' },
   { key: 'product_dimensions', label: 'Dimensions' },
   { key: 'item_weight', label: 'Weight' },
@@ -200,12 +202,8 @@ export function ProductDetailModal({ product, open, onClose, onRefreshCart }: Pr
             )
           })}
 
-          {/* Brand + Price */}
-          <div className="flex items-center justify-between">
-            <div>
-              {product.brand && <p className="text-sm font-medium">{product.brand}</p>}
-              {product.model && <p className="text-xs text-[hsl(var(--muted-foreground))]">Model: {product.model}</p>}
-            </div>
+          {/* Price */}
+          <div className="flex items-center justify-end">
             <div className="text-right">
               <div className="text-2xl font-bold">{formatCents(displayPrice)}</div>
               {!selectedVariant && product.price_min_cents && product.price_max_cents && product.price_min_cents !== product.price_max_cents && (
@@ -219,6 +217,8 @@ export function ProductDetailModal({ product, open, onClose, onRefreshCart }: Pr
           {/* Product Details */}
           {(() => {
             const info: Record<string, string> = {}
+            if (product.brand) info.brand = product.brand
+            if (product.model) info.model = product.model
             if (product.color) info.color = product.color
             if (product.material) info.material = product.material
             if (product.product_dimensions) info.product_dimensions = product.product_dimensions
