@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, VARCHAR, func
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.orm.base import Base
@@ -34,6 +34,7 @@ class Product(Base):
     item_model_number: Mapped[str | None] = mapped_column(VARCHAR(100), nullable=True)
     product_information: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     variants: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    search_vector = mapped_column(TSVECTOR, nullable=True)
     amazon_asin: Mapped[str | None] = mapped_column(String(20), nullable=True)
     external_url: Mapped[str] = mapped_column(Text, nullable=False)
     brand_id: Mapped[uuid.UUID | None] = mapped_column(
