@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Protocol, runtime_checkable
 
@@ -108,13 +109,23 @@ class HiBobClient:
         return None
 
     async def get_custom_table(self, employee_id: str, table_id: str) -> list[dict]:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.get(
-                f"{HIBOB_API_BASE}/people/custom-tables/{employee_id}/{table_id}",
-                headers=self._headers,
-            )
-            resp.raise_for_status()
-            return resp.json().get("values", [])
+        max_retries = 3
+        for attempt in range(max_retries + 1):
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.get(
+                    f"{HIBOB_API_BASE}/people/custom-tables/{employee_id}/{table_id}",
+                    headers=self._headers,
+                )
+                if resp.status_code == 429 and attempt < max_retries:
+                    wait = 2 ** attempt  # 1s, 2s, 4s
+                    logger.warning(
+                        "HiBob rate limit hit for employee %s, retrying in %ds (attempt %d/%d)",
+                        employee_id, wait, attempt + 1, max_retries,
+                    )
+                    await asyncio.sleep(wait)
+                    continue
+                resp.raise_for_status()
+                return resp.json().get("values", [])
 
 
 class FakeHiBobClient:

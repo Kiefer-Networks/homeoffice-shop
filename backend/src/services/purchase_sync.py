@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 from datetime import date, datetime, timedelta, timezone
@@ -104,7 +105,11 @@ async def sync_purchases(
         pending_count = 0
         affected_user_ids: set[UUID] = set()
 
-        for user in users:
+        for i, user in enumerate(users):
+            # Throttle API calls to avoid HiBob rate limits
+            if i > 0:
+                await asyncio.sleep(0.5)
+
             try:
                 rows = await client.get_custom_table(user.hibob_id, table_id)
             except Exception:
