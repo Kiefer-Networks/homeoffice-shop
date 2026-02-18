@@ -9,6 +9,35 @@ import { cartApi } from '@/services/cartApi'
 import { getErrorMessage } from '@/lib/error'
 import type { Product, ProductVariant } from '@/types'
 
+const GROUP_LABELS: Record<string, string> = {
+  colour_name: 'Color',
+  color_name: 'Color',
+  style_name: 'Style',
+  size_name: 'Size',
+}
+
+export function formatGroupLabel(group: string): string {
+  return GROUP_LABELS[group.toLowerCase()] || group.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+function formatVariantValue(value: string): string {
+  return value.replace(/\.+$/, '').trim().replace(/\b\w/g, c => c.toUpperCase())
+}
+
+const INFO_FIELDS: { key: string; label: string }[] = [
+  { key: 'manufacturer', label: 'Manufacturer' },
+  { key: 'material', label: 'Material' },
+  { key: 'product_dimensions', label: 'Dimensions' },
+  { key: 'item_weight', label: 'Weight' },
+  { key: 'charging_time', label: 'Charging Time' },
+  { key: 'water_resistance_level', label: 'Water Resistance' },
+  { key: 'compatible_devices', label: 'Compatible Devices' },
+  { key: 'control_type', label: 'Controls' },
+  { key: 'cable_feature', label: 'Cable' },
+  { key: 'included_components', label: 'Included' },
+  { key: 'specific_uses_for_product', label: 'Use Cases' },
+]
+
 interface Props {
   product: Product | null
   open: boolean
@@ -127,55 +156,56 @@ export function ProductDetailModal({ product, open, onClose, onRefreshCart }: Pr
           )}
 
           {/* Variant Selector */}
-          {hasVariants && Object.entries(variantGroups).map(([group, groupVariants]) => (
-            <div key={group}>
-              <h4 className="font-medium mb-2 text-sm capitalize">{group}</h4>
-              <div className="flex flex-wrap gap-2">
-                {groupVariants.map((v) => {
-                  const isSelected = selectedVariant?.asin === v.asin
-                  // Color-like groups: show image swatches
-                  if (v.image_url && group.toLowerCase().match(/^(farbe|color|colour)$/)) {
+          {hasVariants && Object.entries(variantGroups).map(([group, groupVariants]) => {
+            const filtered = groupVariants.filter(v => v.value.trim() !== '')
+            if (filtered.length === 0) return null
+            return (
+              <div key={group}>
+                <h4 className="font-medium mb-2 text-sm">{formatGroupLabel(group)}</h4>
+                <div className="flex flex-wrap gap-2">
+                  {filtered.map((v) => {
+                    const isSelected = selectedVariant?.asin === v.asin
+                    const label = formatVariantValue(v.value)
+                    // Color-like groups: show image swatches
+                    if (v.image_url && group.toLowerCase().match(/^(farbe|color|colour)/)) {
+                      return (
+                        <button
+                          key={v.asin}
+                          onClick={() => { setSelectedVariant(v); setCurrentImage(0) }}
+                          className={`w-10 h-10 rounded-full border-2 overflow-hidden transition-all ${
+                            isSelected ? 'border-[hsl(var(--primary))] ring-2 ring-[hsl(var(--primary))] ring-offset-1' : 'border-gray-200 hover:border-gray-400'
+                          }`}
+                          title={label}
+                        >
+                          <img src={v.image_url} alt={label} className="w-full h-full object-cover" />
+                        </button>
+                      )
+                    }
+                    // Other groups: pill buttons
                     return (
                       <button
                         key={v.asin}
                         onClick={() => { setSelectedVariant(v); setCurrentImage(0) }}
-                        className={`w-10 h-10 rounded-full border-2 overflow-hidden transition-all ${
-                          isSelected ? 'border-[hsl(var(--primary))] ring-2 ring-[hsl(var(--primary))] ring-offset-1' : 'border-gray-200 hover:border-gray-400'
+                        className={`px-3 py-1.5 rounded-full text-sm border transition-all ${
+                          isSelected
+                            ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-white'
+                            : 'border-gray-200 hover:border-gray-400'
                         }`}
-                        title={v.value}
                       >
-                        <img src={v.image_url} alt={v.value} className="w-full h-full object-cover" />
+                        {label}
                       </button>
                     )
-                  }
-                  // Other groups: pill buttons
-                  return (
-                    <button
-                      key={v.asin}
-                      onClick={() => { setSelectedVariant(v); setCurrentImage(0) }}
-                      className={`px-3 py-1.5 rounded-full text-sm border transition-all ${
-                        isSelected
-                          ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-white'
-                          : 'border-gray-200 hover:border-gray-400'
-                      }`}
-                    >
-                      {v.value}
-                    </button>
-                  )
-                })}
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
 
-          {/* Brand + Product Info + Price */}
+          {/* Brand + Price */}
           <div className="flex items-center justify-between">
             <div>
-              {product.brand && <p className="text-sm text-[hsl(var(--muted-foreground))]">{product.brand}</p>}
+              {product.brand && <p className="text-sm font-medium">{product.brand}</p>}
               {product.model && <p className="text-xs text-[hsl(var(--muted-foreground))]">Model: {product.model}</p>}
-              {product.color && <p className="text-xs text-[hsl(var(--muted-foreground))]">Color: {product.color}</p>}
-              {product.material && <p className="text-xs text-[hsl(var(--muted-foreground))]">Material: {product.material}</p>}
-              {product.product_dimensions && <p className="text-xs text-[hsl(var(--muted-foreground))]">Dimensions: {product.product_dimensions}</p>}
-              {product.item_weight && <p className="text-xs text-[hsl(var(--muted-foreground))]">Weight: {product.item_weight}</p>}
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold">{formatCents(displayPrice)}</div>
@@ -187,26 +217,41 @@ export function ProductDetailModal({ product, open, onClose, onRefreshCart }: Pr
             </div>
           </div>
 
+          {/* Product Details */}
+          {(() => {
+            const info: Record<string, string> = {}
+            if (product.color) info.color = product.color
+            if (product.material) info.material = product.material
+            if (product.product_dimensions) info.product_dimensions = product.product_dimensions
+            if (product.item_weight) info.item_weight = product.item_weight
+            const pi = product.product_information as Record<string, unknown> | null
+            if (pi && typeof pi === 'object') {
+              for (const [k, v] of Object.entries(pi)) {
+                if (v && typeof v === 'string') info[k] = v
+              }
+            }
+            const rows = INFO_FIELDS.filter(f => info[f.key])
+            if (rows.length === 0) return null
+            return (
+              <div className="border rounded-lg overflow-hidden">
+                <h4 className="font-medium text-sm px-3 py-2 bg-[hsl(var(--muted))]">Product Details</h4>
+                <div className="divide-y">
+                  {rows.map((f, i) => (
+                    <div key={f.key} className={`flex px-3 py-2 text-sm ${i % 2 === 0 ? '' : 'bg-[hsl(var(--muted)/.3)]'}`}>
+                      <span className="w-40 shrink-0 text-[hsl(var(--muted-foreground))]">{f.label}</span>
+                      <span>{info[f.key]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
+
           {/* Description */}
           {product.description && (
             <div>
               <h4 className="font-medium mb-1">Description</h4>
               <p className="text-sm text-[hsl(var(--muted-foreground))] whitespace-pre-line">{product.description}</p>
-            </div>
-          )}
-
-          {/* Specifications */}
-          {product.specifications && Object.keys(product.specifications).length > 0 && (
-            <div>
-              <h4 className="font-medium mb-2">Specifications</h4>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                {Object.entries(product.specifications).map(([key, value]) => (
-                  <div key={key} className="contents">
-                    <span className="text-[hsl(var(--muted-foreground))]">{key}</span>
-                    <span>{String(value)}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
 

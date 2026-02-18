@@ -6,6 +6,7 @@ import { useCartStore } from '@/stores/cartStore'
 import { useUiStore } from '@/stores/uiStore'
 import { cartApi } from '@/services/cartApi'
 import { getErrorMessage } from '@/lib/error'
+import { formatGroupLabel } from '@/components/shop/ProductDetailModal'
 import type { Product } from '@/types'
 
 interface Props {
@@ -61,7 +62,7 @@ export function ProductCard({ product, onRefreshCart, onShowDetail }: Props) {
         )}
         {product.variants && product.variants.length > 0 && (
           <p className="text-xs text-[hsl(var(--muted-foreground))] mb-1">
-            {product.variants.length} {product.variants[0]?.group || 'variants'}
+            {product.variants.length} {product.variants[0]?.group ? formatGroupLabel(product.variants[0].group) : 'variants'}
           </p>
         )}
         <div className="flex items-center justify-between mt-auto">
