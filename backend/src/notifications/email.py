@@ -1,7 +1,7 @@
 import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from email.utils import formataddr
+from email.utils import formataddr, formatdate, make_msgid
 from pathlib import Path
 
 import aiosmtplib
@@ -70,6 +70,9 @@ async def send_email(
         message["From"] = formataddr((from_name, from_address))
         message["To"] = to
         message["Subject"] = subject
+        message["Date"] = formatdate(localtime=True)
+        domain = from_address.split("@")[-1] if "@" in from_address else "localhost"
+        message["Message-ID"] = make_msgid(domain=domain)
         message.attach(MIMEText(html_body, "html"))
 
         await aiosmtplib.send(message, **smtp)
@@ -95,6 +98,9 @@ async def send_test_email(to: str) -> bool:
     message["From"] = formataddr((from_name, from_address))
     message["To"] = to
     message["Subject"] = "Test Email - Home Office Shop"
+    message["Date"] = formatdate(localtime=True)
+    domain = from_address.split("@")[-1] if "@" in from_address else "localhost"
+    message["Message-ID"] = make_msgid(domain=domain)
     message.attach(MIMEText(
         "<h2>SMTP Test</h2><p>SMTP configuration is working correctly.</p>",
         "html",
