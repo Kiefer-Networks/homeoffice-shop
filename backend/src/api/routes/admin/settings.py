@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +11,8 @@ from src.models.dto.settings import AppSettingResponse, AppSettingUpdate, AppSet
 from src.models.orm.user import User
 from src.notifications.email import send_test_email
 from src.services import settings_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/settings", tags=["admin-settings"])
 
@@ -81,5 +85,6 @@ async def test_email(
         return {"detail": "Test email sent successfully"}
     except BadRequestError:
         raise
-    except Exception as e:
-        raise BadRequestError(f"Failed to send test email: {e}")
+    except Exception:
+        logger.exception("Failed to send test email to %s", body.to)
+        raise BadRequestError("Failed to send test email. Check SMTP configuration.")
