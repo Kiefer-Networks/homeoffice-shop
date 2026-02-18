@@ -43,7 +43,8 @@ def _enforce_retention() -> None:
     """Delete oldest backups when exceeding retention count."""
     bdir = _backup_dir()
     dumps = sorted(bdir.glob("homeoffice_shop_*.dump"), key=lambda f: f.stat().st_mtime)
-    limit = max(settings.backup_retention_count, 1)
+    limit = int(get_setting("backup_max_backups") or str(settings.backup_retention_count))
+    limit = max(limit, 1)
     while len(dumps) > limit:
         oldest = dumps.pop(0)
         oldest.unlink(missing_ok=True)
@@ -192,6 +193,7 @@ async def get_schedule(
         enabled=get_setting("backup_schedule_enabled") == "true",
         hour=int(get_setting("backup_schedule_hour") or "2"),
         minute=int(get_setting("backup_schedule_minute") or "0"),
+        max_backups=int(get_setting("backup_max_backups") or str(settings.backup_retention_count)),
     )
 
 
@@ -208,13 +210,15 @@ async def update_schedule(
         await update_setting(db, "backup_schedule_hour", str(body.hour), updated_by=admin.id)
     if body.minute is not None:
         await update_setting(db, "backup_schedule_minute", str(body.minute), updated_by=admin.id)
+    if body.max_backups is not None:
+        await update_setting(db, "backup_max_backups", str(body.max_backups), updated_by=admin.id)
     await db.commit()
 
     ip = request.client.host if request.client else None
     await write_audit_log(
         db, user_id=admin.id, action="admin.backup.schedule_updated",
         resource_type="database",
-        details={"enabled": body.enabled, "hour": body.hour, "minute": body.minute},
+        details={"enabled": body.enabled, "hour": body.hour, "minute": body.minute, "max_backups": body.max_backups},
         ip_address=ip,
     )
 

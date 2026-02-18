@@ -402,6 +402,7 @@ export interface BackupSchedule {
   enabled: boolean
   hour: number
   minute: number
+  max_backups: number
 }
 
 export interface RefreshPreviewResponse {
