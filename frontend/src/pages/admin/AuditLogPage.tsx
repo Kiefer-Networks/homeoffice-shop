@@ -1,63 +1,153 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { adminApi } from '@/services/adminApi'
-import { formatDate } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/error'
 import { useUiStore } from '@/stores/uiStore'
-import { Download, ChevronRight, Search, X } from 'lucide-react'
+import {
+  Download, ChevronRight, Search, X,
+  Monitor, Smartphone, Tablet, Globe,
+} from 'lucide-react'
 import type { AuditLogEntry } from '@/types'
 
 const PER_PAGE = 30
 
-function getActionBadgeVariant(action: string): 'default' | 'secondary' | 'success' | 'warning' | 'outline' | 'destructive' {
-  if (action.startsWith('auth.')) return 'default'
-  if (action.startsWith('admin.order.')) return 'secondary'
-  if (action.startsWith('admin.product.')) return 'success'
-  if (action.startsWith('admin.user.')) return 'warning'
-  if (action.startsWith('admin.budget') || action.startsWith('admin.budget_rule') || action.startsWith('admin.budget_override')) return 'outline'
-  if (action.startsWith('admin.hibob.')) return 'destructive'
-  return 'secondary'
+// ---------------------------------------------------------------------------
+// Time formatting – date on top, time below
+// ---------------------------------------------------------------------------
+function formatTimestamp(iso: string) {
+  const d = new Date(iso)
+  const date = d.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })
+  const time = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  return { date, time }
 }
 
-function renderDetailValue(value: unknown, depth = 0): React.ReactNode {
-  if (value === null || value === undefined) return <span className="text-[hsl(var(--muted-foreground))]">null</span>
-  if (typeof value === 'boolean') return <span>{value ? 'true' : 'false'}</span>
-  if (typeof value === 'number') return <span>{value}</span>
-  if (typeof value === 'string') {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
-    if (isUuid) return <span className="font-mono text-xs">{value}</span>
-    return <span>{value}</span>
-  }
-  if (Array.isArray(value)) {
-    if (value.length === 0) return <span className="text-[hsl(var(--muted-foreground))]">[]</span>
-    return (
-      <ul className="list-disc ml-4 mt-1">
-        {value.map((item, i) => (
-          <li key={i} className="text-xs">{renderDetailValue(item, depth + 1)}</li>
-        ))}
-      </ul>
-    )
-  }
-  if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-    if (entries.length === 0) return <span className="text-[hsl(var(--muted-foreground))]]">{'{}'}</span>
-    return (
-      <div className={depth > 0 ? 'ml-4 mt-1' : ''}>
-        {entries.map(([k, v]) => (
-          <div key={k} className="text-xs py-0.5">
-            <span className="font-semibold">{k}:</span>{' '}
-            {typeof v === 'object' && v !== null ? renderDetailValue(v, depth + 1) : renderDetailValue(v, depth + 1)}
-          </div>
-        ))}
-      </div>
-    )
-  }
-  return <span>{String(value)}</span>
+// ---------------------------------------------------------------------------
+// Action – subtle colored dot + text
+// ---------------------------------------------------------------------------
+function actionDotColor(action: string): string {
+  if (action.startsWith('auth.login_blocked') || action.startsWith('admin.hibob.')) return 'bg-red-500'
+  if (action.startsWith('auth.')) return 'bg-blue-500'
+  if (action.startsWith('admin.order.')) return 'bg-purple-500'
+  if (action.startsWith('admin.product.')) return 'bg-green-500'
+  if (action.startsWith('admin.user.')) return 'bg-amber-500'
+  if (action.startsWith('admin.budget') || action.startsWith('admin.budget_rule') || action.startsWith('admin.budget_override')) return 'bg-cyan-500'
+  if (action.startsWith('admin.audit.')) return 'bg-gray-400'
+  return 'bg-gray-500'
 }
 
+// ---------------------------------------------------------------------------
+// User-Agent parser
+// ---------------------------------------------------------------------------
+interface ParsedUA { browser: string; os: string; device: 'desktop' | 'mobile' | 'tablet' }
+
+function parseUserAgent(ua: string): ParsedUA {
+  let browser = 'Unknown'
+  let os = 'Unknown'
+  let device: ParsedUA['device'] = 'desktop'
+
+  // OS detection
+  if (/iPad/.test(ua)) { os = 'iPadOS'; device = 'tablet' }
+  else if (/iPhone/.test(ua)) { os = 'iOS'; device = 'mobile' }
+  else if (/Android/.test(ua)) {
+    os = 'Android'
+    device = /Mobile/.test(ua) ? 'mobile' : 'tablet'
+  }
+  else if (/Mac OS X/.test(ua)) { os = 'macOS' }
+  else if (/Windows/.test(ua)) { os = 'Windows' }
+  else if (/Linux/.test(ua)) { os = 'Linux' }
+  else if (/CrOS/.test(ua)) { os = 'ChromeOS' }
+
+  // Browser detection (order matters – check specific before generic)
+  if (/Edg\//.test(ua)) browser = 'Edge'
+  else if (/OPR\/|Opera/.test(ua)) browser = 'Opera'
+  else if (/Firefox\//.test(ua)) browser = 'Firefox'
+  else if (/Chrome\//.test(ua) && !/Edg\//.test(ua)) browser = 'Chrome'
+  else if (/Safari\//.test(ua) && !/Chrome\//.test(ua)) browser = 'Safari'
+
+  return { browser, os, device }
+}
+
+function DeviceIcon({ device }: { device: ParsedUA['device'] }) {
+  const cls = 'h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]'
+  if (device === 'mobile') return <Smartphone className={cls} />
+  if (device === 'tablet') return <Tablet className={cls} />
+  return <Monitor className={cls} />
+}
+
+// Map browser names to small SVG icon paths (inline for perf, no external deps)
+function BrowserIcon({ browser }: { browser: string }) {
+  const cls = 'h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]'
+
+  // Chrome
+  if (browser === 'Chrome') return (
+    <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="4" />
+      <line x1="21.17" y1="8" x2="12" y2="8" /><line x1="3.95" y1="6.06" x2="8.54" y2="14" />
+      <line x1="10.88" y1="21.94" x2="15.46" y2="14" />
+    </svg>
+  )
+
+  // Firefox
+  if (browser === 'Firefox') return (
+    <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M17 12a5 5 0 0 0-5-5c-1 0-2 .3-2.8.8" />
+      <path d="M12 7v5l3 3" />
+    </svg>
+  )
+
+  // Safari
+  if (browser === 'Safari') return (
+    <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+    </svg>
+  )
+
+  return <Globe className={cls} />
+}
+
+// ---------------------------------------------------------------------------
+// Detail value renderer – clean key-value table
+// ---------------------------------------------------------------------------
+function flattenDetails(obj: Record<string, unknown>, prefix = ''): { key: string; value: string }[] {
+  const rows: { key: string; value: string }[] = []
+  for (const [k, v] of Object.entries(obj)) {
+    const fullKey = prefix ? `${prefix}.${k}` : k
+    if (v === null || v === undefined) {
+      rows.push({ key: fullKey, value: '-' })
+    } else if (Array.isArray(v)) {
+      if (v.length === 0) {
+        rows.push({ key: fullKey, value: '(empty)' })
+      } else if (v.every(item => typeof item !== 'object' || item === null)) {
+        rows.push({ key: fullKey, value: v.map(String).join(', ') })
+      } else {
+        v.forEach((item, i) => {
+          if (typeof item === 'object' && item !== null) {
+            rows.push(...flattenDetails(item as Record<string, unknown>, `${fullKey}[${i}]`))
+          } else {
+            rows.push({ key: `${fullKey}[${i}]`, value: String(item) })
+          }
+        })
+      }
+    } else if (typeof v === 'object') {
+      rows.push(...flattenDetails(v as Record<string, unknown>, fullKey))
+    } else {
+      rows.push({ key: fullKey, value: String(v) })
+    }
+  }
+  return rows
+}
+
+function isUuid(s: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
 export function AdminAuditLogPage() {
   const { addToast } = useUiStore()
 
@@ -76,20 +166,17 @@ export function AdminAuditLogPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [availableFilters, setAvailableFilters] = useState<{ actions: string[]; resource_types: string[] }>({ actions: [], resource_types: [] })
 
-  // Load filter options
   useEffect(() => {
     adminApi.getAuditFilters()
       .then(({ data }) => setAvailableFilters(data))
       .catch(() => {})
   }, [])
 
-  // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300)
     return () => clearTimeout(timer)
   }, [search])
 
-  // Reset page when filters change
   useEffect(() => { setPage(1) }, [debouncedSearch, resourceTypeFilter, actionFilter, dateFrom, dateTo])
 
   const loadLogs = useCallback(() => {
@@ -109,7 +196,6 @@ export function AdminAuditLogPage() {
   useEffect(() => { loadLogs() }, [loadLogs])
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
-
   const hasActiveFilters = search || resourceTypeFilter || actionFilter || dateFrom || dateTo
 
   const handleReset = () => {
@@ -220,96 +306,153 @@ export function AdminAuditLogPage() {
                   <th className="w-10 px-2 py-3"></th>
                 </tr>
               </thead>
-              <tbody>
-                {loading && logs.length === 0 ? (
-                  [...Array(6)].map((_, i) => (
+              {loading && logs.length === 0 ? (
+                <tbody>
+                  {[...Array(6)].map((_, i) => (
                     <tr key={i} className="border-b border-[hsl(var(--border))]">
                       <td colSpan={6} className="px-4 py-4">
-                        <div className="h-5 bg-gray-100 rounded animate-pulse" />
+                        <div className="h-5 bg-[hsl(var(--muted))] rounded animate-pulse" />
                       </td>
                     </tr>
-                  ))
-                ) : logs.length === 0 ? (
+                  ))}
+                </tbody>
+              ) : logs.length === 0 ? (
+                <tbody>
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center text-[hsl(var(--muted-foreground))]">
                       No audit log entries found.
                     </td>
                   </tr>
-                ) : (
-                  logs.map((log) => (
-                    <>
-                      <tr
-                        key={log.id}
-                        className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.5)] cursor-pointer"
-                        onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
-                      >
-                        <td className="px-4 py-3 whitespace-nowrap font-mono text-xs">
-                          {formatDate(log.created_at)}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          {log.user_email || log.user_id.slice(0, 8) + '...'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge variant={getActionBadgeVariant(log.action)}>{log.action}</Badge>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <span>{log.resource_type}</span>
-                          {log.resource_id && (
-                            <span className="text-[hsl(var(--muted-foreground))] ml-1 font-mono text-xs">
-                              {log.resource_id.slice(0, 8)}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-[hsl(var(--muted-foreground))]">
-                          {log.ip_address || '-'}
-                        </td>
-                        <td className="px-2 py-3">
-                          <ChevronRight
-                            className={`h-4 w-4 text-[hsl(var(--muted-foreground))] transition-transform ${expandedId === log.id ? 'rotate-90' : ''}`}
-                          />
-                        </td>
-                      </tr>
-                      {expandedId === log.id && (
-                        <tr key={`${log.id}-detail`} className="border-b border-[hsl(var(--border))]">
-                          <td colSpan={6} className="px-6 py-4 bg-[hsl(var(--muted)/0.3)]">
-                            <div className="space-y-2 text-sm">
-                              {log.resource_id && (
-                                <div className="text-xs">
-                                  <span className="font-semibold">Resource ID:</span>{' '}
-                                  <span className="font-mono">{log.resource_id}</span>
-                                </div>
-                              )}
-                              {log.correlation_id && (
-                                <div className="text-xs">
-                                  <span className="font-semibold">Correlation ID:</span>{' '}
-                                  <span className="font-mono">{log.correlation_id}</span>
-                                </div>
-                              )}
-                              {log.user_agent && (
-                                <div className="text-xs">
-                                  <span className="font-semibold">User Agent:</span>{' '}
-                                  <span className="truncate inline-block max-w-[600px] align-bottom" title={log.user_agent}>
-                                    {log.user_agent.length > 80 ? log.user_agent.slice(0, 80) + '...' : log.user_agent}
-                                  </span>
-                                </div>
-                              )}
-                              {log.details && Object.keys(log.details).length > 0 && (
-                                <div className="text-xs">
-                                  <span className="font-semibold">Details:</span>
-                                  {renderDetailValue(log.details)}
-                                </div>
-                              )}
-                              {(!log.details || Object.keys(log.details).length === 0) && !log.user_agent && !log.correlation_id && !log.resource_id && (
-                                <div className="text-xs text-[hsl(var(--muted-foreground))]">No additional details.</div>
-                              )}
+                </tbody>
+              ) : (
+                logs.map((log) => {
+                  const { date, time } = formatTimestamp(log.created_at)
+                  const isExpanded = expandedId === log.id
+                  return (
+                    <tbody key={log.id}>
+                        <tr
+                          className={`border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.5)] cursor-pointer transition-colors ${isExpanded ? 'bg-[hsl(var(--muted)/0.3)]' : ''}`}
+                          onClick={() => setExpandedId(isExpanded ? null : log.id)}
+                        >
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="font-mono text-xs font-medium">{time}</div>
+                            <div className="text-[10px] text-[hsl(var(--muted-foreground))]">{date}</div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="text-sm">{log.user_email || log.user_id.slice(0, 8) + '\u2026'}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${actionDotColor(log.action)}`} />
+                              <span className="font-mono text-xs">{log.action}</span>
                             </div>
                           </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="text-xs font-medium bg-[hsl(var(--muted))] px-1.5 py-0.5 rounded">{log.resource_type}</span>
+                            {log.resource_id && (
+                              <span className="text-[hsl(var(--muted-foreground))] ml-1.5 font-mono text-[11px]">
+                                {log.resource_id.slice(0, 8)}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-[hsl(var(--muted-foreground))]">
+                            {log.ip_address || '-'}
+                          </td>
+                          <td className="px-2 py-3">
+                            <ChevronRight
+                              className={`h-4 w-4 text-[hsl(var(--muted-foreground))] transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
+                            />
+                          </td>
                         </tr>
-                      )}
-                    </>
-                  ))
-                )}
-              </tbody>
+                        {isExpanded && (
+                          <tr className="border-b border-[hsl(var(--border))]">
+                            <td colSpan={6} className="p-0">
+                              <div className="px-6 py-4 bg-[hsl(var(--muted)/0.15)]">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {/* Left: Metadata */}
+                                  <div>
+                                    <h4 className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] mb-2">Metadata</h4>
+                                    <table className="w-full text-xs">
+                                      <tbody>
+                                        {log.resource_id && (
+                                          <tr className="border-b border-[hsl(var(--border)/0.5)]">
+                                            <td className="py-1.5 pr-3 text-[hsl(var(--muted-foreground))] whitespace-nowrap font-medium">Resource ID</td>
+                                            <td className="py-1.5 font-mono">{log.resource_id}</td>
+                                          </tr>
+                                        )}
+                                        {log.correlation_id && (
+                                          <tr className="border-b border-[hsl(var(--border)/0.5)]">
+                                            <td className="py-1.5 pr-3 text-[hsl(var(--muted-foreground))] whitespace-nowrap font-medium">Correlation ID</td>
+                                            <td className="py-1.5 font-mono">{log.correlation_id}</td>
+                                          </tr>
+                                        )}
+                                        <tr className="border-b border-[hsl(var(--border)/0.5)]">
+                                          <td className="py-1.5 pr-3 text-[hsl(var(--muted-foreground))] whitespace-nowrap font-medium">User ID</td>
+                                          <td className="py-1.5 font-mono">{log.user_id}</td>
+                                        </tr>
+                                        {log.ip_address && (
+                                          <tr className="border-b border-[hsl(var(--border)/0.5)]">
+                                            <td className="py-1.5 pr-3 text-[hsl(var(--muted-foreground))] whitespace-nowrap font-medium">IP Address</td>
+                                            <td className="py-1.5 font-mono">{log.ip_address}</td>
+                                          </tr>
+                                        )}
+                                        {log.user_agent && (() => {
+                                          const ua = parseUserAgent(log.user_agent)
+                                          return (
+                                            <tr className="border-b border-[hsl(var(--border)/0.5)]">
+                                              <td className="py-1.5 pr-3 text-[hsl(var(--muted-foreground))] whitespace-nowrap font-medium">Client</td>
+                                              <td className="py-1.5">
+                                                <div className="flex items-center gap-3">
+                                                  <span className="inline-flex items-center gap-1">
+                                                    <BrowserIcon browser={ua.browser} />
+                                                    <span>{ua.browser}</span>
+                                                  </span>
+                                                  <span className="inline-flex items-center gap-1">
+                                                    <DeviceIcon device={ua.device} />
+                                                    <span>{ua.os}</span>
+                                                  </span>
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          )
+                                        })()}
+                                        {log.user_agent && (
+                                          <tr>
+                                            <td className="py-1.5 pr-3 text-[hsl(var(--muted-foreground))] whitespace-nowrap font-medium align-top">User Agent</td>
+                                            <td className="py-1.5 text-[hsl(var(--muted-foreground))] break-all text-[11px] leading-relaxed">{log.user_agent}</td>
+                                          </tr>
+                                        )}
+                                      </tbody>
+                                    </table>
+                                  </div>
+
+                                  {/* Right: Details */}
+                                  <div>
+                                    <h4 className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] mb-2">Details</h4>
+                                    {log.details && Object.keys(log.details).length > 0 ? (
+                                      <table className="w-full text-xs">
+                                        <tbody>
+                                          {flattenDetails(log.details).map(({ key, value }, i) => (
+                                            <tr key={i} className="border-b border-[hsl(var(--border)/0.5)]">
+                                              <td className="py-1.5 pr-3 text-[hsl(var(--muted-foreground))] whitespace-nowrap font-medium align-top">{key}</td>
+                                              <td className={`py-1.5 break-all ${isUuid(value) ? 'font-mono' : ''}`}>{value}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    ) : (
+                                      <p className="text-xs text-[hsl(var(--muted-foreground))]">No details recorded.</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                    </tbody>
+                  )
+                })
+              )}
             </table>
           </div>
         </CardContent>
