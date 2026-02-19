@@ -1,6 +1,5 @@
-import asyncio
-import uuid
-from pathlib import Path
+from typing import Literal
+from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request, Response, UploadFile, File
@@ -10,9 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import audit_context, write_audit_log
-from src.core.config import settings
 from src.core.exceptions import BadRequestError, NotFoundError
-from src.integrations.hibob.client import HiBobClient
 from src.models.dto.order import (
     OrderHiBobSyncResponse,
     OrderHiBobUnsyncResponse,
@@ -31,24 +28,16 @@ from src.services.hibob_order_sync import sync_order_to_hibob, unsync_order_from
 router = APIRouter(prefix="/orders", tags=["admin-orders"])
 
 
-VALID_STATUSES = {"pending", "ordered", "delivered", "rejected", "cancelled"}
-ALLOWED_INVOICE_TYPES = {"application/pdf", "image/jpeg", "image/png"}
-ALLOWED_INVOICE_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
-MAX_INVOICE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
-
-
 @router.get("", response_model=OrderListResponse)
 async def list_all_orders(
-    status: str | None = None,
+    status: Literal["pending", "ordered", "delivered", "rejected", "cancelled"] | None = None,
     q: str | None = None,
-    sort: str | None = None,
+    sort: Literal["newest", "oldest", "total_asc", "total_desc"] | None = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):
-    if status and status not in VALID_STATUSES:
-        raise BadRequestError(f"Invalid status. Must be one of: {', '.join(sorted(VALID_STATUSES))}")
     items, total = await order_service.get_orders(
         db, status=status, q=q, sort=sort, page=page, per_page=per_page,
         include_invoices=True,
@@ -141,40 +130,11 @@ async def upload_invoice(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):
-    # Validate file type
-    if file.content_type not in ALLOWED_INVOICE_TYPES:
-        raise BadRequestError(
-            f"Invalid file type. Allowed: PDF, JPEG, PNG"
-        )
-
-    # Validate extension
-    filename = file.filename or "upload"
-    ext = Path(filename).suffix.lower()
-    if ext not in ALLOWED_INVOICE_EXTENSIONS:
-        raise BadRequestError(
-            f"Invalid file extension. Allowed: {', '.join(ALLOWED_INVOICE_EXTENSIONS)}"
-        )
-
-    # Read and validate file size
     content = await file.read()
-    if len(content) > MAX_INVOICE_SIZE_BYTES:
-        raise BadRequestError(
-            f"File too large. Maximum size is {MAX_INVOICE_SIZE_BYTES // (1024 * 1024)} MB"
-        )
+    filename = file.filename or "upload"
 
-    # Create directory
-    invoice_dir = settings.upload_dir / "invoices" / str(order_id)
-    invoice_dir.mkdir(parents=True, exist_ok=True)
-
-    # Generate unique filename
-    stored_name = f"{uuid.uuid4()}{ext}"
-    file_path = invoice_dir / stored_name
-
-    # Write file (non-blocking)
-    await asyncio.to_thread(file_path.write_bytes, content)
-
-    invoice = await order_service.add_invoice(
-        db, order_id, filename, str(file_path), admin.id
+    invoice = await order_service.upload_invoice(
+        db, order_id, filename, content, file.content_type, admin.id,
     )
 
     ip, ua = audit_context(request)
@@ -200,9 +160,10 @@ async def download_invoice(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):
+    from pathlib import Path
+
     invoice = await order_service.get_invoice(db, order_id, invoice_id)
 
-    from urllib.parse import quote
     safe_name = invoice.filename.encode("ascii", "replace").decode()
     encoded_name = quote(invoice.filename)
     return FileResponse(
@@ -272,9 +233,8 @@ async def sync_order_hibob(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):
-    client = HiBobClient()
     try:
-        entries_created = await sync_order_to_hibob(db, order_id, admin.id, client)
+        entries_created = await sync_order_to_hibob(db, order_id, admin.id)
     except ValueError as e:
         raise BadRequestError(str(e))
 
@@ -314,9 +274,8 @@ async def unsync_order_hibob(
 ):
     pre_data = await order_service.get_order_with_items(db, order_id)
 
-    client = HiBobClient()
     try:
-        entries_deleted = await unsync_order_from_hibob(db, order_id, admin.id, client)
+        entries_deleted = await unsync_order_from_hibob(db, order_id, admin.id)
     except ValueError as e:
         raise BadRequestError(str(e))
 

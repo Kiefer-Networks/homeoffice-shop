@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import require_admin, require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import audit_context, write_audit_log
-from src.integrations.amazon.client import AmazonClient
 from src.models.dto.product import (
     ProductCreate, ProductResponse, ProductUpdate,
     RefreshPreviewResponse, RefreshApplyRequest,
@@ -84,7 +83,7 @@ async def update_product(
     return product
 
 
-@router.post("/{product_id}/activate", response_model=ProductResponse)
+@router.patch("/{product_id}/activate", response_model=ProductResponse)
 async def activate_product(
     product_id: UUID,
     request: Request,
@@ -103,7 +102,7 @@ async def activate_product(
     return product
 
 
-@router.post("/{product_id}/deactivate", response_model=ProductResponse)
+@router.patch("/{product_id}/deactivate", response_model=ProductResponse)
 async def deactivate_product(
     product_id: UUID,
     request: Request,
@@ -122,7 +121,7 @@ async def deactivate_product(
     return product
 
 
-@router.delete("/{product_id}", response_model=ProductResponse)
+@router.post("/{product_id}/archive", response_model=ProductResponse)
 async def archive_product(
     product_id: UUID,
     request: Request,
@@ -210,8 +209,7 @@ async def trigger_price_refresh(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_admin),
 ):
-    client = AmazonClient()
-    result = await product_service.refresh_all_prices(db, client)
+    result = await product_service.refresh_all_prices(db)
 
     ip, ua = audit_context(request)
     await write_audit_log(

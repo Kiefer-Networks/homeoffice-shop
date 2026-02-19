@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import audit_context, write_audit_log
+from src.models.dto.common import CountResponse
 from src.models.dto.hibob import (
     HiBobPurchaseReviewListResponse,
     HiBobPurchaseReviewMatchRequest,
@@ -19,7 +21,7 @@ router = APIRouter(prefix="/purchase-reviews", tags=["admin-purchase-reviews"])
 
 @router.get("", response_model=HiBobPurchaseReviewListResponse)
 async def list_reviews(
-    status: str | None = None,
+    status: Literal["pending", "matched", "adjusted", "dismissed"] | None = None,
     user_id: UUID | None = None,
     q: str | None = None,
     sort: str = "date_desc",
@@ -34,7 +36,7 @@ async def list_reviews(
     return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
-@router.get("/pending-count")
+@router.get("/pending-count", response_model=CountResponse)
 async def get_pending_count(
     db: AsyncSession = Depends(get_db),
     staff: User = Depends(require_staff),
@@ -68,7 +70,7 @@ async def match_review(
     return result
 
 
-@router.put("/{review_id}/adjust", response_model=HiBobPurchaseReviewResponse)
+@router.post("/{review_id}/adjust", response_model=HiBobPurchaseReviewResponse)
 async def adjust_review(
     review_id: UUID,
     request: Request,
@@ -91,7 +93,7 @@ async def adjust_review(
     return result
 
 
-@router.put("/{review_id}/dismiss", response_model=HiBobPurchaseReviewResponse)
+@router.post("/{review_id}/dismiss", response_model=HiBobPurchaseReviewResponse)
 async def dismiss_review(
     review_id: UUID,
     request: Request,

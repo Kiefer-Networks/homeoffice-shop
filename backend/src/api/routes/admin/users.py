@@ -23,7 +23,6 @@ from src.models.dto.user import (
 )
 from src.models.orm.user import User
 from src.notifications.service import notify_user_email
-from src.repositories import user_repo
 from src.services import user_service
 
 router = APIRouter(prefix="/users", tags=["admin-users"])
@@ -49,11 +48,10 @@ async def list_users(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):
-    users, total = await user_repo.get_all(
+    return await user_service.list_users(
         db, page=page, per_page=per_page, q=q,
         department=department, role=role, is_active=is_active, sort=sort,
     )
-    return {"items": users, "total": total, "page": page, "per_page": per_page}
 
 
 @router.get("/search", response_model=list[UserSearchResult])
@@ -63,7 +61,7 @@ async def search_users(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):
-    return await user_repo.search_active(db, q, limit)
+    return await user_service.search_users(db, q, limit)
 
 
 @router.get("/{user_id}", response_model=UserDetailResponse)
@@ -179,7 +177,7 @@ async def update_budget_override(
     db: AsyncSession = Depends(get_db),
     staff: User = Depends(require_staff),
 ):
-    data = body.model_dump(exclude_none=True)
+    data = body.model_dump(exclude_unset=True)
     override = await user_service.update_budget_override(db, user_id, override_id, data)
 
     ip, ua = audit_context(request)

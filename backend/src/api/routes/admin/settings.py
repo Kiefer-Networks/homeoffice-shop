@@ -7,6 +7,7 @@ from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.audit.service import audit_context, write_audit_log
 from src.core.exceptions import BadRequestError
+from src.models.dto import DetailResponse
 from src.models.dto.settings import AppSettingResponse, AppSettingUpdate, AppSettingsResponse, TestEmailRequest
 from src.models.orm.user import User
 from src.notifications.email import send_test_email
@@ -22,11 +23,7 @@ async def get_settings(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    all_settings = await settings_service.get_all_settings(db)
-    _REDACTED_KEYS = {"smtp_password"}
-    for key in _REDACTED_KEYS:
-        if key in all_settings and all_settings[key]:
-            all_settings[key] = "********"
+    all_settings = await settings_service.get_all_settings_redacted(db)
     return {"settings": all_settings}
 
 
@@ -63,7 +60,7 @@ async def update_setting(
     return {"key": key, "value": body.value}
 
 
-@router.post("/test-email")
+@router.post("/test-email", response_model=DetailResponse)
 async def test_email(
     body: TestEmailRequest,
     request: Request,

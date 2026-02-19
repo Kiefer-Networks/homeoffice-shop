@@ -1,5 +1,3 @@
-import asyncio
-
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,8 +5,11 @@ from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.audit.service import audit_context
 from src.core.exceptions import ConflictError
+from src.core.tasks import create_background_task
+from src.models.dto import DetailResponse
 from src.models.dto.hibob import (
     HiBobPurchaseSyncLogListResponse,
+    HiBobPurchaseSyncStatusResponse,
     HiBobSyncLogListResponse,
 )
 from src.models.orm.user import User
@@ -25,7 +26,7 @@ from src.services.hibob_service import (
 router = APIRouter(prefix="/hibob", tags=["admin-hibob"])
 
 
-@router.post("/sync", status_code=202)
+@router.post("/sync", response_model=DetailResponse, status_code=202)
 async def trigger_sync(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -34,7 +35,7 @@ async def trigger_sync(
     if is_employee_sync_locked():
         raise ConflictError("Sync already in progress")
     ip, ua = audit_context(request)
-    asyncio.create_task(guarded_employee_sync(admin.id, ip, ua))
+    create_background_task(guarded_employee_sync(admin.id, ip, ua))
     return {"detail": "Sync started in background"}
 
 
@@ -49,7 +50,7 @@ async def get_sync_logs_endpoint(
     return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
-@router.get("/purchase-sync-status")
+@router.get("/purchase-sync-status", response_model=HiBobPurchaseSyncStatusResponse)
 async def purchase_sync_status(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
@@ -59,7 +60,7 @@ async def purchase_sync_status(
     return {"running": running}
 
 
-@router.post("/purchase-sync", status_code=202)
+@router.post("/purchase-sync", response_model=DetailResponse, status_code=202)
 async def trigger_purchase_sync(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -68,7 +69,7 @@ async def trigger_purchase_sync(
     if is_purchase_sync_locked():
         raise ConflictError("Sync already in progress")
     ip, ua = audit_context(request)
-    asyncio.create_task(guarded_purchase_sync(admin.id, ip, ua))
+    create_background_task(guarded_purchase_sync(admin.id, ip, ua))
     return {"detail": "Purchase sync started in background"}
 
 

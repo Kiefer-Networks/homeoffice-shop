@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -5,9 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import get_current_user
 from src.api.dependencies.database import get_db
-from src.core.exceptions import BadRequestError
-
-VALID_SORTS = {"relevance", "price_asc", "price_desc", "name_asc", "name_desc", "newest"}
 from src.models.dto.product import ProductListResponse, ProductResponse
 from src.models.orm.user import User
 from src.services import product_service
@@ -24,7 +22,7 @@ async def list_products(
     material: str | None = None,
     price_min: int | None = None,
     price_max: int | None = None,
-    sort: str = "relevance",
+    sort: Literal["relevance", "price_asc", "price_desc", "name_asc", "name_desc", "newest"] = "relevance",
     include_archived: bool = False,
     archived_only: bool = False,
     page: int = Query(1, ge=1),
@@ -32,8 +30,6 @@ async def list_products(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    if sort not in VALID_SORTS:
-        raise BadRequestError(f"Invalid sort. Must be one of: {', '.join(sorted(VALID_SORTS))}")
     result = await product_service.search_products(
         db,
         q=q,

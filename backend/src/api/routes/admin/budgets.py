@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -22,7 +23,7 @@ router = APIRouter(prefix="/budgets", tags=["admin-budgets"])
 async def list_adjustments(
     user_id: UUID | None = None,
     q: str | None = None,
-    sort: str = "newest",
+    sort: Literal["newest", "oldest", "amount_asc", "amount_desc"] = "newest",
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),

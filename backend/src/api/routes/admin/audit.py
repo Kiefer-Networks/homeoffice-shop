@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.audit.service import audit_context, export_audit_csv, get_audit_filter_options, query_audit_logs, write_audit_log
-from src.models.dto.audit import AuditLogListResponse
+from src.models.dto.audit import AuditFiltersResponse, AuditLogListResponse
 from src.models.orm.user import User
 
 router = APIRouter(prefix="/audit", tags=["admin-audit"])
@@ -43,7 +43,7 @@ async def list_audit_logs(
     return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
-@router.get("/filters")
+@router.get("/filters", response_model=AuditFiltersResponse)
 async def get_audit_filters(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),

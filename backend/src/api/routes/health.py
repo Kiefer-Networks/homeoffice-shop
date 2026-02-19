@@ -1,98 +1,25 @@
-import os
-import time
-
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
-from src.core.config import settings
+from src.models.dto.health import HealthDetailedResponse, HealthResponse
 from src.models.orm.user import User
-
-APP_VERSION = os.environ.get("APP_VERSION", "dev")
+from src.services import health_service
 
 router = APIRouter(tags=["health"])
 
 
-async def _check_database(db: AsyncSession) -> dict:
-    try:
-        start = time.monotonic()
-        await db.execute(text("SELECT 1"))
-        latency_ms = round((time.monotonic() - start) * 1000)
-        return {"status": "up", "latency_ms": latency_ms}
-    except Exception:
-        return {"status": "down"}
-
-
-
-async def _check_smtp() -> dict:
-    from src.services.settings_service import get_setting
-    if not get_setting("smtp_host"):
-        return {"status": "not_configured"}
-    return {"status": "configured"}
-
-
-async def _check_slack() -> dict:
-    if not settings.slack_webhook_url:
-        return {"status": "not_configured"}
-    return {"status": "configured"}
-
-
-async def _check_disk() -> dict:
-    import asyncio
-    import shutil
-    from pathlib import Path
-
-    uploads_path = Path("/app/uploads")
-    if not uploads_path.exists():
-        uploads_path = Path("uploads")
-        uploads_path.mkdir(exist_ok=True)
-
-    def _sync_disk_check():
-        usage = shutil.disk_usage(uploads_path)
-        uploads_mb = 0
-        if uploads_path.exists():
-            uploads_mb = sum(
-                f.stat().st_size for f in uploads_path.rglob("*") if f.is_file()
-            ) // (1024 * 1024)
-        return {"status": "ok", "uploads_mb": uploads_mb, "free_mb": usage.free // (1024 * 1024)}
-
-    try:
-        return await asyncio.to_thread(_sync_disk_check)
-    except Exception:
-        return {"status": "error"}
-
-
-@router.get("/health")
+@router.get("/health", response_model=HealthResponse)
 async def health_check(db: AsyncSession = Depends(get_db)):
-    db_status = await _check_database(db)
-    overall = "healthy" if db_status["status"] == "up" else "unhealthy"
-    status_code = 200 if overall == "healthy" else 503
-
-    return JSONResponse(
-        content={"status": overall},
-        status_code=status_code,
-    )
+    body, status_code = await health_service.get_basic_health(db)
+    return JSONResponse(content=body, status_code=status_code)
 
 
-@router.get("/health/detailed")
+@router.get("/health/detailed", response_model=HealthDetailedResponse)
 async def health_check_detailed(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    checks = {
-        "database": await _check_database(db),
-        "smtp": await _check_smtp(),
-        "slack": await _check_slack(),
-        "disk": await _check_disk(),
-    }
-
-    overall = "healthy" if checks["database"]["status"] == "up" else "unhealthy"
-
-    return {
-        "status": overall,
-        "version": APP_VERSION,
-        "checks": checks,
-    }
+    return await health_service.get_detailed_health(db)

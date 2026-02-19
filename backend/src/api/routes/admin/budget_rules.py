@@ -12,6 +12,7 @@ from src.models.dto.budget import (
     BudgetRuleResponse,
     BudgetRuleUpdate,
 )
+from src.models.orm.budget_rule import BudgetRule
 from src.models.orm.user import User
 from src.services import budget_service
 
@@ -63,7 +64,7 @@ async def update_budget_rule(
     db: AsyncSession = Depends(get_db),
     staff: User = Depends(require_staff),
 ):
-    data = body.model_dump(exclude_none=True)
+    data = body.model_dump(exclude_unset=True)
     rule = await budget_service.update_budget_rule(db, rule_id, data)
 
     ip, ua = audit_context(request)
@@ -83,7 +84,6 @@ async def delete_budget_rule(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    from src.models.orm.budget_rule import BudgetRule
     rule = await db.get(BudgetRule, rule_id)
     rule_details = {
         "effective_from": str(rule.effective_from),

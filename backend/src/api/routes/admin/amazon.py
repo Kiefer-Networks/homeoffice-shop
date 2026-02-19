@@ -4,12 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import audit_context, write_audit_log
-from src.integrations.amazon.client import AmazonClient
 from src.models.dto.product import (
     AmazonProductResponse,
     AmazonSearchResponse,
 )
 from src.models.orm.user import User
+from src.services import amazon_service
 
 router = APIRouter(prefix="/amazon", tags=["admin-amazon"])
 
@@ -19,8 +19,7 @@ async def amazon_search(
     query: str = Query(min_length=1, max_length=200),
     admin: User = Depends(require_staff),
 ):
-    client = AmazonClient()
-    results = await client.search(query)
+    results = await amazon_service.search_products(query)
     return [
         AmazonSearchResponse(
             name=r.name,
@@ -42,8 +41,7 @@ async def amazon_product(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):
-    client = AmazonClient()
-    product = await client.get_product(asin)
+    product = await amazon_service.get_product(asin)
     if not product:
         return AmazonProductResponse(name="", description=None)
 
