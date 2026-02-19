@@ -1,17 +1,16 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { adminApi } from '@/services/adminApi'
 import { formatCents, formatDate } from '@/lib/utils'
 import { useUiStore } from '@/stores/uiStore'
-import {
-  ExternalLink, Upload, Download, Trash2, Loader2, FileText, Link2, CloudUpload, Check,
-} from 'lucide-react'
+import { ExternalLink, Loader2, Link2 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
-import { getAccessToken } from '@/lib/token'
-import type { Order, OrderInvoice } from '@/types'
+import { InvoiceSection } from '@/components/admin/InvoiceSection'
+import { HiBobSyncSection } from '@/components/admin/HiBobSyncSection'
+import type { Order } from '@/types'
 
 const statusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning'> = {
   pending: 'warning', ordered: 'default', delivered: 'success', rejected: 'destructive', cancelled: 'secondary',
@@ -26,42 +25,22 @@ interface OrderDetailDialogProps {
 }
 
 export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetailDialogProps) {
-  // Inline status change
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
   const [adminNote, setAdminNote] = useState('')
   const [expectedDelivery, setExpectedDelivery] = useState('')
   const [statusLoading, setStatusLoading] = useState(false)
 
-  // Purchase URL
   const [purchaseUrl, setPurchaseUrl] = useState('')
   const [purchaseUrlSaving, setPurchaseUrlSaving] = useState(false)
 
-  // Invoice upload
-  const [uploading, setUploading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // HiBob sync
-  const [showHiBobConfirm, setShowHiBobConfirm] = useState(false)
-  const [hibobSyncing, setHibobSyncing] = useState(false)
-
-  // HiBob unsync
-  const [showHiBobDeleteModal, setShowHiBobDeleteModal] = useState(false)
-  const [hibobDeleteInput, setHibobDeleteInput] = useState('')
-  const [hibobDeleting, setHibobDeleting] = useState(false)
-
   const { addToast } = useUiStore()
-  const apiUrl = import.meta.env.VITE_API_URL || ''
 
-  // Sync purchase_url field when order changes
   useEffect(() => {
     if (order) {
       setPurchaseUrl(order.purchase_url || '')
       setPendingAction(null)
       setAdminNote('')
       setExpectedDelivery('')
-      setShowHiBobConfirm(false)
-      setShowHiBobDeleteModal(false)
-      setHibobDeleteInput('')
     }
   }, [order])
 
@@ -72,7 +51,6 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
     } catch { /* ignore */ }
   }
 
-  // --- Status change ---
   const startAction = (action: PendingAction) => {
     setPendingAction(action)
     setAdminNote('')
@@ -101,7 +79,6 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
     }
   }
 
-  // --- Item check ---
   const handleItemCheck = async (orderId: string, itemId: string, checked: boolean) => {
     try {
       await adminApi.checkOrderItem(orderId, itemId, checked)
@@ -111,7 +88,6 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
     }
   }
 
-  // --- Purchase URL ---
   const handleSavePurchaseUrl = async () => {
     if (!order) return
     setPurchaseUrlSaving(true)
@@ -126,92 +102,10 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
     }
   }
 
-  // --- Invoice upload ---
-  const handleInvoiceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!order || !e.target.files?.length) return
-    const file = e.target.files[0]
-    setUploading(true)
-    try {
-      await adminApi.uploadInvoice(order.id, file)
-      await refreshOrder(order.id)
-      addToast({ title: 'Invoice uploaded' })
-    } catch (err: unknown) {
-      addToast({ title: 'Upload failed', description: getErrorMessage(err), variant: 'destructive' })
-    } finally {
-      setUploading(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
-  }
-
-  const handleInvoiceDownload = async (orderId: string, invoiceId: string, filename: string) => {
-    try {
-      const url = `${apiUrl}${adminApi.downloadInvoiceUrl(orderId, invoiceId)}`
-      const token = getAccessToken()
-      const response = await fetch(url, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-      if (!response.ok) throw new Error('Download failed')
-      const blob = await response.blob()
-      const blobUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = blobUrl
-      a.download = filename
-      a.click()
-      URL.revokeObjectURL(blobUrl)
-    } catch (err: unknown) {
-      addToast({ title: 'Download failed', description: getErrorMessage(err), variant: 'destructive' })
-    }
-  }
-
-  const handleInvoiceDelete = async (orderId: string, invoiceId: string) => {
-    try {
-      await adminApi.deleteInvoice(orderId, invoiceId)
-      await refreshOrder(orderId)
-      addToast({ title: 'Invoice deleted' })
-    } catch (err: unknown) {
-      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
-    }
-  }
-
-  // --- HiBob sync ---
-  const handleHiBobSync = async () => {
-    if (!order) return
-    setHibobSyncing(true)
-    try {
-      const { data } = await adminApi.syncOrderToHiBob(order.id)
-      setShowHiBobConfirm(false)
-      await refreshOrder(order.id)
-      addToast({ title: data.detail })
-    } catch (err: unknown) {
-      addToast({ title: 'Sync failed', description: getErrorMessage(err), variant: 'destructive' })
-    } finally {
-      setHibobSyncing(false)
-    }
-  }
-
-  // --- HiBob unsync ---
-  const handleHiBobUnsync = async () => {
-    if (!order) return
-    setHibobDeleting(true)
-    try {
-      const { data } = await adminApi.unsyncOrderFromHiBob(order.id)
-      setShowHiBobDeleteModal(false)
-      setHibobDeleteInput('')
-      await refreshOrder(order.id)
-      addToast({ title: data.detail })
-    } catch (err: unknown) {
-      addToast({ title: 'Unsync failed', description: getErrorMessage(err), variant: 'destructive' })
-    } finally {
-      setHibobDeleting(false)
-    }
-  }
-
-  // Open all vendor links
   const openAllLinks = (o: Order) => {
     o.items.forEach((item) => { window.open(item.external_url, '_blank', 'noopener,noreferrer') })
   }
 
-  // Action button labels
   const actionButtons: Record<string, { label: string; action: PendingAction; variant: 'default' | 'destructive' }[]> = {
     pending: [
       { label: 'Approve', action: 'ordered', variant: 'default' },
@@ -362,55 +256,12 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
 
             {/* Invoices */}
             {order.status !== 'rejected' && order.status !== 'cancelled' && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-medium">Invoices</h3>
-                  <div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={handleInvoiceUpload}
-                      className="hidden"
-                    />
-                    <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                      {uploading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
-                      Upload
-                    </Button>
-                  </div>
-                </div>
-                {order.invoices && order.invoices.length > 0 ? (
-                  <div className="border rounded-lg divide-y">
-                    {order.invoices.map((inv: OrderInvoice) => (
-                      <div key={inv.id} className="flex items-center justify-between px-3 py-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FileText className="h-4 w-4 text-[hsl(var(--muted-foreground))] shrink-0" />
-                          <span className="text-sm truncate">{inv.filename}</span>
-                          <span className="text-xs text-[hsl(var(--muted-foreground))] shrink-0">{formatDate(inv.uploaded_at)}</span>
-                        </div>
-                        <div className="flex gap-1 shrink-0">
-                          <Button size="icon" variant="ghost" className="h-7 w-7"
-                            onClick={() => handleInvoiceDownload(order.id, inv.id, inv.filename)}>
-                            <Download className="h-3 w-3" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600 hover:text-red-700"
-                            onClick={() => handleInvoiceDelete(order.id, inv.id)}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-[hsl(var(--muted-foreground))]">No invoices uploaded.</p>
-                )}
-              </div>
+              <InvoiceSection order={order} onInvoiceChange={() => refreshOrder(order.id)} />
             )}
 
             {/* Actions bar */}
             {(actionButtons[order.status] || order.status === 'delivered') && (
               <div className="pt-2 border-t">
-                {/* Status transition buttons or inline form */}
                 {pendingAction ? (
                   <div className="space-y-3">
                     <div className="text-sm font-medium">
@@ -469,76 +320,13 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
 
                 {/* HiBob sync */}
                 {order.status === 'delivered' && !pendingAction && (
-                  <div className="flex items-center gap-2 mt-3">
-                    {order.hibob_synced_at ? (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Check className="h-4 w-4 text-green-600" />
-                        <span className="text-[hsl(var(--muted-foreground))]">Synced to HiBob on {formatDate(order.hibob_synced_at)}</span>
-                        <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700 h-7 px-2"
-                          onClick={() => setShowHiBobDeleteModal(true)}>
-                          <Trash2 className="h-3 w-3 mr-1" /> Remove
-                        </Button>
-                      </div>
-                    ) : showHiBobConfirm ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">
-                          This will sync {order.items.length} entr{order.items.length === 1 ? 'y' : 'ies'} to HiBob.
-                        </span>
-                        <Button size="sm" onClick={handleHiBobSync} disabled={hibobSyncing}>
-                          {hibobSyncing ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Syncing...</> : 'Confirm'}
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setShowHiBobConfirm(false)} disabled={hibobSyncing}>
-                          Cancel
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button variant="outline" onClick={() => setShowHiBobConfirm(true)}>
-                        <CloudUpload className="h-4 w-4 mr-1" /> Sync to HiBob
-                      </Button>
-                    )}
-                  </div>
+                  <HiBobSyncSection order={order} onSyncChange={() => refreshOrder(order.id)} />
                 )}
               </div>
             )}
           </>
         )}
       </DialogContent>
-
-      {/* HiBob DELETE confirmation modal */}
-      <Dialog open={showHiBobDeleteModal} onOpenChange={(open) => {
-        if (!open) { setShowHiBobDeleteModal(false); setHibobDeleteInput('') }
-      }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Remove HiBob Sync</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-[hsl(var(--muted-foreground))]">
-              This will delete the synced entries from the employee's HiBob profile.
-              This action affects a <strong>production system</strong>.
-            </p>
-            <p className="text-sm">
-              Type <strong>DELETE</strong> to confirm:
-            </p>
-            <Input
-              value={hibobDeleteInput}
-              onChange={(e) => setHibobDeleteInput(e.target.value)}
-              placeholder="DELETE"
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowHiBobDeleteModal(false); setHibobDeleteInput('') }}
-              disabled={hibobDeleting}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleHiBobUnsync}
-              disabled={hibobDeleteInput !== 'DELETE' || hibobDeleting}>
-              {hibobDeleting ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Deleting...</> : 'Delete from HiBob'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Dialog>
   )
 }

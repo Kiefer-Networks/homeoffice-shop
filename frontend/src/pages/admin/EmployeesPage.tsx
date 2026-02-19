@@ -113,9 +113,8 @@ export function AdminEmployeesPage() {
 
   // Load departments once
   useEffect(() => {
-    adminApi.listUsers({ per_page: 100 }).then(({ data }) => {
-      const depts = [...new Set(data.items.map((u) => u.department).filter(Boolean))] as string[]
-      setDepartments(depts.sort())
+    adminApi.listDepartments().then(({ data }) => {
+      setDepartments(data.sort())
     })
   }, [])
 

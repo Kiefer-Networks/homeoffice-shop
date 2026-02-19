@@ -13,7 +13,6 @@ import { useCartStore } from '@/stores/cartStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { productApi } from '@/services/productApi'
-import { cartApi } from '@/services/cartApi'
 import { orderApi } from '@/services/orderApi'
 import { getErrorMessage } from '@/lib/error'
 import type { Product, Category, Facets } from '@/types'
@@ -39,12 +38,11 @@ export function CatalogPage() {
 
   const refreshCart = useCallback(async () => {
     try {
-      const { data } = await cartApi.get()
-      setCart(data)
+      await useCartStore.getState().fetchCart()
     } catch {
       // Cart may not exist yet for new users - this is expected
     }
-  }, [setCart])
+  }, [])
 
   useEffect(() => { refreshCart() }, [refreshCart])
 

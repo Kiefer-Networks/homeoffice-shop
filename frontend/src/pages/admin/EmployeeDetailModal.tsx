@@ -3,12 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/error'
-import { Plus, Pencil, Trash2, Save } from 'lucide-react'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { BudgetOverrideForm } from '@/components/admin/BudgetOverrideForm'
 import type { UserDetailResponse, UserBudgetOverride, UserPurchaseReview } from '@/types'
 
 function EmployeeAvatar({ name, avatarUrl, size = 48 }: { name: string; avatarUrl?: string | null; size?: number }) {
@@ -72,13 +72,8 @@ export function EmployeeDetailModal({ userId, onClose }: EmployeeDetailModalProp
   const [loading, setLoading] = useState(false)
   const { addToast } = useUiStore()
 
-  // Override form state
   const [showOverrideForm, setShowOverrideForm] = useState(false)
-  const [editingOverride, setEditingOverride] = useState<UserBudgetOverride | null>(null)
-  const [overrideForm, setOverrideForm] = useState({
-    effective_from: '', effective_until: '', initial_cents: '', yearly_increment_cents: '', reason: '',
-  })
-  const [savingOverride, setSavingOverride] = useState(false)
+  const [editingOverride, setEditingOverride] = useState<UserBudgetOverride | undefined>(undefined)
 
   useEffect(() => {
     if (!userId) {
@@ -97,46 +92,8 @@ export function EmployeeDetailModal({ userId, onClose }: EmployeeDetailModalProp
   }
 
   const openOverrideForm = (override?: UserBudgetOverride) => {
-    if (override) {
-      setEditingOverride(override)
-      setOverrideForm({
-        effective_from: override.effective_from,
-        effective_until: override.effective_until || '',
-        initial_cents: String(override.initial_cents),
-        yearly_increment_cents: String(override.yearly_increment_cents),
-        reason: override.reason,
-      })
-    } else {
-      setEditingOverride(null)
-      setOverrideForm({ effective_from: '', effective_until: '', initial_cents: '', yearly_increment_cents: '', reason: '' })
-    }
+    setEditingOverride(override)
     setShowOverrideForm(true)
-  }
-
-  const handleSaveOverride = async () => {
-    if (!userId) return
-    setSavingOverride(true)
-    try {
-      const payload = {
-        effective_from: overrideForm.effective_from,
-        effective_until: overrideForm.effective_until || null,
-        initial_cents: parseInt(overrideForm.initial_cents),
-        yearly_increment_cents: parseInt(overrideForm.yearly_increment_cents),
-        reason: overrideForm.reason,
-      }
-      if (editingOverride) {
-        await adminApi.updateUserBudgetOverride(userId, editingOverride.id, payload)
-      } else {
-        await adminApi.createUserBudgetOverride(userId, payload)
-      }
-      setShowOverrideForm(false)
-      addToast({ title: editingOverride ? 'Override updated' : 'Override created' })
-      reload()
-    } catch (err: unknown) {
-      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
-    } finally {
-      setSavingOverride(false)
-    }
   }
 
   const handleDeleteOverride = async (overrideId: string) => {
@@ -248,66 +205,13 @@ export function EmployeeDetailModal({ userId, onClose }: EmployeeDetailModalProp
                 </Button>
               </div>
 
-              {showOverrideForm && (
-                <Card className="mb-3">
-                  <CardContent className="p-4 space-y-3">
-                    <h4 className="text-sm font-medium">{editingOverride ? 'Edit Override' : 'New Override'}</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs font-medium">Effective From</label>
-                        <Input
-                          type="date"
-                          value={overrideForm.effective_from}
-                          onChange={e => setOverrideForm(f => ({ ...f, effective_from: e.target.value }))}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium">Effective Until (optional)</label>
-                        <Input
-                          type="date"
-                          value={overrideForm.effective_until}
-                          onChange={e => setOverrideForm(f => ({ ...f, effective_until: e.target.value }))}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium">Initial Budget (cents)</label>
-                        <Input
-                          type="number"
-                          value={overrideForm.initial_cents}
-                          onChange={e => setOverrideForm(f => ({ ...f, initial_cents: e.target.value }))}
-                          placeholder="75000"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium">Yearly Increment (cents)</label>
-                        <Input
-                          type="number"
-                          value={overrideForm.yearly_increment_cents}
-                          onChange={e => setOverrideForm(f => ({ ...f, yearly_increment_cents: e.target.value }))}
-                          placeholder="25000"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium">Reason</label>
-                      <Input
-                        value={overrideForm.reason}
-                        onChange={e => setOverrideForm(f => ({ ...f, reason: e.target.value }))}
-                        placeholder="Reason for override..."
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={handleSaveOverride}
-                        disabled={savingOverride || !overrideForm.effective_from || !overrideForm.initial_cents || !overrideForm.reason}
-                      >
-                        <Save className="h-3.5 w-3.5 mr-1" /> {editingOverride ? 'Update' : 'Create'}
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => setShowOverrideForm(false)}>Cancel</Button>
-                    </div>
-                  </CardContent>
-                </Card>
+              {showOverrideForm && userId && (
+                <BudgetOverrideForm
+                  userId={userId}
+                  override={editingOverride}
+                  onSaved={() => { setShowOverrideForm(false); reload() }}
+                  onCancel={() => setShowOverrideForm(false)}
+                />
               )}
 
               {(data.budget_overrides?.length || 0) === 0 && !showOverrideForm ? (
