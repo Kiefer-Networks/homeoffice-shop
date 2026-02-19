@@ -108,5 +108,6 @@ async def send_test_email(to: str) -> bool:
     ))
 
     await aiosmtplib.send(message, **smtp)
-    logger.info("Test email sent to %s", to)
+    masked = to.split("@")[0][:2] + "***@" + to.split("@")[-1]
+    logger.info("Test email sent to %s", masked)
     return True

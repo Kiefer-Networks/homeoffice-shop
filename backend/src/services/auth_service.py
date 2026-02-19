@@ -1,5 +1,6 @@
 import uuid
 from datetime import date, datetime, timedelta, timezone
+from email.utils import parseaddr
 
 from dateutil.relativedelta import relativedelta
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -112,7 +113,7 @@ async def validate_oauth_user(
     provider_id: str,
 ) -> User:
     """Validate and return the user for OAuth login, raising on failure."""
-    _, parsed_email = __import__("email.utils", fromlist=["parseaddr"]).parseaddr(email)
+    _, parsed_email = parseaddr(email)
     domain = parsed_email.rsplit("@", 1)[-1] if "@" in parsed_email else ""
 
     _generic_auth_error = "Authentication failed. Please contact your administrator."

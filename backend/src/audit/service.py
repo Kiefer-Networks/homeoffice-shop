@@ -98,7 +98,8 @@ async def query_audit_logs(
     )
 
     if q:
-        pattern = f"%{q}%"
+        escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
         base_stmt = base_stmt.where(or_(
             User.email.ilike(pattern),
             AuditLog.action.ilike(pattern),

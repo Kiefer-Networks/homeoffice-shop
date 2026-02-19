@@ -41,5 +41,5 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             or request.headers.get("x-forwarded-proto") == "https"
         )
         if is_https:
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
         return response
