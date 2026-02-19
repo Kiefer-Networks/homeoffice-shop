@@ -149,10 +149,10 @@ export function AdminOrdersPage() {
                       <div className="flex items-center gap-2">
                         <Badge variant={statusVariant[order.status]}>{order.status}</Badge>
                         {order.invoices && order.invoices.length > 0 && (
-                          <FileText className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" title="Invoice uploaded" />
+                          <span title="Invoice uploaded"><FileText className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" /></span>
                         )}
                         {order.purchase_url && (
-                          <Link2 className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" title="Purchase URL" />
+                          <span title="Purchase URL"><Link2 className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" /></span>
                         )}
                       </div>
                     </td>
