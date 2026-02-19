@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type FilterKey = 'q' | 'category' | 'brand' | 'color' | 'material' | 'priceMin' | 'priceMax' | 'sort' | 'page'
+type FilterKey = 'q' | 'category' | 'brand' | 'color' | 'material' | 'priceMin' | 'priceMax' | 'sort' | 'page'
 
 interface FilterState {
   q: string

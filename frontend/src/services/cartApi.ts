@@ -9,5 +9,4 @@ export const cartApi = {
     api.put(`/api/cart/items/${product_id}`, { quantity }),
   removeItem: (product_id: string) =>
     api.delete(`/api/cart/items/${product_id}`),
-  clear: () => api.delete('/api/cart'),
 }

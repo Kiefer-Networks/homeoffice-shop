@@ -6,23 +6,18 @@ interface CartState {
   cart: Cart | null
   isOpen: boolean
   isLoading: boolean
-  setCart: (cart: Cart | null) => void
   setOpen: (open: boolean) => void
-  setLoading: (loading: boolean) => void
   fetchCart: () => Promise<void>
   addItem: (productId: string, quantity?: number, variantAsin?: string) => Promise<void>
   updateItem: (productId: string, quantity: number) => Promise<void>
   removeItem: (productId: string) => Promise<void>
-  clearCart: () => Promise<void>
 }
 
 export const useCartStore = create<CartState>((set) => ({
   cart: null,
   isOpen: false,
   isLoading: false,
-  setCart: (cart) => set({ cart }),
   setOpen: (isOpen) => set({ isOpen }),
-  setLoading: (isLoading) => set({ isLoading }),
   fetchCart: async () => {
     set({ isLoading: true })
     try {
@@ -50,9 +45,5 @@ export const useCartStore = create<CartState>((set) => ({
     await cartApi.removeItem(productId)
     const { data } = await cartApi.get()
     set({ cart: data })
-  },
-  clearCart: async () => {
-    await cartApi.clear()
-    set({ cart: null })
   },
 }))

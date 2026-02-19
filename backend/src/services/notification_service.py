@@ -3,11 +3,11 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.notifications.service import ADMIN_ONLY_EVENTS
 from src.repositories import notification_pref_repo
 
 logger = logging.getLogger(__name__)
 
-ADMIN_ONLY_EVENTS = {"hibob.sync", "hibob.sync_error", "price.refresh", "hibob.purchase_review"}
 ORDER_EVENTS = {"order.created", "order.status_changed", "order.cancelled"}
 
 ALL_SLACK_EVENTS = ORDER_EVENTS | ADMIN_ONLY_EVENTS
