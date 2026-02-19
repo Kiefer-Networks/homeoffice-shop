@@ -141,7 +141,7 @@ class HiBobClient:
                 resp = await client.post(
                     f"{HIBOB_API_BASE}/people/custom-tables/{employee_id}/{table_id}",
                     headers={**self._headers, "Content-Type": "application/json"},
-                    json={"values": entry},
+                    json={"values": [entry]},
                 )
                 if resp.status_code == 429 and attempt < max_retries:
                     wait = min(2 ** attempt, 10)
