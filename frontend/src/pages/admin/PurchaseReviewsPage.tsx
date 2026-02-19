@@ -3,6 +3,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Pagination } from '@/components/ui/Pagination'
 import { Badge } from '@/components/ui/badge'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -12,6 +13,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/error'
 import { SortHeader } from '@/components/ui/SortHeader'
+import { PURCHASE_STATUS_VARIANT } from '@/lib/constants'
 import { RefreshCcw, Loader2, Link as LinkIcon, Minus, X } from 'lucide-react'
 import { EmployeeDetailModal } from './EmployeeDetailModal'
 import type { HiBobPurchaseReview, Order, PaginatedResponse } from '@/types'
@@ -27,16 +29,6 @@ const STATUS_TABS = [
   { label: 'Adjusted', value: 'adjusted' },
   { label: 'Dismissed', value: 'dismissed' },
 ] as const
-
-const statusVariant = (status: string) => {
-  switch (status) {
-    case 'pending': return 'warning' as const
-    case 'matched': return 'success' as const
-    case 'adjusted': return 'default' as const
-    case 'dismissed': return 'secondary' as const
-    default: return 'default' as const
-  }
-}
 
 export function PurchaseReviewsPage() {
   const [reviews, setReviews] = useState<HiBobPurchaseReview[]>([])
@@ -276,7 +268,7 @@ export function PurchaseReviewsPage() {
                         {formatCents(review.amount_cents)}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <Badge variant={statusVariant(review.status)}>{review.status}</Badge>
+                        <Badge variant={PURCHASE_STATUS_VARIANT[review.status]}>{review.status}</Badge>
                       </td>
                       <td className="px-4 py-3 text-right">
                         {review.status === 'pending' && (
@@ -337,30 +329,7 @@ export function PurchaseReviewsPage() {
             </div>
           )}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-[hsl(var(--border))]">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
-              <span className="text-sm text-[hsl(var(--muted-foreground))]">
-                Page {page} of {totalPages}
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          )}
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </CardContent>
       </Card>
 

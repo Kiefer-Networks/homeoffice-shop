@@ -4,8 +4,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Pagination } from '@/components/ui/Pagination'
 import { adminApi } from '@/services/adminApi'
 import { formatCents, formatDate } from '@/lib/utils'
+import { ORDER_STATUS_VARIANT } from '@/lib/constants'
 import { useUiStore } from '@/stores/uiStore'
 import { Search, FileText, Link2 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
@@ -14,10 +16,6 @@ import { OrderDetailDialog } from '@/components/admin/OrderDetailDialog'
 import type { Order } from '@/types'
 
 const PER_PAGE = 20
-
-const statusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning'> = {
-  pending: 'warning', ordered: 'default', delivered: 'success', rejected: 'destructive', cancelled: 'secondary',
-}
 
 const STATUS_FILTERS = ['', 'pending', 'ordered', 'delivered', 'rejected', 'cancelled'] as const
 
@@ -128,7 +126,7 @@ export function AdminOrdersPage() {
                     <td className="px-4 py-3 font-medium">{formatCents(order.total_cents)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <Badge variant={statusVariant[order.status]}>{order.status}</Badge>
+                        <Badge variant={ORDER_STATUS_VARIANT[order.status]}>{order.status}</Badge>
                         {order.invoices && order.invoices.length > 0 && (
                           <span title="Invoice uploaded"><FileText className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" /></span>
                         )}
@@ -144,14 +142,7 @@ export function AdminOrdersPage() {
             </table>
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-[hsl(var(--border))]">
-              <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
-              <span className="text-sm text-[hsl(var(--muted-foreground))]">Page {page} of {totalPages}</span>
-              <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
-            </div>
-          )}
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </CardContent>
       </Card>
 

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { adminApi } from '@/services/adminApi'
 import { formatCents, parseEuroToCents, centsToEuroInput } from '@/lib/utils'
+import { VariantTable } from '@/components/admin/VariantTable'
 import { Loader2, ChevronDown, ChevronUp, Link } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { useUiStore } from '@/stores/uiStore'
@@ -208,33 +209,7 @@ export function CreateProductDialog({ open, onClose, onCreated, categories, bran
           <textarea placeholder="Description" value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
             className="w-full rounded-md border px-3 py-2 text-sm min-h-[80px]" />
 
-          {loadedVariants.length > 0 && (
-            <div>
-              <h4 className="font-medium text-sm mb-2">Variants ({loadedVariants.length})</h4>
-              <div className="border rounded-md max-h-48 overflow-y-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b bg-[hsl(var(--muted))]">
-                      <th className="text-left px-2 py-1">Group</th>
-                      <th className="text-left px-2 py-1">Value</th>
-                      <th className="text-left px-2 py-1">ASIN</th>
-                      <th className="text-right px-2 py-1">Price</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loadedVariants.map((v) => (
-                      <tr key={v.asin} className="border-b last:border-b-0">
-                        <td className="px-2 py-1 capitalize">{v.group}</td>
-                        <td className="px-2 py-1">{v.value}</td>
-                        <td className="px-2 py-1 font-mono">{v.asin}</td>
-                        <td className="px-2 py-1 text-right">{v.price_cents > 0 ? formatCents(v.price_cents) : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          <VariantTable variants={loadedVariants} />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>Cancel</Button>

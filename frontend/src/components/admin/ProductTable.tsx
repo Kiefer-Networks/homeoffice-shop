@@ -1,40 +1,12 @@
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { SortHeader } from '@/components/ui/SortHeader'
 import {
   RefreshCcw, Archive, ArchiveRestore, Pencil, Eye, EyeOff,
-  ChevronDown, ChevronUp,
 } from 'lucide-react'
 import type { Product, Category } from '@/types'
 
 export type SortKey = 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc' | 'newest'
-
-function SortHeader({
-  label, sortKey, currentSort, onSort,
-}: {
-  label: string; sortKey: SortKey; currentSort: SortKey; onSort: (k: SortKey) => void
-}) {
-  const isNameSort = sortKey === 'name_asc'
-  const isPriceSort = sortKey === 'price_asc'
-  const isActive = isNameSort
-    ? currentSort === 'name_asc' || currentSort === 'name_desc'
-    : isPriceSort
-      ? currentSort === 'price_asc' || currentSort === 'price_desc'
-      : currentSort === sortKey
-
-  const handleClick = () => {
-    if (isNameSort) onSort(currentSort === 'name_asc' ? 'name_desc' : 'name_asc')
-    else if (isPriceSort) onSort(currentSort === 'price_asc' ? 'price_desc' : 'price_asc')
-    else onSort(sortKey)
-  }
-
-  const isDesc = currentSort === 'name_desc' || currentSort === 'price_desc'
-  return (
-    <button onClick={handleClick} className="inline-flex items-center gap-1 hover:text-[hsl(var(--foreground))] transition-colors">
-      {label}
-      {isActive && (isDesc ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />)}
-    </button>
-  )
-}
 
 export interface ProductTableProps {
   products: Product[]
@@ -65,11 +37,11 @@ export function ProductTable({
           <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
             <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))] w-12"></th>
             <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-              <SortHeader label="Name" sortKey="name_asc" currentSort={sort} onSort={onSort} />
+              <SortHeader label="Name" ascKey="name_asc" descKey="name_desc" currentSort={sort} onSort={onSort} />
             </th>
             <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Category</th>
             <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-              <SortHeader label="Price" sortKey="price_asc" currentSort={sort} onSort={onSort} />
+              <SortHeader label="Price" ascKey="price_asc" descKey="price_desc" currentSort={sort} onSort={onSort} />
             </th>
             <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Status</th>
             <th className="text-right px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Actions</th>

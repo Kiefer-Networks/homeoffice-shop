@@ -1,8 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Pagination } from '@/components/ui/Pagination'
 import { Badge } from '@/components/ui/badge'
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
@@ -24,31 +26,6 @@ import type { UserAdmin } from '@/types'
 const PER_PAGE = 20
 
 type SortKey = 'name_asc' | 'name_desc' | 'department' | 'start_date' | 'budget'
-
-function Avatar({ user }: { user: UserAdmin }) {
-  const [imgError, setImgError] = useState(false)
-  if (user.avatar_url && !imgError) {
-    return (
-      <img
-        src={user.avatar_url}
-        alt={user.display_name}
-        className="h-8 w-8 rounded-full object-cover"
-        onError={() => setImgError(true)}
-      />
-    )
-  }
-  const initials = user.display_name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-  return (
-    <div className="h-8 w-8 rounded-full bg-[hsl(var(--muted))] flex items-center justify-center text-xs font-medium">
-      {initials}
-    </div>
-  )
-}
 
 export function AdminEmployeesPage() {
   const [users, setUsers] = useState<UserAdmin[]>([])
@@ -231,7 +208,7 @@ export function AdminEmployeesPage() {
                     {/* Avatar + Name */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <Avatar user={u} />
+                        <Avatar name={u.display_name} src={u.avatar_url} size="sm" />
                         <div>
                           <div className="font-medium">{u.display_name}</div>
                           <div className="text-xs text-[hsl(var(--muted-foreground))]">{u.email}</div>
@@ -310,30 +287,7 @@ export function AdminEmployeesPage() {
             </table>
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-[hsl(var(--border))]">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
-              <span className="text-sm text-[hsl(var(--muted-foreground))]">
-                Page {page} of {totalPages}
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          )}
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </CardContent>
       </Card>
 

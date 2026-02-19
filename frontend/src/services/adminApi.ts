@@ -13,9 +13,9 @@ export const adminApi = {
   // Products
   createProduct: (data: ProductCreateInput) => api.post<Product>('/api/admin/products', data),
   updateProduct: (id: string, data: ProductUpdateInput) => api.put<Product>(`/api/admin/products/${id}`, data),
-  activateProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/activate`),
-  deactivateProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/deactivate`),
-  archiveProduct: (id: string) => api.delete<Product>(`/api/admin/products/${id}`),
+  activateProduct: (id: string) => api.patch<Product>(`/api/admin/products/${id}/activate`),
+  deactivateProduct: (id: string) => api.patch<Product>(`/api/admin/products/${id}/deactivate`),
+  archiveProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/archive`),
   restoreProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/restore`),
   refreshPreview: (id: string) =>
     api.post<RefreshPreviewResponse>(`/api/admin/products/${id}/refresh-preview`),
@@ -146,9 +146,9 @@ export const adminApi = {
   matchReview: (id: string, data: { order_id: string }) =>
     api.put<HiBobPurchaseReview>(`/api/admin/purchase-reviews/${id}/match`, data),
   adjustReview: (id: string) =>
-    api.put<HiBobPurchaseReview>(`/api/admin/purchase-reviews/${id}/adjust`),
+    api.post<HiBobPurchaseReview>(`/api/admin/purchase-reviews/${id}/adjust`),
   dismissReview: (id: string) =>
-    api.put<HiBobPurchaseReview>(`/api/admin/purchase-reviews/${id}/dismiss`),
+    api.post<HiBobPurchaseReview>(`/api/admin/purchase-reviews/${id}/dismiss`),
 
   // Backup
   exportBackup: () =>

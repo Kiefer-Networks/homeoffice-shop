@@ -7,11 +7,8 @@ import { ShoppingBag, Users, Wallet, Package, Truck, XCircle, ArrowRight } from 
 import { adminApi } from '@/services/adminApi'
 import { productApi } from '@/services/productApi'
 import { formatCents, formatDate } from '@/lib/utils'
+import { ORDER_STATUS_VARIANT } from '@/lib/constants'
 import type { Order } from '@/types'
-
-const statusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning'> = {
-  pending: 'warning', ordered: 'default', delivered: 'success', rejected: 'destructive', cancelled: 'secondary',
-}
 
 export function DashboardPage() {
   const [stats, setStats] = useState({
@@ -119,7 +116,7 @@ export function DashboardPage() {
                       <td className="px-4 py-3">{order.items.length}</td>
                       <td className="px-4 py-3 text-right font-medium">{formatCents(order.total_cents)}</td>
                       <td className="px-4 py-3">
-                        <Badge variant={statusVariant[order.status]}>{order.status}</Badge>
+                        <Badge variant={ORDER_STATUS_VARIANT[order.status]}>{order.status}</Badge>
                       </td>
                       <td className="px-4 py-3 text-[hsl(var(--muted-foreground))]">{formatDate(order.created_at)}</td>
                     </tr>

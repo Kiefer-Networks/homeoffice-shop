@@ -7,7 +7,7 @@ import { ProductSearch } from '@/components/shop/ProductSearch'
 import { BudgetIndicator } from '@/components/shop/BudgetIndicator'
 import { CartDrawer } from '@/components/shop/CartDrawer'
 import { CartPriceAlert } from '@/components/shop/CartPriceAlert'
-import { Button } from '@/components/ui/button'
+import { Pagination } from '@/components/ui/Pagination'
 import { useFilterStore } from '@/stores/filterStore'
 import { useCartStore } from '@/stores/cartStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -124,23 +124,11 @@ export function CatalogPage() {
                 ))}
               </div>
 
-              {totalPages > 1 && (
-                <div className="flex justify-center gap-2 mt-6">
-                  <Button variant="outline" size="sm"
-                    disabled={filterStore.page <= 1}
-                    onClick={() => filterStore.setFilter('page', filterStore.page - 1)}>
-                    Previous
-                  </Button>
-                  <span className="flex items-center px-3 text-sm">
-                    Page {filterStore.page} of {totalPages}
-                  </span>
-                  <Button variant="outline" size="sm"
-                    disabled={filterStore.page >= totalPages}
-                    onClick={() => filterStore.setFilter('page', filterStore.page + 1)}>
-                    Next
-                  </Button>
-                </div>
-              )}
+              <Pagination
+                page={filterStore.page}
+                totalPages={totalPages}
+                onPageChange={(p) => filterStore.setFilter('page', p)}
+              />
             </>
           )}
         </div>

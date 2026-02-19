@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Pagination } from '@/components/ui/Pagination'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
-import { Download, Trash2, Plus, Clock, Save, Database, HardDrive, Calendar, Shield, ChevronLeft, ChevronRight, Repeat } from 'lucide-react'
+import { Download, Trash2, Plus, Clock, Save, Database, HardDrive, Calendar, Shield, Repeat } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import type { BackupFile, BackupSchedule } from '@/types'
 
@@ -366,19 +367,7 @@ export function AdminBackupPage() {
                   {schedule.max_backups ? ` (limit: ${schedule.max_backups})` : ''}
                 </CardDescription>
               </div>
-              {totalPages > 1 && (
-                <div className="flex items-center gap-1">
-                  <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-xs text-[hsl(var(--muted-foreground))] px-2">
-                    {page} / {totalPages}
-                  </span>
-                  <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
             </div>
           </CardHeader>
           <CardContent>

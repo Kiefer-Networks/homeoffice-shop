@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Avatar } from '@/components/ui/Avatar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -7,60 +8,10 @@ import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/error'
+import { ORDER_STATUS_VARIANT, PURCHASE_STATUS_VARIANT } from '@/lib/constants'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { BudgetOverrideForm } from '@/components/admin/BudgetOverrideForm'
 import type { UserDetailResponse, UserBudgetOverride, UserPurchaseReview } from '@/types'
-
-function EmployeeAvatar({ name, avatarUrl, size = 48 }: { name: string; avatarUrl?: string | null; size?: number }) {
-  const [imgError, setImgError] = useState(false)
-
-  const initials = name
-    .split(' ')
-    .map(w => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-
-  let hash = 0
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  const hue = Math.abs(hash) % 360
-
-  if (avatarUrl && !imgError) {
-    return (
-      <img
-        src={avatarUrl}
-        alt={name}
-        className="rounded-full object-cover shrink-0"
-        style={{ width: size, height: size }}
-        onError={() => setImgError(true)}
-      />
-    )
-  }
-
-  return (
-    <div
-      className="rounded-full flex items-center justify-center text-white font-medium shrink-0"
-      style={{
-        width: size,
-        height: size,
-        fontSize: size * 0.38,
-        backgroundColor: `hsl(${hue}, 55%, 50%)`,
-      }}
-    >
-      {initials}
-    </div>
-  )
-}
-
-const statusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning'> = {
-  pending: 'warning', ordered: 'default', delivered: 'success', rejected: 'destructive', cancelled: 'secondary',
-}
-
-const purchaseStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning'> = {
-  pending: 'warning', matched: 'success', adjusted: 'default', dismissed: 'secondary',
-}
 
 interface EmployeeDetailModalProps {
   userId: string | null
@@ -120,7 +71,7 @@ export function EmployeeDetailModal({ userId, onClose }: EmployeeDetailModalProp
           <>
             <DialogHeader>
               <div className="flex items-center gap-3">
-                <EmployeeAvatar name={data.user.display_name} avatarUrl={data.user.avatar_url} size={48} />
+                <Avatar name={data.user.display_name} src={data.user.avatar_url} size="lg" colorful />
                 <div>
                   <DialogTitle>{data.user.display_name}</DialogTitle>
                   <p className="text-sm text-[hsl(var(--muted-foreground))]">
@@ -286,7 +237,7 @@ export function EmployeeDetailModal({ userId, onClose }: EmployeeDetailModalProp
                                 {formatCents(pr.amount_cents)}
                               </td>
                               <td className="px-4 py-2 text-center">
-                                <Badge variant={purchaseStatusVariant[pr.status]}>{pr.status}</Badge>
+                                <Badge variant={PURCHASE_STATUS_VARIANT[pr.status]}>{pr.status}</Badge>
                               </td>
                             </tr>
                           ))}
@@ -320,7 +271,7 @@ export function EmployeeDetailModal({ userId, onClose }: EmployeeDetailModalProp
                           {data.orders.map((order) => (
                             <tr key={order.id} className="border-b border-[hsl(var(--border))] last:border-b-0">
                               <td className="px-4 py-2">
-                                <Badge variant={statusVariant[order.status]}>{order.status}</Badge>
+                                <Badge variant={ORDER_STATUS_VARIANT[order.status]}>{order.status}</Badge>
                               </td>
                               <td className="px-4 py-2">{formatDate(order.created_at)}</td>
                               <td className="px-4 py-2 text-right">{order.items.length}</td>

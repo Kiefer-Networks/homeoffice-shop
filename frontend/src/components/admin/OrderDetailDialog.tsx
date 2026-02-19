@@ -8,13 +8,10 @@ import { formatCents, formatDate } from '@/lib/utils'
 import { useUiStore } from '@/stores/uiStore'
 import { ExternalLink, Loader2, Link2 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
+import { ORDER_STATUS_VARIANT } from '@/lib/constants'
 import { InvoiceSection } from '@/components/admin/InvoiceSection'
 import { HiBobSyncSection } from '@/components/admin/HiBobSyncSection'
 import type { Order } from '@/types'
-
-const statusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning'> = {
-  pending: 'warning', ordered: 'default', delivered: 'success', rejected: 'destructive', cancelled: 'secondary',
-}
 
 type PendingAction = 'ordered' | 'rejected' | 'delivered' | 'cancelled' | null
 
@@ -126,7 +123,7 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
             <DialogHeader>
               <DialogTitle className="flex items-center gap-3">
                 <span className="font-mono">#{order.id.slice(0, 8)}</span>
-                <Badge variant={statusVariant[order.status]}>{order.status}</Badge>
+                <Badge variant={ORDER_STATUS_VARIANT[order.status]}>{order.status}</Badge>
                 <span className="text-sm font-normal text-[hsl(var(--muted-foreground))]">{formatDate(order.created_at)}</span>
               </DialogTitle>
             </DialogHeader>
