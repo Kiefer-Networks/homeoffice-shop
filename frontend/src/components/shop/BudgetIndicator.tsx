@@ -1,8 +1,18 @@
+import { useEffect } from 'react'
 import { formatCents } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
 
+const POLL_INTERVAL_MS = 60_000
+
 export function BudgetIndicator() {
-  const { user } = useAuthStore()
+  const { user, refreshBudget } = useAuthStore()
+
+  useEffect(() => {
+    refreshBudget()
+    const id = setInterval(refreshBudget, POLL_INTERVAL_MS)
+    return () => clearInterval(id)
+  }, [refreshBudget])
+
   if (!user) return null
 
   const total = user.total_budget_cents
