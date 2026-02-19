@@ -4,6 +4,9 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from src.models.dto.budget import BudgetTimelineEntry, UserBudgetOverrideResponse
+from src.models.dto.order import OrderResponse
+
 
 class UserResponse(BaseModel):
     id: UUID
@@ -60,12 +63,17 @@ class BudgetSummary(BaseModel):
 
 class UserDetailResponse(BaseModel):
     user: UserAdminResponse
-    orders: list = []
-    adjustments: list = []
+    orders: list[OrderResponse] = []
+    adjustments: list[dict] = []
     budget_summary: BudgetSummary
-    budget_timeline: list = []
-    budget_overrides: list = []
-    purchase_reviews: list = []
+    budget_timeline: list[BudgetTimelineEntry] = []
+    budget_overrides: list[UserBudgetOverrideResponse] = []
+    purchase_reviews: list[dict] = []
+
+
+class UserBudgetResponse(BaseModel):
+    total_budget_cents: int
+    available_budget_cents: int
 
 
 class UserRoleUpdate(BaseModel):

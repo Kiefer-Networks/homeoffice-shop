@@ -30,6 +30,13 @@ class BudgetAdjustmentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class BudgetAdjustmentListResponse(BaseModel):
+    items: list[BudgetAdjustmentResponse]
+    total: int
+    page: int
+    per_page: int
+
+
 # Budget Rules
 class BudgetRuleCreate(BaseModel):
     effective_from: date

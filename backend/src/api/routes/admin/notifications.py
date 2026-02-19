@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import audit_context, write_audit_log
-from src.models.dto.notification import NotificationPrefUpdate
+from src.models.dto.notification import NotificationPrefResponse, NotificationPrefUpdate
 from src.models.orm.user import User
 from src.repositories import notification_pref_repo
 
@@ -23,7 +23,7 @@ def _allowed_events(role: str, channel_events: set[str]) -> set[str]:
     return channel_events - ADMIN_ONLY_EVENTS
 
 
-@router.get("/preferences")
+@router.get("/preferences", response_model=NotificationPrefResponse)
 async def get_my_preferences(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_staff),
@@ -53,7 +53,7 @@ async def get_my_preferences(
     }
 
 
-@router.put("/preferences")
+@router.put("/preferences", response_model=NotificationPrefResponse)
 async def update_my_preferences(
     body: NotificationPrefUpdate,
     request: Request,

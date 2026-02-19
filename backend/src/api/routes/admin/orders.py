@@ -15,6 +15,9 @@ from src.core.exceptions import BadRequestError, NotFoundError
 from src.integrations.hibob.client import HiBobClient
 from src.models.dto import DetailResponse
 from src.models.dto.order import (
+    OrderHiBobSyncResponse,
+    OrderHiBobUnsyncResponse,
+    OrderItemCheckResponse,
     OrderItemCheckUpdate,
     OrderInvoiceResponse,
     OrderListResponse,
@@ -198,34 +201,13 @@ async def download_invoice(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):
-    from sqlalchemy import select as sa_select
-    from src.models.orm.order import OrderInvoice
-
-    result = await db.execute(
-        sa_select(OrderInvoice).where(
-            OrderInvoice.id == invoice_id,
-            OrderInvoice.order_id == order_id,
-        )
-    )
-    invoice = result.scalar_one_or_none()
-    if not invoice:
-        raise NotFoundError("Invoice not found")
-
-    file_path = Path(invoice.file_path).resolve()
-    upload_root = settings.upload_dir.resolve()
-
-    # Prevent path traversal
-    if not file_path.is_relative_to(upload_root):
-        raise BadRequestError("Invalid file path")
-
-    if not file_path.exists():
-        raise NotFoundError("Invoice file not found on disk")
+    invoice = await order_service.get_invoice(db, order_id, invoice_id)
 
     from urllib.parse import quote
     safe_name = invoice.filename.encode("ascii", "replace").decode()
     encoded_name = quote(invoice.filename)
     return FileResponse(
-        path=str(file_path),
+        path=str(Path(invoice.file_path).resolve()),
         media_type="application/octet-stream",
         headers={
             "Content-Disposition": (
@@ -257,7 +239,7 @@ async def delete_invoice(
     return Response(status_code=204)
 
 
-@router.put("/{order_id}/items/{item_id}/check")
+@router.put("/{order_id}/items/{item_id}/check", response_model=OrderItemCheckResponse)
 async def check_order_item(
     order_id: UUID,
     item_id: UUID,
@@ -284,7 +266,7 @@ async def check_order_item(
     return {"detail": "Item updated", "vendor_ordered": item.vendor_ordered}
 
 
-@router.post("/{order_id}/sync-hibob")
+@router.post("/{order_id}/sync-hibob", response_model=OrderHiBobSyncResponse)
 async def sync_order_hibob(
     order_id: UUID,
     request: Request,
@@ -324,7 +306,7 @@ async def sync_order_hibob(
     }
 
 
-@router.delete("/{order_id}/sync-hibob")
+@router.delete("/{order_id}/sync-hibob", response_model=OrderHiBobUnsyncResponse)
 async def unsync_order_hibob(
     order_id: UUID,
     request: Request,

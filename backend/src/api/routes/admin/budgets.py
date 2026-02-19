@@ -8,6 +8,7 @@ from src.api.dependencies.database import get_db
 from src.audit.service import audit_context, write_audit_log
 from src.models.dto.budget import (
     BudgetAdjustmentCreate,
+    BudgetAdjustmentListResponse,
     BudgetAdjustmentResponse,
     BudgetAdjustmentUpdate,
 )
@@ -17,7 +18,7 @@ from src.services import budget_service
 router = APIRouter(prefix="/budgets", tags=["admin-budgets"])
 
 
-@router.get("/adjustments")
+@router.get("/adjustments", response_model=BudgetAdjustmentListResponse)
 async def list_adjustments(
     user_id: UUID | None = None,
     q: str | None = None,

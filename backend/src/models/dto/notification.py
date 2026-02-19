@@ -11,8 +11,8 @@ class NotificationPrefUpdate(BaseModel):
 
 
 class NotificationPrefResponse(BaseModel):
-    id: UUID
-    user_id: UUID
+    id: UUID | None = None
+    user_id: UUID | None = None
     slack_enabled: bool
     slack_events: list[str]
     email_enabled: bool

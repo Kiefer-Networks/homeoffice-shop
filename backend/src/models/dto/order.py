@@ -80,3 +80,19 @@ class OrderListResponse(BaseModel):
 
 class OrderItemCheckUpdate(BaseModel):
     vendor_ordered: bool
+
+
+class OrderItemCheckResponse(BaseModel):
+    detail: str
+    vendor_ordered: bool
+
+
+class OrderHiBobSyncResponse(BaseModel):
+    detail: str
+    synced_at: datetime | None = None
+    order: OrderResponse | None = None
+
+
+class OrderHiBobUnsyncResponse(BaseModel):
+    detail: str
+    order: OrderResponse | None = None

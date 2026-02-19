@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import get_current_user
 from src.api.dependencies.database import get_db
-from src.models.dto.user import UserResponse
+from src.models.dto.user import UserBudgetResponse, UserResponse
 from src.models.orm.user import User
 from src.services.budget_service import get_available_budget_cents
 
@@ -32,7 +32,7 @@ async def get_current_user_profile(
     }
 
 
-@router.get("/me/budget")
+@router.get("/me/budget", response_model=UserBudgetResponse)
 async def get_my_budget(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),

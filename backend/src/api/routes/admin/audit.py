@@ -8,12 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.audit.service import audit_context, export_audit_csv, get_audit_filter_options, query_audit_logs, write_audit_log
+from src.models.dto.audit import AuditLogListResponse
 from src.models.orm.user import User
 
 router = APIRouter(prefix="/audit", tags=["admin-audit"])
 
 
-@router.get("")
+@router.get("", response_model=AuditLogListResponse)
 async def list_audit_logs(
     user_id: UUID | None = None,
     action: str | None = None,

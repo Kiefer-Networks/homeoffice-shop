@@ -13,6 +13,7 @@ class AuditLogResponse(BaseModel):
     resource_id: UUID | None = None
     details: dict | None = None
     ip_address: str | None = None
+    user_agent: str | None = None
     correlation_id: str | None = None
     created_at: datetime
 
