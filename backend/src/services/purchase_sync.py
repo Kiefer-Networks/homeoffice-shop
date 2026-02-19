@@ -4,7 +4,7 @@ import re
 from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.integrations.hibob.client import HiBobClientProtocol
@@ -99,6 +99,25 @@ async def sync_purchases(
         users = list(result.scalars().all())
         logger.info("Purchase sync: processing %d users", len(users))
 
+        # Wipe previous sync results – HiBob is the source of truth.
+        # Entries deleted in HiBob must not persist locally.
+        # 1) Collect user IDs whose budgets were affected by old adjustments
+        old_adj_users = await db.execute(
+            select(BudgetAdjustment.user_id).where(
+                BudgetAdjustment.source == "hibob"
+            ).distinct()
+        )
+        previously_affected = {r[0] for r in old_adj_users.all()}
+
+        # 2) Delete reviews first (FK references adjustments)
+        await db.execute(delete(HiBobPurchaseReview))
+        # 3) Delete hibob-sourced budget adjustments
+        await db.execute(
+            delete(BudgetAdjustment).where(BudgetAdjustment.source == "hibob")
+        )
+        await db.flush()
+        logger.info("Purchase sync: cleared previous reviews and adjustments")
+
         entries_found = 0
         matched_count = 0
         auto_adjusted_count = 0
@@ -140,15 +159,6 @@ async def sync_purchases(
             for row in rows:
                 entry_id = str(row.get("id", ""))
                 if not entry_id:
-                    continue
-
-                # Check idempotency: skip if already processed
-                existing = await db.execute(
-                    select(HiBobPurchaseReview.id).where(
-                        HiBobPurchaseReview.hibob_entry_id == entry_id
-                    )
-                )
-                if existing.scalar_one_or_none() is not None:
                     continue
 
                 entries_found += 1
@@ -232,7 +242,8 @@ async def sync_purchases(
                 db.add(review)
                 await db.flush()
 
-        # Refresh budget cache for affected users
+        # Refresh budget cache for all affected users (old + new adjustments)
+        affected_user_ids.update(previously_affected)
         for uid in affected_user_ids:
             await refresh_budget_cache(db, uid)
 
