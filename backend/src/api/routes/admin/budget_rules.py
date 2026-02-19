@@ -1,7 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
-from starlette.responses import Response
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin, require_staff
@@ -12,7 +11,6 @@ from src.models.dto.budget import (
     BudgetRuleResponse,
     BudgetRuleUpdate,
 )
-from src.models.orm.budget_rule import BudgetRule
 from src.models.orm.user import User
 from src.services import budget_service
 
@@ -84,14 +82,7 @@ async def delete_budget_rule(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    rule = await db.get(BudgetRule, rule_id)
-    rule_details = {
-        "effective_from": str(rule.effective_from),
-        "initial_cents": rule.initial_cents,
-        "yearly_increment_cents": rule.yearly_increment_cents,
-    } if rule else {}
-
-    await budget_service.delete_budget_rule(db, rule_id)
+    rule_details = await budget_service.delete_budget_rule(db, rule_id)
 
     ip, ua = audit_context(request)
     await write_audit_log(

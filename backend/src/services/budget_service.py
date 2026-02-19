@@ -13,7 +13,7 @@ from src.models.orm.budget_rule import BudgetRule
 from src.models.orm.order import Order
 from src.models.orm.user import User
 from src.models.orm.user_budget_override import UserBudgetOverride
-from src.services.settings_service import get_cached_settings, get_setting_int
+from src.services.settings_service import get_setting_int
 
 logger = logging.getLogger(__name__)
 
@@ -240,15 +240,21 @@ async def update_budget_rule(
     return rule
 
 
-async def delete_budget_rule(db: AsyncSession, rule_id: UUID) -> None:
+async def delete_budget_rule(db: AsyncSession, rule_id: UUID) -> dict:
     rule = await db.get(BudgetRule, rule_id)
     if not rule:
         raise NotFoundError("Budget rule not found")
     count_result = await db.execute(select(BudgetRule.id))
     if len(count_result.all()) <= 1:
         raise BadRequestError("Cannot delete the last budget rule")
+    details = {
+        "effective_from": str(rule.effective_from),
+        "initial_cents": rule.initial_cents,
+        "yearly_increment_cents": rule.yearly_increment_cents,
+    }
     await db.delete(rule)
     await db.flush()
+    return details
 
 
 # ── Budget Adjustment CRUD ───────────────────────────────────────────────────

@@ -1,5 +1,3 @@
-import logging
-
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import FileResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,8 +15,6 @@ from src.models.dto.backup import (
 )
 from src.models.orm.user import User
 from src.services import backup_service
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/backup", tags=["admin-backup"])
 

@@ -1,4 +1,3 @@
-import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
@@ -8,13 +7,11 @@ from src.api.dependencies.auth import require_admin, require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import audit_context, write_audit_log
 from src.models.dto.product import (
-    ProductCreate, ProductResponse, ProductUpdate,
+    PriceRefreshResponse, ProductCreate, ProductResponse, ProductUpdate,
     RefreshPreviewResponse, RefreshApplyRequest,
 )
 from src.models.orm.user import User
 from src.services import product_service
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/products", tags=["admin-products"])
 
@@ -203,7 +200,7 @@ async def refresh_apply(
     return product
 
 
-@router.post("/refresh-prices")
+@router.post("/refresh-prices", response_model=PriceRefreshResponse)
 async def trigger_price_refresh(
     request: Request,
     db: AsyncSession = Depends(get_db),
