@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import get_current_user
 from src.api.dependencies.database import get_db
-from src.audit.service import write_audit_log
+from src.audit.service import audit_context, write_audit_log
 from src.models.dto import DetailResponse
 from src.models.dto.cart import CartItemAdd, CartItemUpdate, CartResponse
 from src.models.orm.user import User
@@ -33,12 +33,12 @@ async def add_to_cart(
         db, user.id, body.product_id, body.quantity,
         variant_asin=body.variant_asin,
     )
-    ip = request.client.host if request.client else None
+    ip, ua = audit_context(request)
     await write_audit_log(
         db, user_id=user.id, action="cart.item_added",
         resource_type="cart_item", resource_id=item.id,
         details={"product_id": str(body.product_id), "quantity": body.quantity},
-        ip_address=ip,
+        ip_address=ip, user_agent=ua,
     )
     return {"detail": "Item added to cart"}
 
@@ -52,12 +52,12 @@ async def update_cart_item(
     user: User = Depends(get_current_user),
 ):
     await cart_service.update_cart_item(db, user.id, product_id, body.quantity)
-    ip = request.client.host if request.client else None
+    ip, ua = audit_context(request)
     await write_audit_log(
         db, user_id=user.id, action="cart.item_quantity_changed",
         resource_type="cart_item",
         details={"product_id": str(product_id), "quantity": body.quantity},
-        ip_address=ip,
+        ip_address=ip, user_agent=ua,
     )
     return {"detail": "Cart item updated"}
 
@@ -71,7 +71,7 @@ async def remove_from_cart(
 ):
     removed = await cart_service.remove_from_cart(db, user.id, product_id)
     if removed:
-        ip = request.client.host if request.client else None
+        ip, ua = audit_context(request)
         await write_audit_log(
             db, user_id=user.id, action="cart.item_removed",
             resource_type="cart_item",
@@ -88,10 +88,10 @@ async def clear_cart(
     user: User = Depends(get_current_user),
 ):
     count = await cart_service.clear_cart(db, user.id)
-    ip = request.client.host if request.client else None
+    ip, ua = audit_context(request)
     await write_audit_log(
         db, user_id=user.id, action="cart.cleared",
         resource_type="cart", details={"items_removed": count},
-        ip_address=ip,
+        ip_address=ip, user_agent=ua,
     )
     return Response(status_code=204)

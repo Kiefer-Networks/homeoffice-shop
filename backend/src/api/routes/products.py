@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import get_current_user, require_admin
 from src.api.dependencies.database import get_db
-from src.audit.service import write_audit_log
+from src.audit.service import audit_context, write_audit_log
 from src.core.exceptions import BadRequestError, NotFoundError
 
 VALID_SORTS = {"relevance", "price_asc", "price_desc", "name_asc", "name_desc", "newest"}
@@ -108,9 +108,10 @@ async def trigger_price_refresh(
     client = AmazonClient()
     result = await product_service.refresh_all_prices(db, client)
 
-    ip = request.client.host if request.client else None
+    ip, ua = audit_context(request)
     await write_audit_log(
         db, user_id=user.id, action="product.price_refresh_triggered",
-        resource_type="product", details=result, ip_address=ip,
+        resource_type="product", details=result,
+        ip_address=ip, user_agent=ua,
     )
     return result

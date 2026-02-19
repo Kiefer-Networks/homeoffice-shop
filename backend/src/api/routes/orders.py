@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import get_current_user
 from src.api.dependencies.database import get_db
-from src.audit.service import write_audit_log
+from src.audit.service import audit_context, write_audit_log
 from src.core.exceptions import NotFoundError
 from src.models.dto.order import OrderCancelRequest, OrderCreate, OrderListResponse, OrderResponse
 from src.models.orm.user import User
@@ -54,19 +54,22 @@ async def create_order(
         confirm_price_changes=body.confirm_price_changes,
     )
 
-    ip = request.client.host if request.client else None
+    ip, ua = audit_context(request)
     await write_audit_log(
         db, user_id=user.id, action="order.created",
         resource_type="order", resource_id=order.id,
-        details={"total_cents": order.total_cents},
-        ip_address=ip,
+        details={
+            "total_cents": order.total_cents,
+            "delivery_note": order.delivery_note,
+        },
+        ip_address=ip, user_agent=ua,
     )
 
     if body.confirm_price_changes:
         await write_audit_log(
             db, user_id=user.id, action="order.price_change_confirmed",
             resource_type="order", resource_id=order.id,
-            ip_address=ip,
+            ip_address=ip, user_agent=ua,
         )
 
     order_data = await order_service.get_order_with_items(db, order.id)
@@ -105,12 +108,12 @@ async def cancel_my_order(
         db, order_id, user.id, body.reason
     )
 
-    ip = request.client.host if request.client else None
+    ip, ua = audit_context(request)
     await write_audit_log(
         db, user_id=user.id, action="order.cancelled",
         resource_type="order", resource_id=order.id,
-        details={"reason": body.reason},
-        ip_address=ip,
+        details={"reason": body.reason, "total_cents": order.total_cents},
+        ip_address=ip, user_agent=ua,
     )
 
     await notify_staff_email(

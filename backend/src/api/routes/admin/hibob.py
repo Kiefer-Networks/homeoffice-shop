@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import async_session_factory, get_db
-from src.audit.service import write_audit_log
+from src.audit.service import audit_context, write_audit_log
 from src.integrations.hibob.client import HiBobClient
 from src.integrations.hibob.sync import sync_employees
 from src.models.dto.hibob import (
@@ -30,19 +30,19 @@ _employee_sync_lock = asyncio.Lock()
 _purchase_sync_lock = asyncio.Lock()
 
 
-async def _guarded_employee_sync(admin_id, ip: str | None) -> None:
+async def _guarded_employee_sync(admin_id, ip: str | None, user_agent: str | None = None) -> None:
     """Acquire the lock, then delegate to the actual sync."""
     async with _employee_sync_lock:
-        await _run_employee_sync(admin_id, ip)
+        await _run_employee_sync(admin_id, ip, user_agent)
 
 
-async def _guarded_purchase_sync(admin_id, ip: str | None) -> None:
+async def _guarded_purchase_sync(admin_id, ip: str | None, user_agent: str | None = None) -> None:
     """Acquire the lock, then delegate to the actual sync."""
     async with _purchase_sync_lock:
-        await _run_purchase_sync(admin_id, ip)
+        await _run_purchase_sync(admin_id, ip, user_agent)
 
 
-async def _run_employee_sync(admin_id, ip: str | None) -> None:
+async def _run_employee_sync(admin_id, ip: str | None, user_agent: str | None = None) -> None:
     """Run employee + purchase sync in the background with its own DB session."""
     async with async_session_factory() as db:
         try:
@@ -57,8 +57,10 @@ async def _run_employee_sync(admin_id, ip: str | None) -> None:
                     "synced": log.employees_synced,
                     "created": log.employees_created,
                     "updated": log.employees_updated,
+                    "deactivated": log.employees_deactivated,
+                    "error_message": log.error_message,
                 },
-                ip_address=ip,
+                ip_address=ip, user_agent=user_agent,
             )
 
             if log.status == "failed":
@@ -114,7 +116,7 @@ async def _run_employee_sync(admin_id, ip: str | None) -> None:
             logger.exception("Background employee sync failed")
 
 
-async def _run_purchase_sync(admin_id, ip: str | None) -> None:
+async def _run_purchase_sync(admin_id, ip: str | None, user_agent: str | None = None) -> None:
     """Run purchase sync in the background with its own DB session."""
     async with async_session_factory() as db:
         try:
@@ -130,8 +132,9 @@ async def _run_purchase_sync(admin_id, ip: str | None) -> None:
                     "matched": purchase_log.matched,
                     "auto_adjusted": purchase_log.auto_adjusted,
                     "pending_review": purchase_log.pending_review,
+                    "error_message": getattr(purchase_log, "error_message", None),
                 },
-                ip_address=ip,
+                ip_address=ip, user_agent=user_agent,
             )
 
             if purchase_log.pending_review > 0:
@@ -160,8 +163,8 @@ async def trigger_sync(
 ):
     if _employee_sync_lock.locked():
         return {"detail": "Sync already in progress"}
-    ip = request.client.host if request.client else None
-    asyncio.create_task(_guarded_employee_sync(admin.id, ip))
+    ip, ua = audit_context(request)
+    asyncio.create_task(_guarded_employee_sync(admin.id, ip, ua))
     return {"detail": "Sync started in background"}
 
 
@@ -184,8 +187,8 @@ async def trigger_purchase_sync(
 ):
     if _purchase_sync_lock.locked():
         return {"detail": "Purchase sync already in progress"}
-    ip = request.client.host if request.client else None
-    asyncio.create_task(_guarded_purchase_sync(admin.id, ip))
+    ip, ua = audit_context(request)
+    asyncio.create_task(_guarded_purchase_sync(admin.id, ip, ua))
     return {"detail": "Purchase sync started in background"}
 
 

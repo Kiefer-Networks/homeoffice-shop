@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.api.dependencies.rate_limit import rate_limit
-from src.audit.service import write_audit_log
+from src.audit.service import audit_context, write_audit_log
 from src.core.config import settings
 from src.core.exceptions import BadRequestError, NotFoundError
 from src.models.dto.backup import (
@@ -104,12 +104,12 @@ async def export_backup(
         filepath = _backup_dir() / filename
         size = filepath.stat().st_size
 
-        ip = request.client.host if request.client else None
+        ip, ua = audit_context(request)
         await write_audit_log(
             db, user_id=admin.id, action="admin.backup.exported",
             resource_type="database",
             details={"filename": filename, "size_bytes": size},
-            ip_address=ip,
+            ip_address=ip, user_agent=ua,
         )
 
         return FileResponse(
@@ -173,7 +173,7 @@ async def delete_backup(
 
     filepath.unlink()
 
-    ip = request.client.host if request.client else None
+    ip, ua = audit_context(request)
     await write_audit_log(
         db, user_id=admin.id, action="admin.backup.deleted",
         resource_type="database",
@@ -220,7 +220,7 @@ async def update_schedule(
         await update_setting(db, "backup_max_backups", str(body.max_backups), updated_by=admin.id)
     await db.commit()
 
-    ip = request.client.host if request.client else None
+    ip, ua = audit_context(request)
     await write_audit_log(
         db, user_id=admin.id, action="admin.backup.schedule_updated",
         resource_type="database",

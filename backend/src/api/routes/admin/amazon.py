@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
-from src.audit.service import write_audit_log
+from src.audit.service import audit_context, write_audit_log
 from src.integrations.amazon.client import AmazonClient
 from src.models.dto.product import (
     AmazonProductResponse,
@@ -47,10 +47,11 @@ async def amazon_product(
     if not product:
         return AmazonProductResponse(name="", description=None)
 
-    ip = request.client.host if request.client else None
+    ip, ua = audit_context(request)
     await write_audit_log(
         db, user_id=admin.id, action="admin.amazon.product_lookup",
-        resource_type="amazon", details={"asin": asin}, ip_address=ip,
+        resource_type="amazon", details={"asin": asin},
+        ip_address=ip, user_agent=ua,
     )
 
     return AmazonProductResponse(

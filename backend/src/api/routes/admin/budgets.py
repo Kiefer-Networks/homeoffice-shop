@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
-from src.audit.service import write_audit_log
+from src.audit.service import audit_context, write_audit_log
 from src.models.dto.budget import (
     BudgetAdjustmentCreate,
     BudgetAdjustmentResponse,
@@ -48,7 +48,7 @@ async def create_adjustment(
         created_by=admin.id,
     )
 
-    ip = request.client.host if request.client else None
+    ip, ua = audit_context(request)
     await write_audit_log(
         db, user_id=admin.id, action="admin.budget.adjustment_created",
         resource_type="budget_adjustment", resource_id=adjustment.id,
@@ -57,7 +57,7 @@ async def create_adjustment(
             "amount_cents": body.amount_cents,
             "reason": body.reason,
         },
-        ip_address=ip,
+        ip_address=ip, user_agent=ua,
     )
     return adjustment
 
@@ -74,7 +74,7 @@ async def update_adjustment(
         db, adjustment_id, amount_cents=body.amount_cents, reason=body.reason,
     )
 
-    ip = request.client.host if request.client else None
+    ip, ua = audit_context(request)
     await write_audit_log(
         db, user_id=admin.id, action="admin.budget.adjustment_updated",
         resource_type="budget_adjustment", resource_id=adjustment.id,
@@ -85,7 +85,7 @@ async def update_adjustment(
             "old_reason": old_data["reason"],
             "new_reason": body.reason,
         },
-        ip_address=ip,
+        ip_address=ip, user_agent=ua,
     )
     return enriched
 
@@ -99,11 +99,11 @@ async def delete_adjustment(
 ):
     _, details = await budget_service.delete_adjustment(db, adjustment_id)
 
-    ip = request.client.host if request.client else None
+    ip, ua = audit_context(request)
     await write_audit_log(
         db, user_id=admin.id, action="admin.budget.adjustment_deleted",
         resource_type="budget_adjustment", resource_id=adjustment_id,
         details=details,
-        ip_address=ip,
+        ip_address=ip, user_agent=ua,
     )
     return Response(status_code=204)

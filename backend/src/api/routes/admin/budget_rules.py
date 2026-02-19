@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin, require_staff
 from src.api.dependencies.database import get_db
-from src.audit.service import write_audit_log
+from src.audit.service import audit_context, write_audit_log
 from src.models.dto.budget import (
     BudgetRuleCreate,
     BudgetRuleResponse,
@@ -40,7 +40,7 @@ async def create_budget_rule(
         created_by=staff.id,
     )
 
-    ip = request.client.host if request.client else None
+    ip, ua = audit_context(request)
     await write_audit_log(
         db, user_id=staff.id, action="admin.budget_rule.created",
         resource_type="budget_rule", resource_id=rule.id,
@@ -49,7 +49,7 @@ async def create_budget_rule(
             "initial_cents": body.initial_cents,
             "yearly_increment_cents": body.yearly_increment_cents,
         },
-        ip_address=ip,
+        ip_address=ip, user_agent=ua,
     )
     return rule
 
@@ -65,12 +65,12 @@ async def update_budget_rule(
     data = body.model_dump(exclude_none=True)
     rule = await budget_service.update_budget_rule(db, rule_id, data)
 
-    ip = request.client.host if request.client else None
+    ip, ua = audit_context(request)
     await write_audit_log(
         db, user_id=staff.id, action="admin.budget_rule.updated",
         resource_type="budget_rule", resource_id=rule.id,
         details={k: (str(v) if hasattr(v, 'isoformat') else v) for k, v in data.items()},
-        ip_address=ip,
+        ip_address=ip, user_agent=ua,
     )
     return rule
 
@@ -82,11 +82,20 @@ async def delete_budget_rule(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
+    from src.models.orm.budget import BudgetRule
+    rule = await db.get(BudgetRule, rule_id)
+    rule_details = {
+        "effective_from": str(rule.effective_from),
+        "initial_cents": rule.initial_cents,
+        "yearly_increment_cents": rule.yearly_increment_cents,
+    } if rule else {}
+
     await budget_service.delete_budget_rule(db, rule_id)
 
-    ip = request.client.host if request.client else None
+    ip, ua = audit_context(request)
     await write_audit_log(
         db, user_id=admin.id, action="admin.budget_rule.deleted",
         resource_type="budget_rule", resource_id=rule_id,
-        ip_address=ip,
+        details=rule_details,
+        ip_address=ip, user_agent=ua,
     )

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
-from src.audit.service import write_audit_log
+from src.audit.service import audit_context, write_audit_log
 from src.models.dto.notification import NotificationPrefUpdate
 from src.models.orm.user import User
 from src.repositories import notification_pref_repo
@@ -75,11 +75,12 @@ async def update_my_preferences(
 
     pref = await notification_pref_repo.upsert(db, user.id, **kwargs)
 
-    ip = request.client.host if request.client else None
+    ip, ua = audit_context(request)
     await write_audit_log(
         db, user_id=user.id, action="admin.notification_prefs.updated",
         resource_type="notification_pref",
-        details=kwargs, ip_address=ip,
+        details=kwargs,
+        ip_address=ip, user_agent=ua,
     )
 
     return {
