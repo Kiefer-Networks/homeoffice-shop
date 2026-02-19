@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -10,7 +11,8 @@ import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/error'
-import { RefreshCcw, Loader2, Link as LinkIcon, Minus, X, ChevronUp, ChevronDown } from 'lucide-react'
+import { SortHeader } from '@/components/ui/SortHeader'
+import { RefreshCcw, Loader2, Link as LinkIcon, Minus, X } from 'lucide-react'
 import { EmployeeDetailModal } from './EmployeeDetailModal'
 import type { HiBobPurchaseReview, Order, PaginatedResponse } from '@/types'
 
@@ -25,40 +27,6 @@ const STATUS_TABS = [
   { label: 'Adjusted', value: 'adjusted' },
   { label: 'Dismissed', value: 'dismissed' },
 ] as const
-
-function SortHeader({
-  label,
-  ascKey,
-  descKey,
-  currentSort,
-  onSort,
-}: {
-  label: string
-  ascKey: SortKey
-  descKey: SortKey
-  currentSort: SortKey
-  onSort: (key: SortKey) => void
-}) {
-  const isActive = currentSort === ascKey || currentSort === descKey
-
-  const handleClick = () => {
-    onSort(currentSort === descKey ? ascKey : descKey)
-  }
-
-  return (
-    <button
-      onClick={handleClick}
-      className="inline-flex items-center gap-1 hover:text-[hsl(var(--foreground))] transition-colors"
-    >
-      {label}
-      {isActive && (
-        currentSort === ascKey
-          ? <ChevronUp className="h-3 w-3" />
-          : <ChevronDown className="h-3 w-3" />
-      )}
-    </button>
-  )
-}
 
 const statusVariant = (status: string) => {
   switch (status) {
@@ -77,7 +45,7 @@ export function PurchaseReviewsPage() {
   const [sort, setSort] = useState<SortKey>('date_desc')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 300)
   const [loading, setLoading] = useState(true)
   const [syncRunning, setSyncRunning] = useState(false)
   const { addToast } = useUiStore()
@@ -119,12 +87,6 @@ export function PurchaseReviewsPage() {
     }
     prevSyncRunning.current = syncRunning
   }, [syncRunning])
-
-  // Debounce search input
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300)
-    return () => clearTimeout(timer)
-  }, [search])
 
   const loadReviews = useCallback(async () => {
     setLoading(true)

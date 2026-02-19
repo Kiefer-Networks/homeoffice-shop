@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -18,8 +19,8 @@ export function AdminBudgetAdjustmentsPage() {
   const [adjustments, setAdjustments] = useState<BudgetAdjustment[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [activeSearch, setActiveSearch] = useState('')
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 300)
   const [sort, setSort] = useState<SortKey>('newest')
 
   // Create dialog
@@ -47,8 +48,6 @@ export function AdminBudgetAdjustmentsPage() {
   const { addToast } = useUiStore()
   const perPage = 20
 
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
-
   // Poll purchase sync status
   useEffect(() => {
     const check = async () => {
@@ -73,24 +72,15 @@ export function AdminBudgetAdjustmentsPage() {
 
   const load = useCallback(() => {
     const params: Record<string, string | number> = { page, per_page: perPage, sort }
-    if (activeSearch) params.q = activeSearch
+    if (debouncedSearch) params.q = debouncedSearch
     adminApi.listAdjustments(params).then(({ data }) => {
       setAdjustments(data.items)
       setTotal(data.total)
     })
-  }, [page, perPage, sort, activeSearch])
+  }, [page, perPage, sort, debouncedSearch])
 
   useEffect(() => { load() }, [load])
-
-  // Debounced search
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value)
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
-    searchDebounceRef.current = setTimeout(() => {
-      setActiveSearch(value)
-      setPage(1)
-    }, 300)
-  }
+  useEffect(() => { setPage(1) }, [debouncedSearch])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -234,8 +224,8 @@ export function AdminBudgetAdjustmentsPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
         <Input
           placeholder="Search by employee or reason..."
-          value={searchQuery}
-          onChange={(e) => handleSearchChange(e.target.value)}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
         />
       </div>

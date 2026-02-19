@@ -21,7 +21,6 @@ export const adminApi = {
     api.post<RefreshPreviewResponse>(`/api/admin/products/${id}/refresh-preview`),
   refreshApply: (id: string, data: { fields: string[]; values: Record<string, unknown> }) =>
     api.post<Product>(`/api/admin/products/${id}/refresh-apply`, data),
-  refreshPrices: () => api.post('/api/admin/products/refresh-prices'),
   amazonSearch: (query: string) => api.get('/api/admin/amazon/search', { params: { query } }),
   amazonProduct: (asin: string) => api.get<AmazonProductDetail>('/api/admin/amazon/product', { params: { asin } }),
 

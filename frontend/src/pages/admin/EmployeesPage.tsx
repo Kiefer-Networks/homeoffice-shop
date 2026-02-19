@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -6,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate } from '@/lib/utils'
-import { RefreshCcw, MoreHorizontal, ChevronUp, ChevronDown } from 'lucide-react'
+import { RefreshCcw, MoreHorizontal } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -16,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAuthStore } from '@/stores/authStore'
 import { getErrorMessage } from '@/lib/error'
+import { SortHeader } from '@/components/ui/SortHeader'
 import { EmployeeDetailModal } from './EmployeeDetailModal'
 import type { UserAdmin } from '@/types'
 
@@ -48,54 +50,13 @@ function Avatar({ user }: { user: UserAdmin }) {
   )
 }
 
-function SortHeader({
-  label,
-  sortKey,
-  currentSort,
-  onSort,
-}: {
-  label: string
-  sortKey: SortKey
-  currentSort: SortKey
-  onSort: (key: SortKey) => void
-}) {
-  const isNameSort = sortKey === 'name_asc'
-  const isActive = isNameSort
-    ? currentSort === 'name_asc' || currentSort === 'name_desc'
-    : currentSort === sortKey
-
-  const handleClick = () => {
-    if (isNameSort) {
-      onSort(currentSort === 'name_asc' ? 'name_desc' : 'name_asc')
-    } else {
-      onSort(sortKey)
-    }
-  }
-
-  return (
-    <button
-      onClick={handleClick}
-      className="inline-flex items-center gap-1 hover:text-[hsl(var(--foreground))] transition-colors"
-    >
-      {label}
-      {isActive && (
-        isNameSort ? (
-          currentSort === 'name_desc' ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />
-        ) : (
-          <ChevronDown className="h-3 w-3" />
-        )
-      )}
-    </button>
-  )
-}
-
 export function AdminEmployeesPage() {
   const [users, setUsers] = useState<UserAdmin[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState<SortKey>('name_asc')
   const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 300)
   const [roleFilter, setRoleFilter] = useState<string>('')
   const [departmentFilter, setDepartmentFilter] = useState<string>('')
   const [activeFilter, setActiveFilter] = useState<string>('')
@@ -104,12 +65,6 @@ export function AdminEmployeesPage() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const { addToast } = useUiStore()
   const { user: currentUser } = useAuthStore()
-
-  // Debounce search input
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300)
-    return () => clearTimeout(timer)
-  }, [search])
 
   // Load departments once
   useEffect(() => {
@@ -254,17 +209,17 @@ export function AdminEmployeesPage() {
               <thead>
                 <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
                   <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                    <SortHeader label="Name" sortKey="name_asc" currentSort={sort} onSort={setSort} />
+                    <SortHeader label="Name" ascKey="name_asc" descKey="name_desc" currentSort={sort} onSort={setSort} />
                   </th>
                   <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                    <SortHeader label="Department" sortKey="department" currentSort={sort} onSort={setSort} />
+                    <SortHeader label="Department" ascKey="department" descKey="department" currentSort={sort} onSort={setSort} />
                   </th>
                   <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Role</th>
                   <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                    <SortHeader label="Start Date" sortKey="start_date" currentSort={sort} onSort={setSort} />
+                    <SortHeader label="Start Date" ascKey="start_date" descKey="start_date" currentSort={sort} onSort={setSort} />
                   </th>
                   <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                    <SortHeader label="Budget / Spent" sortKey="budget" currentSort={sort} onSort={setSort} />
+                    <SortHeader label="Budget / Spent" ascKey="budget" descKey="budget" currentSort={sort} onSort={setSort} />
                   </th>
                   <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Status</th>
                   <th className="text-right px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Actions</th>

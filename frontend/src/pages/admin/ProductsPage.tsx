@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -24,7 +25,7 @@ export function AdminProductsPage() {
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState<SortKey>('name_asc')
   const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 300)
   const [categoryFilter, setCategoryFilter] = useState('')
   const [activeFilter, setActiveFilter] = useState('')
   const [showCreate, setShowCreate] = useState(false)
@@ -35,11 +36,6 @@ export function AdminProductsPage() {
   const [refreshProduct, setRefreshProduct] = useState<Product | null>(null)
 
   const { addToast } = useUiStore()
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300)
-    return () => clearTimeout(timer)
-  }, [search])
 
   useEffect(() => {
     productApi.getCategories().then(({ data }) => setCategories(data))

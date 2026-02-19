@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -6,8 +7,9 @@ import { Input } from '@/components/ui/input'
 import { adminApi } from '@/services/adminApi'
 import { formatCents, formatDate } from '@/lib/utils'
 import { useUiStore } from '@/stores/uiStore'
-import { Search, ChevronDown, ChevronUp, FileText, Link2 } from 'lucide-react'
+import { Search, FileText, Link2 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
+import { SortHeader } from '@/components/ui/SortHeader'
 import { OrderDetailDialog } from '@/components/admin/OrderDetailDialog'
 import type { Order } from '@/types'
 
@@ -21,21 +23,6 @@ const STATUS_FILTERS = ['', 'pending', 'ordered', 'delivered', 'rejected', 'canc
 
 type SortKey = 'newest' | 'oldest' | 'total_asc' | 'total_desc'
 
-function SortHeader({
-  label, ascKey, descKey, currentSort, onSort,
-}: {
-  label: string; ascKey: SortKey; descKey: SortKey; currentSort: SortKey; onSort: (k: SortKey) => void
-}) {
-  const isActive = currentSort === ascKey || currentSort === descKey
-  const handleClick = () => onSort(currentSort === ascKey ? descKey : ascKey)
-  return (
-    <button onClick={handleClick} className="inline-flex items-center gap-1 hover:text-[hsl(var(--foreground))] transition-colors">
-      {label}
-      {isActive && (currentSort === descKey ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />)}
-    </button>
-  )
-}
-
 export function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [total, setTotal] = useState(0)
@@ -44,16 +31,10 @@ export function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [sort, setSort] = useState<SortKey>('newest')
   const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 300)
   const [selected, setSelected] = useState<Order | null>(null)
 
   const { addToast } = useUiStore()
-
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300)
-    return () => clearTimeout(timer)
-  }, [search])
 
   const loadOrders = useCallback(() => {
     setLoading(true)
