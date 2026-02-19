@@ -100,6 +100,8 @@ export const adminApi = {
   // Audit
   listAuditLogs: (params?: Record<string, string | number>) =>
     api.get<PaginatedResponse<AuditLogEntry>>('/api/admin/audit', { params }),
+  getAuditFilters: () =>
+    api.get<{ actions: string[]; resource_types: string[] }>('/api/admin/audit/filters'),
   exportAuditCsv: (params?: Record<string, string>) =>
     api.get('/api/admin/audit/export', { params, responseType: 'blob' }),
 
