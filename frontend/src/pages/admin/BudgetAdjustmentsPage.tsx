@@ -9,7 +9,7 @@ import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate, parseEuroToCents, centsToEuroInput } from '@/lib/utils'
 import { Plus, X, Pencil, Trash2, ArrowUpDown, Search, Loader2 } from 'lucide-react'
-import { DEFAULT_PAGE_SIZE } from '@/lib/constants'
+import { DEFAULT_PAGE_SIZE, SEARCH_DEBOUNCE_MS } from '@/lib/constants'
 import { getErrorMessage } from '@/lib/error'
 import { useAuthStore } from '@/stores/authStore'
 import { EmployeeDetailModal } from './EmployeeDetailModal'
@@ -22,7 +22,7 @@ export function AdminBudgetAdjustmentsPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
-  const debouncedSearch = useDebouncedValue(search, 300)
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS)
   const [sort, setSort] = useState<SortKey>('newest')
 
   // Create dialog
@@ -114,7 +114,7 @@ export function AdminBudgetAdjustmentsPage() {
       } catch {
         setSearchResults([])
       }
-    }, 300)
+    }, SEARCH_DEBOUNCE_MS)
   }
 
   const selectEmployee = (user: UserSearchResult) => {

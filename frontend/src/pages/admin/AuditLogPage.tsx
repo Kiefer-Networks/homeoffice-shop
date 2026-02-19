@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/Pagination'
 import { adminApi } from '@/services/adminApi'
 import { getErrorMessage } from '@/lib/error'
+import { SEARCH_DEBOUNCE_MS } from '@/lib/constants'
 import { useUiStore } from '@/stores/uiStore'
 import {
   Download, ChevronRight, Search, X,
@@ -159,7 +160,7 @@ export function AdminAuditLogPage() {
   const [loading, setLoading] = useState(true)
 
   const [search, setSearch] = useState('')
-  const debouncedSearch = useDebouncedValue(search, 300)
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS)
   const [resourceTypeFilter, setResourceTypeFilter] = useState('')
   const [actionFilter, setActionFilter] = useState('')
   const [dateFrom, setDateFrom] = useState('')

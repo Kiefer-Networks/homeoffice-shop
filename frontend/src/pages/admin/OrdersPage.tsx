@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/Pagination'
 import { adminApi } from '@/services/adminApi'
 import { formatCents, formatDate } from '@/lib/utils'
-import { ORDER_STATUS_VARIANT, DEFAULT_PAGE_SIZE } from '@/lib/constants'
+import { ORDER_STATUS_VARIANT, DEFAULT_PAGE_SIZE, SEARCH_DEBOUNCE_MS } from '@/lib/constants'
 import { useUiStore } from '@/stores/uiStore'
 import { Search, FileText, Link2 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
@@ -27,7 +27,7 @@ export function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [sort, setSort] = useState<SortKey>('newest')
   const [search, setSearch] = useState('')
-  const debouncedSearch = useDebouncedValue(search, 300)
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS)
   const [selected, setSelected] = useState<Order | null>(null)
 
   const { addToast } = useUiStore()

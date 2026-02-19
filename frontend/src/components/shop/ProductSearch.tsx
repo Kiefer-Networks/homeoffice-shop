@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { useFilterStore } from '@/stores/filterStore'
+import { SEARCH_DEBOUNCE_MS } from '@/lib/constants'
 
 const SEARCH_TIPS = [
   { label: '"quotes"', desc: 'Exact phrase match' },
@@ -28,7 +29,7 @@ export function ProductSearch() {
       if (local !== q) {
         setFilter('q', local)
       }
-    }, 300)
+    }, SEARCH_DEBOUNCE_MS)
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }

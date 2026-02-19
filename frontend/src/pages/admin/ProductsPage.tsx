@@ -9,7 +9,7 @@ import { adminApi } from '@/services/adminApi'
 import { productApi } from '@/services/productApi'
 import { formatCents } from '@/lib/utils'
 import { Plus, Search } from 'lucide-react'
-import { DEFAULT_PAGE_SIZE } from '@/lib/constants'
+import { DEFAULT_PAGE_SIZE, SEARCH_DEBOUNCE_MS } from '@/lib/constants'
 import { getErrorMessage } from '@/lib/error'
 import { ProductRefreshModal } from '@/components/admin/ProductRefreshModal'
 import { ProductTable } from '@/components/admin/ProductTable'
@@ -25,7 +25,7 @@ export function AdminProductsPage() {
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState<SortKey>('name_asc')
   const [search, setSearch] = useState('')
-  const debouncedSearch = useDebouncedValue(search, 300)
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS)
   const [categoryFilter, setCategoryFilter] = useState('')
   const [activeFilter, setActiveFilter] = useState('')
   const [showCreate, setShowCreate] = useState(false)

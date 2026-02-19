@@ -20,7 +20,7 @@ import {
 import { useAuthStore } from '@/stores/authStore'
 import { getErrorMessage } from '@/lib/error'
 import { SortHeader } from '@/components/ui/SortHeader'
-import { DEFAULT_PAGE_SIZE } from '@/lib/constants'
+import { DEFAULT_PAGE_SIZE, SEARCH_DEBOUNCE_MS } from '@/lib/constants'
 import { EmployeeDetailModal } from './EmployeeDetailModal'
 import type { UserAdmin } from '@/types'
 
@@ -32,7 +32,7 @@ export function AdminEmployeesPage() {
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState<SortKey>('name_asc')
   const [search, setSearch] = useState('')
-  const debouncedSearch = useDebouncedValue(search, 300)
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS)
   const [roleFilter, setRoleFilter] = useState<string>('')
   const [departmentFilter, setDepartmentFilter] = useState<string>('')
   const [activeFilter, setActiveFilter] = useState<string>('')
@@ -46,7 +46,7 @@ export function AdminEmployeesPage() {
   useEffect(() => {
     adminApi.listDepartments().then(({ data }) => {
       setDepartments(data.sort())
-    })
+    }).catch(() => {})
   }, [])
 
   const load = useCallback(() => {
@@ -58,6 +58,8 @@ export function AdminEmployeesPage() {
     adminApi.listUsers(params).then(({ data }) => {
       setUsers(data.items)
       setTotal(data.total)
+    }).catch((err: unknown) => {
+      addToast({ title: 'Failed to load employees', description: getErrorMessage(err), variant: 'destructive' })
     })
   }, [page, sort, debouncedSearch, roleFilter, departmentFilter, activeFilter])
 

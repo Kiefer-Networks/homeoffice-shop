@@ -13,7 +13,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/error'
 import { SortHeader } from '@/components/ui/SortHeader'
-import { PURCHASE_STATUS_VARIANT } from '@/lib/constants'
+import { PURCHASE_STATUS_VARIANT, SEARCH_DEBOUNCE_MS } from '@/lib/constants'
 import { RefreshCcw, Loader2, Link as LinkIcon, Minus, X } from 'lucide-react'
 import { EmployeeDetailModal } from './EmployeeDetailModal'
 import type { HiBobPurchaseReview, Order, PaginatedResponse } from '@/types'
@@ -37,7 +37,7 @@ export function PurchaseReviewsPage() {
   const [sort, setSort] = useState<SortKey>('date_desc')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [search, setSearch] = useState('')
-  const debouncedSearch = useDebouncedValue(search, 300)
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS)
   const [loading, setLoading] = useState(true)
   const [syncRunning, setSyncRunning] = useState(false)
   const { addToast } = useUiStore()
