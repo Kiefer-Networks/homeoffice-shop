@@ -18,7 +18,7 @@ class UserResponse(BaseModel):
     available_budget_cents: int = 0
     is_active: bool = True
     probation_override: bool = False
-    role: str = "employee"
+    role: Literal["employee", "admin", "manager"] = "employee"
     avatar_url: str | None = None
     created_at: datetime
 

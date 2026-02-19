@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 class CartItemAdd(BaseModel):
     product_id: UUID
     quantity: int = Field(default=1, ge=1, le=100)
-    variant_asin: str | None = None
+    variant_asin: str | None = Field(default=None, max_length=20, pattern=r"^[A-Z0-9]{10,20}$")
 
 
 class CartItemUpdate(BaseModel):

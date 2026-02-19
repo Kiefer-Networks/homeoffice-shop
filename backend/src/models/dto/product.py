@@ -60,7 +60,7 @@ class ProductResponse(BaseModel):
     model: str | None = None
     image_url: str | None = None
     image_gallery: list[str] | None = None
-    specifications: dict | None = None
+    specifications: dict[str, Any] | None = None
     price_cents: int
     price_min_cents: int | None = None
     price_max_cents: int | None = None
@@ -69,8 +69,8 @@ class ProductResponse(BaseModel):
     product_dimensions: str | None = None
     item_weight: str | None = None
     item_model_number: str | None = None
-    product_information: dict | None = None
-    variants: list[dict] | None = None
+    product_information: dict[str, Any] | None = None
+    variants: list[dict[str, Any]] | None = None
     amazon_asin: str | None = None
     external_url: str
     brand_id: UUID | None = None
@@ -88,7 +88,7 @@ class ProductListResponse(BaseModel):
     total: int
     page: int
     per_page: int
-    facets: dict | None = None
+    facets: dict[str, Any] | None = None
 
 
 class AmazonSearchResponse(BaseModel):
@@ -107,7 +107,7 @@ class AmazonProductResponse(BaseModel):
     brand: str | None = None
     images: list[str] = []
     price_cents: int = 0
-    specifications: dict | None = None
+    specifications: dict[str, Any] | None = None
     feature_bullets: list[str] = []
     url: str | None = None
     color: str | None = None
@@ -115,15 +115,15 @@ class AmazonProductResponse(BaseModel):
     product_dimensions: str | None = None
     item_weight: str | None = None
     item_model_number: str | None = None
-    product_information: dict | None = None
-    variants: list[dict] = []
+    product_information: dict[str, Any] | None = None
+    variants: list[dict[str, Any]] = []
 
 
 class ProductFieldDiff(BaseModel):
     field: str
     label: str
-    old_value: Any
-    new_value: Any
+    old_value: str | int | float | bool | dict[str, Any] | list | None
+    new_value: str | int | float | bool | dict[str, Any] | list | None
 
 
 class RefreshPreviewResponse(BaseModel):
@@ -136,4 +136,4 @@ class RefreshPreviewResponse(BaseModel):
 
 class RefreshApplyRequest(BaseModel):
     fields: list[str]
-    values: dict[str, Any]
+    values: dict[str, str | int | float | bool | None]

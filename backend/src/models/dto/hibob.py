@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -58,7 +59,7 @@ class HiBobPurchaseReviewResponse(BaseModel):
     description: str
     amount_cents: int
     currency: str = "EUR"
-    status: str = "pending"
+    status: Literal["pending", "matched", "adjusted", "dismissed"] = "pending"
     matched_order_id: UUID | None = None
     adjustment_id: UUID | None = None
     resolved_by: UUID | None = None
@@ -73,6 +74,10 @@ class HiBobPurchaseReviewListResponse(BaseModel):
     total: int
     page: int
     per_page: int
+
+
+class HiBobPurchaseSyncStatusResponse(BaseModel):
+    running: bool
 
 
 class HiBobPurchaseReviewMatchRequest(BaseModel):

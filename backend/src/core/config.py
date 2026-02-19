@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     slack_webhook_url: str = ""
 
     # App
+    debug: bool = False
     secret_key: str = "CHANGE_ME"
     backend_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:3000"

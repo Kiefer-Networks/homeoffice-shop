@@ -23,3 +23,8 @@ class AuditLogListResponse(BaseModel):
     total: int
     page: int
     per_page: int
+
+
+class AuditFiltersResponse(BaseModel):
+    actions: list[str]
+    resource_types: list[str]

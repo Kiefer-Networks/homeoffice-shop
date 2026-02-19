@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -24,7 +25,7 @@ class BackupScheduleUpdate(BaseModel):
 class BackupFileResponse(BaseModel):
     filename: str
     size_bytes: int
-    created_at: str
+    created_at: datetime
 
 
 class BackupListResponse(BaseModel):

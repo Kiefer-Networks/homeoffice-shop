@@ -1,20 +1,20 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CategoryCreate(BaseModel):
-    name: str
-    slug: str
+    name: str = Field(min_length=1, max_length=255)
+    slug: str = Field(min_length=1, max_length=255, pattern=r"^[a-z0-9-]+$")
     description: str | None = None
     icon: str | None = None
     sort_order: int = 0
 
 
 class CategoryUpdate(BaseModel):
-    name: str | None = None
-    slug: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    slug: str | None = Field(default=None, min_length=1, max_length=255, pattern=r"^[a-z0-9-]+$")
     description: str | None = None
     icon: str | None = None
     sort_order: int | None = None
