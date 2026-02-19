@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { adminApi } from '@/services/adminApi'
 import { formatCents, formatDate } from '@/lib/utils'
 import { useUiStore } from '@/stores/uiStore'
-import { Search, ChevronDown, ChevronUp } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, FileText, Link2 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { OrderDetailDialog } from '@/components/admin/OrderDetailDialog'
 import type { Order } from '@/types'
@@ -146,7 +146,15 @@ export function AdminOrdersPage() {
                     </td>
                     <td className="px-4 py-3 font-medium">{formatCents(order.total_cents)}</td>
                     <td className="px-4 py-3">
-                      <Badge variant={statusVariant[order.status]}>{order.status}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={statusVariant[order.status]}>{order.status}</Badge>
+                        {order.invoices && order.invoices.length > 0 && (
+                          <FileText className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" title="Invoice uploaded" />
+                        )}
+                        {order.purchase_url && (
+                          <Link2 className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" title="Purchase URL" />
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-[hsl(var(--muted-foreground))]">{formatDate(order.created_at)}</td>
                   </tr>

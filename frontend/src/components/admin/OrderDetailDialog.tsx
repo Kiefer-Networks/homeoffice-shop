@@ -246,6 +246,7 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
                             type="checkbox"
                             checked={item.vendor_ordered}
                             onChange={(e) => handleItemCheck(order.id, item.id, e.target.checked)}
+                            disabled={order.status !== 'pending' && order.status !== 'ordered'}
                             className="rounded"
                           />
                         </td>
