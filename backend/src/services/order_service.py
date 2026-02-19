@@ -16,6 +16,7 @@ from src.core.exceptions import (
     InvalidStatusTransitionError,
     NotFoundError,
 )
+from src.core.file_validation import ALLOWED_INVOICE_TYPES, MAX_INVOICE_SIZE, validate_file_magic
 from src.core.search import ilike_escape
 from src.models.orm.cart_item import CartItem
 from src.models.orm.order import Order, OrderInvoice, OrderItem
@@ -35,9 +36,7 @@ VALID_TRANSITIONS: dict[str, set[str]] = {
     "cancelled": set(),
 }
 
-ALLOWED_INVOICE_TYPES = {"application/pdf", "image/jpeg", "image/png"}
 ALLOWED_INVOICE_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
-MAX_INVOICE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 
 async def create_order_from_cart(
@@ -557,6 +556,10 @@ async def upload_invoice(
     if content_type not in ALLOWED_INVOICE_TYPES:
         raise BadRequestError("Invalid file type. Allowed: PDF, JPEG, PNG")
 
+    # Validate magic bytes match claimed content type
+    if not validate_file_magic(content, content_type):
+        raise BadRequestError("File content does not match declared content type")
+
     # Validate extension
     ext = Path(filename).suffix.lower()
     if ext not in ALLOWED_INVOICE_EXTENSIONS:
@@ -565,9 +568,9 @@ async def upload_invoice(
         )
 
     # Validate file size
-    if len(content) > MAX_INVOICE_SIZE_BYTES:
+    if len(content) > MAX_INVOICE_SIZE:
         raise BadRequestError(
-            f"File too large. Maximum size is {MAX_INVOICE_SIZE_BYTES // (1024 * 1024)} MB"
+            f"File too large. Maximum size is {MAX_INVOICE_SIZE // (1024 * 1024)} MB"
         )
 
     # Create directory

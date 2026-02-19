@@ -31,6 +31,9 @@ async def create(
     return category
 
 
+_MUTABLE_CATEGORY_FIELDS = {"name", "slug", "description", "icon", "sort_order"}
+
+
 async def update(
     db: AsyncSession,
     category_id: UUID,
@@ -42,6 +45,8 @@ async def update(
 
     changes = {}
     for field, value in data.items():
+        if field not in _MUTABLE_CATEGORY_FIELDS:
+            continue
         if getattr(category, field) != value:
             changes[field] = value
             setattr(category, field, value)

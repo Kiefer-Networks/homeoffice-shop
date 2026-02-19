@@ -136,4 +136,4 @@ class RefreshPreviewResponse(BaseModel):
 
 class RefreshApplyRequest(BaseModel):
     fields: list[str]
-    values: dict[str, str | int | float | bool | None]
+    values: dict[str, str | int | float | bool | list | dict | None]

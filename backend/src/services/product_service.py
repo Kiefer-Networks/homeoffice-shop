@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import settings
 from src.core.exceptions import BadRequestError, NotFoundError
+from src.core.search import ilike_escape
 from src.integrations.amazon.client import AmazonClient
 from src.models.dto.product import ProductFieldDiff, RefreshPreviewResponse
 from src.models.orm.brand import Brand
@@ -175,7 +176,7 @@ async def search_products(
             search_conditions.append(Product.category_id.in_(
                 select(Category.id).where(
                     or_(
-                        Category.name.ilike(f"%{q.replace(chr(92), chr(92)*2).replace('%', chr(92)+'%').replace('_', chr(92)+'_')}%"),
+                        Category.name.ilike(ilike_escape(q)),
                         func.similarity(Category.name, q) > 0.3,
                     )
                 )
@@ -416,6 +417,14 @@ async def create_product(
     return product
 
 
+_MUTABLE_PRODUCT_FIELDS = {
+    "name", "description", "price_cents", "amazon_asin", "brand_id", "category_id",
+    "brand", "model", "external_url", "is_active", "max_quantity_per_user",
+    "color", "material", "product_dimensions", "item_weight", "item_model_number",
+    "specifications", "product_information", "variants",
+}
+
+
 async def update_product(
     db: AsyncSession, product_id: UUID, data: dict,
 ) -> tuple[Product, dict]:
@@ -423,6 +432,8 @@ async def update_product(
 
     changes = {}
     for field, value in data.items():
+        if field not in _MUTABLE_PRODUCT_FIELDS:
+            continue
         old_value = getattr(product, field)
         if old_value != value:
             changes[field] = {"old": old_value, "new": value}
