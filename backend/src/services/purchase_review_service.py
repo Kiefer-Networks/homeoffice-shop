@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from src.core.exceptions import BadRequestError, NotFoundError
+from src.core.search import ilike_escape
 from src.mappers.purchase_review import review_to_dict as _review_to_dict
 from src.models.orm.budget_adjustment import BudgetAdjustment
 from src.models.orm.hibob_purchase_review import HiBobPurchaseReview
@@ -32,8 +33,7 @@ async def list_reviews(
     if user_id:
         conditions.append(HiBobPurchaseReview.user_id == user_id)
     if q:
-        escaped_q = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        search = f"%{escaped_q}%"
+        search = ilike_escape(q)
         conditions.append(
             (UserTarget.display_name.ilike(search))
             | (HiBobPurchaseReview.description.ilike(search))

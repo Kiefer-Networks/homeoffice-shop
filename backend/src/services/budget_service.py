@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from src.core.exceptions import BadRequestError, NotFoundError
+from src.core.search import ilike_escape
 from src.models.orm.budget_adjustment import BudgetAdjustment
 from src.models.orm.budget_rule import BudgetRule
 from src.models.orm.order import Order
@@ -268,8 +269,7 @@ async def list_adjustments(
     if user_id:
         conditions.append(BudgetAdjustment.user_id == user_id)
     if q:
-        escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        search = f"%{escaped}%"
+        search = ilike_escape(q)
         conditions.append(
             or_(
                 UserTarget.display_name.ilike(search),

@@ -11,6 +11,7 @@ from sqlalchemy import String, text, func, select, and_, or_, cast
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.audit.models import AuditLog
+from src.core.search import ilike_escape
 from src.models.orm.user import User
 
 logger = logging.getLogger(__name__)
@@ -98,8 +99,7 @@ async def query_audit_logs(
     )
 
     if q:
-        escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        pattern = f"%{escaped}%"
+        pattern = ilike_escape(q)
         base_stmt = base_stmt.where(or_(
             User.email.ilike(pattern),
             AuditLog.action.ilike(pattern),
