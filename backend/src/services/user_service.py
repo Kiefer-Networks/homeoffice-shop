@@ -186,7 +186,7 @@ async def update_budget_override(
         raise NotFoundError("Budget override not found")
 
     for field in ("effective_from", "effective_until", "initial_cents", "yearly_increment_cents", "reason"):
-        if data.get(field) is not None:
+        if field in data:
             setattr(override, field, data[field])
     await db.flush()
     return override

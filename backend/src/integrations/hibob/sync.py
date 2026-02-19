@@ -120,7 +120,7 @@ async def sync_employees(
 
     except Exception as e:
         log.status = "failed"
-        log.error_message = str(e)
+        log.error_message = str(e)[:500]
         log.completed_at = datetime.now(timezone.utc)
         logger.exception("HiBob sync failed")
 

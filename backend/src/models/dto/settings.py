@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 
 class AppSettingUpdate(BaseModel):
-    value: str
+    value: str = Field(max_length=10000)
 
 
 class TestEmailRequest(BaseModel):

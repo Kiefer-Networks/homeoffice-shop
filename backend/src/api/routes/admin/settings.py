@@ -57,7 +57,8 @@ async def update_setting(
         ip_address=ip, user_agent=ua,
     )
 
-    return {"key": key, "value": body.value}
+    display_value = "********" if key == "smtp_password" else body.value
+    return {"key": key, "value": display_value}
 
 
 @router.post("/test-email", response_model=DetailResponse)

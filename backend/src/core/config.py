@@ -1,4 +1,5 @@
 from pathlib import Path
+from urllib.parse import urlparse
 
 from pydantic_settings import BaseSettings
 from pydantic import Field
@@ -94,6 +95,13 @@ class Settings(BaseSettings):
             )
         if self.secret_key in defaults:
             raise ValueError("secret_key must be changed from default")
+        if len(self.secret_key) < 32:
+            raise ValueError("secret_key must be at least 32 characters")
+        for url_name in ("backend_url", "frontend_url"):
+            url_val = getattr(self, url_name)
+            parsed = urlparse(url_val)
+            if parsed.scheme not in ("http", "https") or not parsed.netloc:
+                raise ValueError(f"{url_name} must be a valid http(s) URL")
         if self.db_password in defaults:
             raise ValueError("db_password must be changed from default")
 

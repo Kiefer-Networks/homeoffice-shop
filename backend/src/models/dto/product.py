@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 class ProductCreate(BaseModel):
     category_id: UUID
     name: str = Field(min_length=1, max_length=500)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=10000)
     brand: str | None = None
     brand_id: UUID
     model: str | None = None
@@ -31,7 +31,7 @@ class ProductCreate(BaseModel):
 class ProductUpdate(BaseModel):
     category_id: UUID | None = None
     name: str | None = Field(default=None, min_length=1, max_length=500)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=10000)
     brand: str | None = None
     brand_id: UUID | None = None
     model: str | None = None
@@ -137,3 +137,9 @@ class RefreshPreviewResponse(BaseModel):
 class RefreshApplyRequest(BaseModel):
     fields: list[str]
     values: dict[str, str | int | float | bool | list | dict | None]
+
+
+class PriceRefreshResponse(BaseModel):
+    total: int
+    updated: int
+    errors: int

@@ -153,9 +153,12 @@ class HiBobClient:
                     await asyncio.sleep(wait)
                     continue
                 if resp.status_code >= 400:
+                    logger.error(
+                        "HiBob custom table POST failed (%s): %s — payload: %s",
+                        resp.status_code, resp.text, entry,
+                    )
                     raise RuntimeError(
-                        f"HiBob custom table POST failed ({resp.status_code}): "
-                        f"{resp.text} — payload sent: {entry}"
+                        f"HiBob custom table POST failed ({resp.status_code})"
                     )
                 return resp.json() if resp.content else {}
 
@@ -178,8 +181,12 @@ class HiBobClient:
                     await asyncio.sleep(wait)
                     continue
                 if resp.status_code >= 400:
+                    logger.error(
+                        "HiBob custom table DELETE failed (%s): %s",
+                        resp.status_code, resp.text,
+                    )
                     raise RuntimeError(
-                        f"HiBob custom table DELETE failed ({resp.status_code}): {resp.text}"
+                        f"HiBob custom table DELETE failed ({resp.status_code})"
                     )
                 return
 

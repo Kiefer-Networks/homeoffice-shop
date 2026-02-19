@@ -160,14 +160,12 @@ async def download_invoice(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):
-    from pathlib import Path
-
     invoice = await order_service.get_invoice(db, order_id, invoice_id)
 
     safe_name = invoice.filename.encode("ascii", "replace").decode()
     encoded_name = quote(invoice.filename)
     return FileResponse(
-        path=str(Path(invoice.file_path).resolve()),
+        path=invoice.file_path,
         media_type="application/octet-stream",
         headers={
             "Content-Disposition": (

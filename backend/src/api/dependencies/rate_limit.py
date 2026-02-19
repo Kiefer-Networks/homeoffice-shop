@@ -12,7 +12,8 @@ def rate_limit(limit: int = 60, window_seconds: int = 60, key_prefix: str = "end
         if user:
             key = f"{key_prefix}:user:{user.id}"
         else:
-            client_ip = request.client.host if request.client else "unknown"
+            forwarded = request.headers.get("x-forwarded-for")
+            client_ip = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "unknown")
             key = f"{key_prefix}:ip:{client_ip}"
 
         allowed, retry_after, _remaining = _limiter.is_allowed(key, limit, window_seconds)

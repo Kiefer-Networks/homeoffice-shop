@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Literal
+from urllib.parse import urlparse
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class OrderCreate(BaseModel):
@@ -16,6 +17,15 @@ class OrderStatusUpdate(BaseModel):
     expected_delivery: str | None = Field(default=None, max_length=255)
     purchase_url: str | None = Field(default=None, max_length=2048)
 
+    @field_validator("purchase_url")
+    @classmethod
+    def validate_purchase_url_scheme(cls, v: str | None) -> str | None:
+        if v is not None:
+            parsed = urlparse(v)
+            if parsed.scheme not in ("http", "https") or not parsed.netloc:
+                raise ValueError("purchase_url must be a valid http:// or https:// URL")
+        return v
+
 
 class OrderCancelRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=1000)
@@ -23,6 +33,15 @@ class OrderCancelRequest(BaseModel):
 
 class OrderPurchaseUrlUpdate(BaseModel):
     purchase_url: str | None = Field(default=None, max_length=2048)
+
+    @field_validator("purchase_url")
+    @classmethod
+    def validate_purchase_url_scheme(cls, v: str | None) -> str | None:
+        if v is not None:
+            parsed = urlparse(v)
+            if parsed.scheme not in ("http", "https") or not parsed.netloc:
+                raise ValueError("purchase_url must be a valid http:// or https:// URL")
+        return v
 
 
 class OrderItemResponse(BaseModel):
