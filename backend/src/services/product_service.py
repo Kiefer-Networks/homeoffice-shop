@@ -16,6 +16,8 @@ from src.models.dto.product import ProductFieldDiff, RefreshPreviewResponse
 from src.models.orm.brand import Brand
 from src.models.orm.product import Product
 from src.models.orm.category import Category
+from typing import Any
+
 from src.services.image_service import download_and_store_product_images
 
 logger = logging.getLogger(__name__)
@@ -239,7 +241,7 @@ async def search_products(
     # Build facets concurrently
     active_condition = Product.is_active.is_(True)
 
-    async def _brand_facets():
+    async def _brand_facets() -> list[dict[str, Any]]:
         r = await db.execute(
             select(Product.brand, func.count())
             .where(active_condition)
@@ -249,7 +251,7 @@ async def search_products(
         )
         return [{"value": b, "count": c} for b, c in r.all()]
 
-    async def _cat_facets():
+    async def _cat_facets() -> list[dict[str, Any]]:
         r = await db.execute(
             select(Category.id, Category.slug, Category.name, func.count(Product.id))
             .join(Product, Product.category_id == Category.id)
@@ -262,7 +264,7 @@ async def search_products(
             for cid, slug, name, cnt in r.all()
         ]
 
-    async def _color_facets():
+    async def _color_facets() -> list[dict[str, Any]]:
         r = await db.execute(
             select(Product.color, func.count())
             .where(active_condition)
@@ -273,7 +275,7 @@ async def search_products(
         )
         return [{"value": c, "count": cnt} for c, cnt in r.all()]
 
-    async def _material_facets():
+    async def _material_facets() -> list[dict[str, Any]]:
         r = await db.execute(
             select(Product.material, func.count())
             .where(active_condition)
@@ -284,7 +286,7 @@ async def search_products(
         )
         return [{"value": m, "count": cnt} for m, cnt in r.all()]
 
-    async def _price_range():
+    async def _price_range() -> dict[str, int]:
         r = await db.execute(
             select(func.min(Product.price_cents), func.max(Product.price_cents)).where(
                 active_condition
