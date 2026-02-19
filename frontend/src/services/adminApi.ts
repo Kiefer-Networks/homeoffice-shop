@@ -15,8 +15,8 @@ export const adminApi = {
   updateProduct: (id: string, data: ProductUpdateInput) => api.put<Product>(`/api/admin/products/${id}`, data),
   activateProduct: (id: string) => api.patch<Product>(`/api/admin/products/${id}/activate`),
   deactivateProduct: (id: string) => api.patch<Product>(`/api/admin/products/${id}/deactivate`),
-  archiveProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/archive`),
-  restoreProduct: (id: string) => api.post<Product>(`/api/admin/products/${id}/restore`),
+  archiveProduct: (id: string) => api.put<Product>(`/api/admin/products/${id}/archive`),
+  restoreProduct: (id: string) => api.put<Product>(`/api/admin/products/${id}/restore`),
   refreshPreview: (id: string) =>
     api.post<RefreshPreviewResponse>(`/api/admin/products/${id}/refresh-preview`),
   refreshApply: (id: string, data: { fields: string[]; values: Record<string, unknown> }) =>

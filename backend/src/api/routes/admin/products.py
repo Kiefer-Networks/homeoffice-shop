@@ -110,7 +110,7 @@ async def deactivate_product(
     return product
 
 
-@router.post("/{product_id}/archive", response_model=ProductResponse)
+@router.put("/{product_id}/archive", response_model=ProductResponse)
 async def archive_product(
     product_id: UUID,
     request: Request,
@@ -127,7 +127,7 @@ async def archive_product(
     return product
 
 
-@router.post("/{product_id}/restore", response_model=ProductResponse)
+@router.put("/{product_id}/restore", response_model=ProductResponse)
 async def restore_product(
     product_id: UUID,
     request: Request,
