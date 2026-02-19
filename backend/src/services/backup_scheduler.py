@@ -45,7 +45,7 @@ async def _scheduler_loop() -> None:
 
             last_run_key = run_key
             logger.info("Scheduled %s backup triggered at %s", frequency, now.isoformat())
-            from src.api.routes.admin.backup import run_backup
+            from src.services.backup_service import run_backup
             await run_backup(triggered_by="scheduler")
             logger.info("Scheduled backup completed")
         except Exception:

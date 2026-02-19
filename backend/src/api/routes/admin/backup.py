@@ -1,9 +1,6 @@
 import asyncio
 import logging
-import os
-import re
 from datetime import datetime, timezone
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import FileResponse, Response
@@ -22,6 +19,7 @@ from src.models.dto.backup import (
     BackupScheduleUpdate,
 )
 from src.models.orm.user import User
+from src.services.backup_service import _backup_dir, _SAFE_FILENAME_RE, run_backup
 from src.services.settings_service import get_setting, update_setting
 
 logger = logging.getLogger(__name__)
@@ -29,58 +27,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/backup", tags=["admin-backup"])
 
 _backup_lock = asyncio.Lock()
-
-_SAFE_FILENAME_RE = re.compile(r"^homeoffice_shop_\d{4}-\d{2}-\d{2}(_\d{6})?\.dump$")
-
-
-def _backup_dir() -> Path:
-    p = Path(settings.backup_dir)
-    p.mkdir(parents=True, exist_ok=True)
-    return p
-
-
-def _enforce_retention() -> None:
-    """Delete oldest backups when exceeding retention count."""
-    bdir = _backup_dir()
-    dumps = sorted(bdir.glob("homeoffice_shop_*.dump"), key=lambda f: f.stat().st_mtime)
-    limit = int(get_setting("backup_max_backups") or str(settings.backup_retention_count))
-    limit = max(limit, 1)
-    while len(dumps) > limit:
-        oldest = dumps.pop(0)
-        oldest.unlink(missing_ok=True)
-        logger.info("Retention: deleted old backup %s", oldest.name)
-
-
-async def run_backup(triggered_by: str = "scheduler") -> str:
-    """Execute pg_dump and store the file. Returns the filename."""
-    now = datetime.now(timezone.utc)
-    filename = f"homeoffice_shop_{now.strftime('%Y-%m-%d_%H%M%S')}.dump"
-    filepath = _backup_dir() / filename
-
-    env = {**os.environ, "PGPASSWORD": settings.db_password}
-
-    process = await asyncio.create_subprocess_exec(
-        "pg_dump",
-        "-h", settings.db_host,
-        "-p", str(settings.db_port),
-        "-U", settings.db_user,
-        "-Fc",
-        settings.db_name,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-        env=env,
-    )
-
-    stdout, stderr = await process.communicate()
-
-    if process.returncode != 0:
-        logger.error("pg_dump failed (exit %d): %s", process.returncode, stderr.decode())
-        raise RuntimeError("pg_dump failed")
-
-    filepath.write_bytes(stdout)
-    _enforce_retention()
-    logger.info("Backup created: %s (%d bytes, triggered by %s)", filename, len(stdout), triggered_by)
-    return filename
 
 
 @router.post(
@@ -171,7 +117,7 @@ async def delete_backup(
     if not filepath.is_file():
         raise NotFoundError("Backup not found")
 
-    filepath.unlink()
+    await asyncio.to_thread(filepath.unlink)
 
     ip, ua = audit_context(request)
     await write_audit_log(
@@ -218,7 +164,6 @@ async def update_schedule(
         await update_setting(db, "backup_schedule_weekday", str(body.weekday), updated_by=admin.id)
     if body.max_backups is not None:
         await update_setting(db, "backup_max_backups", str(body.max_backups), updated_by=admin.id)
-    await db.commit()
 
     ip, ua = audit_context(request)
     await write_audit_log(
