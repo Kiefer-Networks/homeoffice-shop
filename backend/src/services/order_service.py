@@ -15,6 +15,7 @@ from src.core.exceptions import (
     InvalidStatusTransitionError,
     NotFoundError,
 )
+from src.core.search import ilike_escape
 from src.models.orm.cart_item import CartItem
 from src.models.orm.order import Order, OrderInvoice, OrderItem
 from src.models.orm.product import Product
@@ -32,8 +33,6 @@ VALID_TRANSITIONS: dict[str, set[str]] = {
     "delivered": set(),
     "cancelled": set(),
 }
-
-BUDGET_RESERVED_STATUSES = {"pending", "ordered", "delivered"}
 
 
 async def create_order_from_cart(
@@ -249,10 +248,6 @@ async def notify_order_cancelled_by_user(
     )
 
 
-_order_item_to_dict = order_item_to_dict
-_invoice_to_dict = invoice_to_dict
-_order_to_dict = order_to_dict
-
 
 async def cancel_order_by_user(
     db: AsyncSession,
@@ -304,7 +299,7 @@ async def get_order_with_items(
     user = await db.get(User, order.user_id)
 
     items = [
-        _order_item_to_dict(item, product_name)
+        order_item_to_dict(item, product_name)
         for item, product_name in items_result.all()
     ]
 
@@ -315,9 +310,9 @@ async def get_order_with_items(
             .where(OrderInvoice.order_id == order_id)
             .order_by(OrderInvoice.uploaded_at.desc())
         )
-        invoices = [_invoice_to_dict(inv) for inv in inv_result.scalars().all()]
+        invoices = [invoice_to_dict(inv) for inv in inv_result.scalars().all()]
 
-    return _order_to_dict(order, user, items, invoices)
+    return order_to_dict(order, user, items, invoices)
 
 
 async def get_orders(
@@ -339,8 +334,7 @@ async def get_orders(
 
     # Text search: filter by user name, email, or order ID prefix
     if q:
-        escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        search_term = f"%{escaped}%"
+        search_term = ilike_escape(q)
         # Subquery to find matching user IDs
         user_subq = select(User.id).where(
             or_(
@@ -407,15 +401,15 @@ async def get_orders(
     for order in orders:
         user = users_map.get(order.user_id)
         order_items = [
-            _order_item_to_dict(item, product_names.get(item.product_id))
+            order_item_to_dict(item, product_names.get(item.product_id))
             for item in order.items
         ]
         invoices = (
-            [_invoice_to_dict(inv) for inv in order.invoices]
+            [invoice_to_dict(inv) for inv in order.invoices]
             if include_invoices
             else []
         )
-        result_list.append(_order_to_dict(order, user, order_items, invoices))
+        result_list.append(order_to_dict(order, user, order_items, invoices))
 
     return result_list, total
 

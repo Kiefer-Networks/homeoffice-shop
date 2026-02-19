@@ -83,7 +83,7 @@ async def delete_budget_rule(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    from src.models.orm.budget import BudgetRule
+    from src.models.orm.budget_rule import BudgetRule
     rule = await db.get(BudgetRule, rule_id)
     rule_details = {
         "effective_from": str(rule.effective_from),

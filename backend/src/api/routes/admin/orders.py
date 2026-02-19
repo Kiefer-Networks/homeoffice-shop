@@ -13,7 +13,6 @@ from src.audit.service import audit_context, write_audit_log
 from src.core.config import settings
 from src.core.exceptions import BadRequestError, NotFoundError
 from src.integrations.hibob.client import HiBobClient
-from src.models.dto import DetailResponse
 from src.models.dto.order import (
     OrderHiBobSyncResponse,
     OrderHiBobUnsyncResponse,

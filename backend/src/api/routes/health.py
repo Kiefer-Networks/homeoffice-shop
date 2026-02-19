@@ -1,7 +1,6 @@
 import os
 import time
 
-import httpx
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -26,44 +25,6 @@ async def _check_database(db: AsyncSession) -> dict:
     except Exception:
         return {"status": "down"}
 
-
-async def _check_hibob() -> dict:
-    if not settings.hibob_api_key:
-        return {"status": "not_configured"}
-    try:
-        start = time.monotonic()
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.post(
-                "https://api.hibob.com/v1/people/search",
-                headers={
-                    "Authorization": f"Basic {settings.hibob_api_key}",
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                },
-                json={"showInactive": False},
-            )
-            resp.raise_for_status()
-        latency_ms = round((time.monotonic() - start) * 1000)
-        return {"status": "up", "latency_ms": latency_ms}
-    except Exception:
-        return {"status": "down"}
-
-
-async def _check_amazon() -> dict:
-    if not settings.scraperapi_api_key:
-        return {"status": "not_configured"}
-    try:
-        start = time.monotonic()
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(
-                "https://api.scraperapi.com/account",
-                params={"api_key": settings.scraperapi_api_key},
-            )
-            resp.raise_for_status()
-        latency_ms = round((time.monotonic() - start) * 1000)
-        return {"status": "up", "latency_ms": latency_ms}
-    except Exception:
-        return {"status": "down"}
 
 
 async def _check_smtp() -> dict:

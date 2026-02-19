@@ -1,8 +1,9 @@
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.search import ilike_escape
 from src.models.orm.user import User
 
 
@@ -24,20 +25,6 @@ async def get_by_hibob_id(db: AsyncSession, hibob_id: str) -> User | None:
 async def get_all_with_hibob_id(db: AsyncSession) -> list[User]:
     result = await db.execute(
         select(User).where(User.hibob_id.isnot(None))
-    )
-    return list(result.scalars().all())
-
-
-async def get_all_active(db: AsyncSession) -> list[User]:
-    result = await db.execute(
-        select(User).where(User.is_active.is_(True)).order_by(User.display_name)
-    )
-    return list(result.scalars().all())
-
-
-async def get_active_admins(db: AsyncSession) -> list[User]:
-    result = await db.execute(
-        select(User).where(User.is_active.is_(True), User.role == "admin")
     )
     return list(result.scalars().all())
 
@@ -65,8 +52,7 @@ async def get_all(
     base = select(User)
 
     if q:
-        escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        pattern = f"%{escaped}%"
+        pattern = ilike_escape(q)
         base = base.where(
             or_(User.display_name.ilike(pattern), User.email.ilike(pattern))
         )
@@ -100,8 +86,7 @@ async def get_all(
 async def search_active(db: AsyncSession, q: str, limit: int = 20) -> list[User]:
     from sqlalchemy import or_
 
-    escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    pattern = f"%{escaped}%"
+    pattern = ilike_escape(q)
     result = await db.execute(
         select(User)
         .where(
@@ -112,19 +97,3 @@ async def search_active(db: AsyncSession, q: str, limit: int = 20) -> list[User]
         .limit(limit)
     )
     return list(result.scalars().all())
-
-
-async def create(db: AsyncSession, user: User) -> User:
-    db.add(user)
-    await db.flush()
-    return user
-
-
-async def update_user(db: AsyncSession, user_id: UUID, **kwargs) -> User | None:
-    user = await get_by_id(db, user_id)
-    if not user:
-        return None
-    for key, value in kwargs.items():
-        setattr(user, key, value)
-    await db.flush()
-    return user
