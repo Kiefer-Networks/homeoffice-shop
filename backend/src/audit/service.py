@@ -240,7 +240,30 @@ async def ensure_audit_partitions(db: AsyncSession) -> None:
         )
         result = await db.execute(check_sql, {"name": partition_name})
         if result.scalar() is not None:
-            await db.execute(text(f"DROP TABLE {partition_name}"))
+            await db.execute(text(f'DROP TABLE IF EXISTS "{partition_name}"'))
             logger.info("Dropped old audit partition: %s", partition_name)
 
     await db.commit()
+
+
+async def log_admin_action(
+    db: AsyncSession,
+    request: Request,
+    user_id: UUID,
+    action: str,
+    resource_type: str,
+    resource_id: UUID | str | None = None,
+    details: dict | None = None,
+) -> None:
+    """Convenience wrapper combining audit_context + write_audit_log."""
+    ip, ua = audit_context(request)
+    await write_audit_log(
+        db,
+        user_id=user_id,
+        action=action,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        details=details,
+        ip_address=ip,
+        user_agent=ua,
+    )

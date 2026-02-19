@@ -316,7 +316,7 @@ async def search_products(
 
 
 async def refresh_all_prices(
-    db: AsyncSession, amazon_client=None,
+    db: AsyncSession, amazon_client: AmazonClient | None = None,
 ) -> dict:
     """Refresh prices for all products with amazon_asin."""
     if amazon_client is None:

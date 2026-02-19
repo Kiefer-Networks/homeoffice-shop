@@ -166,6 +166,10 @@ async def update_schedule(
     updated_by: UUID | None = None,
 ) -> dict:
     """Update backup schedule settings and return the new schedule."""
+    VALID_FREQUENCIES = ("hourly", "daily", "weekly")
+    if frequency is not None and frequency not in VALID_FREQUENCIES:
+        raise BadRequestError(f"Invalid frequency: must be one of {VALID_FREQUENCIES}")
+
     if enabled is not None:
         await update_setting(
             db, "backup_schedule_enabled", str(enabled).lower(), updated_by=updated_by,
