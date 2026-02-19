@@ -9,6 +9,7 @@ import { adminApi } from '@/services/adminApi'
 import { productApi } from '@/services/productApi'
 import { formatCents } from '@/lib/utils'
 import { Plus, Search } from 'lucide-react'
+import { DEFAULT_PAGE_SIZE } from '@/lib/constants'
 import { getErrorMessage } from '@/lib/error'
 import { ProductRefreshModal } from '@/components/admin/ProductRefreshModal'
 import { ProductTable } from '@/components/admin/ProductTable'
@@ -16,8 +17,6 @@ import { CreateProductDialog } from '@/components/admin/CreateProductDialog'
 import { EditProductDialog } from '@/components/admin/EditProductDialog'
 import type { SortKey } from '@/components/admin/ProductTable'
 import type { Product, Category, Brand } from '@/types'
-
-const PER_PAGE = 20
 
 export function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -46,7 +45,7 @@ export function AdminProductsPage() {
   const load = useCallback(() => {
     const params = new URLSearchParams()
     params.set('page', String(page))
-    params.set('per_page', String(PER_PAGE))
+    params.set('per_page', String(DEFAULT_PAGE_SIZE))
     params.set('sort', sort)
     if (debouncedSearch) params.set('q', debouncedSearch)
     if (categoryFilter) params.set('category', categoryFilter)
@@ -64,7 +63,7 @@ export function AdminProductsPage() {
   useEffect(() => { load() }, [load])
   useEffect(() => { setPage(1) }, [debouncedSearch, categoryFilter, activeFilter, sort, archiveFilter])
 
-  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
+  const totalPages = Math.max(1, Math.ceil(total / DEFAULT_PAGE_SIZE))
 
   const filteredProducts = activeFilter
     ? products.filter(p => activeFilter === 'active' ? p.is_active : !p.is_active)

@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from src.models.dto.common import PaginatedResponse
+
 
 class BudgetAdjustmentCreate(BaseModel):
     user_id: UUID
@@ -30,11 +32,7 @@ class BudgetAdjustmentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class BudgetAdjustmentListResponse(BaseModel):
-    items: list[BudgetAdjustmentResponse]
-    total: int
-    page: int
-    per_page: int
+BudgetAdjustmentListResponse = PaginatedResponse[BudgetAdjustmentResponse]
 
 
 # Budget Rules

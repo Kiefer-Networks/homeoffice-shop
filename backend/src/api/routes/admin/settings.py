@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
-from src.audit.service import audit_context, write_audit_log
+from src.audit.service import log_admin_action
 from src.core.exceptions import BadRequestError
 from src.models.dto import DetailResponse
 from src.models.dto.settings import AppSettingResponse, AppSettingUpdate, AppSettingsResponse, TestEmailRequest
@@ -45,16 +45,14 @@ async def update_setting(
     old_value = settings_service.get_setting(key)
     await settings_service.update_setting(db, key, body.value, admin.id)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.settings.updated",
+    await log_admin_action(
+        db, request, admin.id, "admin.settings.updated",
         resource_type="app_setting",
         details={
             "key": key,
             "old_value": "********" if key == "smtp_password" else old_value,
             "new_value": "********" if key == "smtp_password" else body.value,
         },
-        ip_address=ip, user_agent=ua,
     )
 
     display_value = "********" if key == "smtp_password" else body.value
@@ -68,12 +66,10 @@ async def test_email(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.settings.test_email",
+    await log_admin_action(
+        db, request, admin.id, "admin.settings.test_email",
         resource_type="app_setting",
         details={"to": body.to},
-        ip_address=ip, user_agent=ua,
     )
 
     try:

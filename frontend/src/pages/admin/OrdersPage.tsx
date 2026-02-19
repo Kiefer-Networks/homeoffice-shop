@@ -7,15 +7,13 @@ import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/Pagination'
 import { adminApi } from '@/services/adminApi'
 import { formatCents, formatDate } from '@/lib/utils'
-import { ORDER_STATUS_VARIANT } from '@/lib/constants'
+import { ORDER_STATUS_VARIANT, DEFAULT_PAGE_SIZE } from '@/lib/constants'
 import { useUiStore } from '@/stores/uiStore'
 import { Search, FileText, Link2 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { SortHeader } from '@/components/ui/SortHeader'
 import { OrderDetailDialog } from '@/components/admin/OrderDetailDialog'
 import type { Order } from '@/types'
-
-const PER_PAGE = 20
 
 const STATUS_FILTERS = ['', 'pending', 'ordered', 'delivered', 'rejected', 'cancelled'] as const
 
@@ -36,7 +34,7 @@ export function AdminOrdersPage() {
 
   const loadOrders = useCallback(() => {
     setLoading(true)
-    const params: Record<string, string | number> = { page, per_page: PER_PAGE, sort }
+    const params: Record<string, string | number> = { page, per_page: DEFAULT_PAGE_SIZE, sort }
     if (statusFilter) params.status = statusFilter
     if (debouncedSearch) params.q = debouncedSearch
     adminApi.listOrders(params)
@@ -48,7 +46,7 @@ export function AdminOrdersPage() {
   useEffect(() => { loadOrders() }, [loadOrders])
   useEffect(() => { setPage(1) }, [debouncedSearch, statusFilter, sort])
 
-  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
+  const totalPages = Math.max(1, Math.ceil(total / DEFAULT_PAGE_SIZE))
 
   const handleOrderUpdated = (updatedOrder: Order) => {
     setSelected(updatedOrder)

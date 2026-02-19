@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
-from src.audit.service import audit_context, write_audit_log
+from src.audit.service import log_admin_action
 from src.models.dto import DetailResponse
 from src.models.dto.category import CategoryCreate, CategoryReorderItem, CategoryResponse, CategoryUpdate
 from src.models.orm.user import User
@@ -34,9 +34,8 @@ async def create_category(
         description=body.description, icon=body.icon, sort_order=body.sort_order,
     )
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.category.created",
+    await log_admin_action(
+        db, request, admin.id, "admin.category.created",
         resource_type="category", resource_id=category.id,
         details={
             "name": category.name,
@@ -44,7 +43,6 @@ async def create_category(
             "description": body.description,
             "icon": body.icon,
         },
-        ip_address=ip, user_agent=ua,
     )
     return category
 
@@ -60,15 +58,13 @@ async def reorder_categories(
         db, [(item.id, item.sort_order) for item in items],
     )
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.category.reordered",
+    await log_admin_action(
+        db, request, admin.id, "admin.category.reordered",
         resource_type="category",
         details={
             "count": count,
             "order": [{"id": str(i.id), "sort_order": i.sort_order} for i in items],
         },
-        ip_address=ip, user_agent=ua,
     )
     return {"detail": "Categories reordered"}
 
@@ -85,12 +81,10 @@ async def update_category(
         db, category_id, body.model_dump(exclude_unset=True),
     )
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.category.updated",
+    await log_admin_action(
+        db, request, admin.id, "admin.category.updated",
         resource_type="category", resource_id=category.id,
         details={"name": category.name, "changes": changes},
-        ip_address=ip, user_agent=ua,
     )
     return category
 
@@ -104,12 +98,10 @@ async def delete_category(
 ):
     name = await category_service.delete(db, category_id)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.category.deleted",
+    await log_admin_action(
+        db, request, admin.id, "admin.category.deleted",
         resource_type="category", resource_id=category_id,
         details={"name": name},
-        ip_address=ip, user_agent=ua,
     )
 
     return Response(status_code=204)

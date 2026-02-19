@@ -1,9 +1,11 @@
 from datetime import datetime
 from typing import Literal
-from urllib.parse import urlparse
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
+
+from src.core.validators import validate_http_url
+from src.models.dto.common import PaginatedResponse
 
 
 class OrderCreate(BaseModel):
@@ -19,12 +21,8 @@ class OrderStatusUpdate(BaseModel):
 
     @field_validator("purchase_url")
     @classmethod
-    def validate_purchase_url_scheme(cls, v: str | None) -> str | None:
-        if v is not None:
-            parsed = urlparse(v)
-            if parsed.scheme not in ("http", "https") or not parsed.netloc:
-                raise ValueError("purchase_url must be a valid http:// or https:// URL")
-        return v
+    def validate_purchase_url_scheme(cls, v):
+        return validate_http_url(v)
 
 
 class OrderCancelRequest(BaseModel):
@@ -36,12 +34,8 @@ class OrderPurchaseUrlUpdate(BaseModel):
 
     @field_validator("purchase_url")
     @classmethod
-    def validate_purchase_url_scheme(cls, v: str | None) -> str | None:
-        if v is not None:
-            parsed = urlparse(v)
-            if parsed.scheme not in ("http", "https") or not parsed.netloc:
-                raise ValueError("purchase_url must be a valid http:// or https:// URL")
-        return v
+    def validate_purchase_url_scheme(cls, v):
+        return validate_http_url(v)
 
 
 class OrderItemResponse(BaseModel):
@@ -90,11 +84,7 @@ class OrderResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class OrderListResponse(BaseModel):
-    items: list[OrderResponse]
-    total: int
-    page: int
-    per_page: int
+OrderListResponse = PaginatedResponse[OrderResponse]
 
 
 class OrderItemCheckUpdate(BaseModel):

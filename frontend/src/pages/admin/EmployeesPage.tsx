@@ -20,10 +20,9 @@ import {
 import { useAuthStore } from '@/stores/authStore'
 import { getErrorMessage } from '@/lib/error'
 import { SortHeader } from '@/components/ui/SortHeader'
+import { DEFAULT_PAGE_SIZE } from '@/lib/constants'
 import { EmployeeDetailModal } from './EmployeeDetailModal'
 import type { UserAdmin } from '@/types'
-
-const PER_PAGE = 20
 
 type SortKey = 'name_asc' | 'name_desc' | 'department' | 'start_date' | 'budget'
 
@@ -51,7 +50,7 @@ export function AdminEmployeesPage() {
   }, [])
 
   const load = useCallback(() => {
-    const params: Record<string, string | number> = { page, per_page: PER_PAGE, sort }
+    const params: Record<string, string | number> = { page, per_page: DEFAULT_PAGE_SIZE, sort }
     if (debouncedSearch) params.q = debouncedSearch
     if (roleFilter) params.role = roleFilter
     if (departmentFilter) params.department = departmentFilter
@@ -67,7 +66,7 @@ export function AdminEmployeesPage() {
   // Reset to page 1 when filters change
   useEffect(() => { setPage(1) }, [debouncedSearch, roleFilter, departmentFilter, activeFilter, sort])
 
-  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
+  const totalPages = Math.max(1, Math.ceil(total / DEFAULT_PAGE_SIZE))
 
   const handleSync = async () => {
     setSyncing(true)

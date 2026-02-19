@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
-from src.audit.service import audit_context, write_audit_log
+from src.audit.service import log_admin_action
 from src.core.exceptions import BadRequestError, NotFoundError
 from src.models.dto.order import (
     OrderHiBobSyncResponse,
@@ -74,9 +74,8 @@ async def update_order_status(
         purchase_url=body.purchase_url,
     )
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.order.status_changed",
+    await log_admin_action(
+        db, request, admin.id, "admin.order.status_changed",
         resource_type="order", resource_id=order.id,
         details={
             "old_status": old_status,
@@ -88,7 +87,6 @@ async def update_order_status(
             "order_user_email": pre_data.get("user_email") if pre_data else None,
             "order_total_cents": order.total_cents,
         },
-        ip_address=ip, user_agent=ua,
     )
 
     order_data = await order_service.get_order_with_items(db, order_id, include_invoices=True)
@@ -110,12 +108,10 @@ async def update_purchase_url(
 ):
     await order_service.update_purchase_url(db, order_id, body.purchase_url)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.order.purchase_url_updated",
+    await log_admin_action(
+        db, request, admin.id, "admin.order.purchase_url_updated",
         resource_type="order", resource_id=order_id,
         details={"purchase_url": body.purchase_url},
-        ip_address=ip, user_agent=ua,
     )
 
     order_data = await order_service.get_order_with_items(db, order_id, include_invoices=True)
@@ -137,9 +133,8 @@ async def upload_invoice(
         db, order_id, filename, content, file.content_type, admin.id,
     )
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.order.invoice_uploaded",
+    await log_admin_action(
+        db, request, admin.id, "admin.order.invoice_uploaded",
         resource_type="order", resource_id=order_id,
         details={
             "filename": filename,
@@ -147,7 +142,6 @@ async def upload_invoice(
             "file_size_bytes": len(content),
             "content_type": file.content_type,
         },
-        ip_address=ip, user_agent=ua,
     )
 
     return invoice
@@ -186,12 +180,10 @@ async def delete_invoice(
 ):
     await order_service.delete_invoice(db, order_id, invoice_id)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.order.invoice_deleted",
+    await log_admin_action(
+        db, request, admin.id, "admin.order.invoice_deleted",
         resource_type="order", resource_id=order_id,
         details={"invoice_id": str(invoice_id)},
-        ip_address=ip, user_agent=ua,
     )
 
     return Response(status_code=204)
@@ -210,16 +202,14 @@ async def check_order_item(
     if not item:
         raise NotFoundError("Order item not found")
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.order.item_checked",
+    await log_admin_action(
+        db, request, admin.id, "admin.order.item_checked",
         resource_type="order_item", resource_id=item.id,
         details={
             "order_id": str(order_id),
             "vendor_ordered": body.vendor_ordered,
             "product_id": str(item.product_id),
         },
-        ip_address=ip, user_agent=ua,
     )
     return {"detail": "Item updated", "vendor_ordered": item.vendor_ordered}
 
@@ -238,13 +228,12 @@ async def sync_order_hibob(
 
     order_data = await order_service.get_order_with_items(db, order_id, include_invoices=True)
 
-    ip, ua = audit_context(request)
     item_summaries = [
         {"product": i.get("product_name"), "qty": i.get("quantity"), "price_cents": i.get("price_cents")}
         for i in (order_data.get("items") or [])
     ] if order_data else []
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.order.hibob_synced",
+    await log_admin_action(
+        db, request, admin.id, "admin.order.hibob_synced",
         resource_type="order", resource_id=order_id,
         details={
             "entries_created": entries_created,
@@ -253,7 +242,6 @@ async def sync_order_hibob(
             "order_total_cents": order_data.get("total_cents") if order_data else None,
             "items_synced": item_summaries,
         },
-        ip_address=ip, user_agent=ua,
     )
 
     return {
@@ -277,13 +265,12 @@ async def unsync_order_hibob(
     except ValueError as e:
         raise BadRequestError(str(e))
 
-    ip, ua = audit_context(request)
     item_summaries = [
         {"product": i.get("product_name"), "qty": i.get("quantity"), "price_cents": i.get("price_cents")}
         for i in (pre_data.get("items") or [])
     ] if pre_data else []
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.order.hibob_unsynced",
+    await log_admin_action(
+        db, request, admin.id, "admin.order.hibob_unsynced",
         resource_type="order", resource_id=order_id,
         details={
             "entries_deleted": entries_deleted,
@@ -292,7 +279,6 @@ async def unsync_order_hibob(
             "order_total_cents": pre_data.get("total_cents") if pre_data else None,
             "items_unsynced": item_summaries,
         },
-        ip_address=ip, user_agent=ua,
     )
 
     order_data = await order_service.get_order_with_items(db, order_id, include_invoices=True)

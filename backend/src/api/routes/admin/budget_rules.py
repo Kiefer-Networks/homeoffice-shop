@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin, require_staff
 from src.api.dependencies.database import get_db
-from src.audit.service import audit_context, write_audit_log
+from src.audit.service import log_admin_action
 from src.models.dto.budget import (
     BudgetRuleCreate,
     BudgetRuleResponse,
@@ -40,16 +40,14 @@ async def create_budget_rule(
         created_by=staff.id,
     )
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=staff.id, action="admin.budget_rule.created",
+    await log_admin_action(
+        db, request, staff.id, "admin.budget_rule.created",
         resource_type="budget_rule", resource_id=rule.id,
         details={
             "effective_from": str(body.effective_from),
             "initial_cents": body.initial_cents,
             "yearly_increment_cents": body.yearly_increment_cents,
         },
-        ip_address=ip, user_agent=ua,
     )
     return rule
 
@@ -65,12 +63,10 @@ async def update_budget_rule(
     data = body.model_dump(exclude_unset=True)
     rule = await budget_service.update_budget_rule(db, rule_id, data)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=staff.id, action="admin.budget_rule.updated",
+    await log_admin_action(
+        db, request, staff.id, "admin.budget_rule.updated",
         resource_type="budget_rule", resource_id=rule.id,
         details={k: (str(v) if hasattr(v, 'isoformat') else v) for k, v in data.items()},
-        ip_address=ip, user_agent=ua,
     )
     return rule
 
@@ -84,11 +80,9 @@ async def delete_budget_rule(
 ):
     rule_details = await budget_service.delete_budget_rule(db, rule_id)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.budget_rule.deleted",
+    await log_admin_action(
+        db, request, admin.id, "admin.budget_rule.deleted",
         resource_type="budget_rule", resource_id=rule_id,
         details=rule_details,
-        ip_address=ip, user_agent=ua,
     )
     return Response(status_code=204)

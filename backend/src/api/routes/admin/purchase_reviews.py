@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
-from src.audit.service import audit_context, write_audit_log
+from src.audit.service import log_admin_action
 from src.models.dto.common import CountResponse
 from src.models.dto.hibob import (
     HiBobPurchaseReviewListResponse,
@@ -57,15 +57,13 @@ async def match_review(
         db, review_id, body.order_id, staff.id,
     )
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=staff.id, action="admin.purchase_review.matched",
+    await log_admin_action(
+        db, request, staff.id, "admin.purchase_review.matched",
         resource_type="hibob_purchase_review", resource_id=review_id,
         details={
             "order_id": str(body.order_id),
             "hibob_entry_id": result.get("hibob_entry_id"),
         },
-        ip_address=ip, user_agent=ua,
     )
     return result
 
@@ -79,16 +77,14 @@ async def adjust_review(
 ):
     result = await purchase_review_service.adjust_review(db, review_id, staff.id)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=staff.id, action="admin.purchase_review.adjusted",
+    await log_admin_action(
+        db, request, staff.id, "admin.purchase_review.adjusted",
         resource_type="hibob_purchase_review", resource_id=review_id,
         details={
             "adjustment_id": str(result.get("adjustment_id")),
             "amount_cents": -(result.get("amount_cents", 0)),
             "hibob_entry_id": result.get("hibob_entry_id"),
         },
-        ip_address=ip, user_agent=ua,
     )
     return result
 
@@ -102,11 +98,9 @@ async def dismiss_review(
 ):
     result = await purchase_review_service.dismiss_review(db, review_id, staff.id)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=staff.id, action="admin.purchase_review.dismissed",
+    await log_admin_action(
+        db, request, staff.id, "admin.purchase_review.dismissed",
         resource_type="hibob_purchase_review", resource_id=review_id,
         details={"hibob_entry_id": result.get("hibob_entry_id")},
-        ip_address=ip, user_agent=ua,
     )
     return result

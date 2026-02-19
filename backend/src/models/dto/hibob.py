@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from src.models.dto.common import PaginatedResponse
+
 
 class HiBobSyncLogResponse(BaseModel):
     id: UUID
@@ -19,11 +21,7 @@ class HiBobSyncLogResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class HiBobSyncLogListResponse(BaseModel):
-    items: list[HiBobSyncLogResponse]
-    total: int
-    page: int
-    per_page: int
+HiBobSyncLogListResponse = PaginatedResponse[HiBobSyncLogResponse]
 
 
 # Purchase Sync Log
@@ -41,11 +39,7 @@ class HiBobPurchaseSyncLogResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class HiBobPurchaseSyncLogListResponse(BaseModel):
-    items: list[HiBobPurchaseSyncLogResponse]
-    total: int
-    page: int
-    per_page: int
+HiBobPurchaseSyncLogListResponse = PaginatedResponse[HiBobPurchaseSyncLogResponse]
 
 
 # Purchase Reviews
@@ -69,11 +63,7 @@ class HiBobPurchaseReviewResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class HiBobPurchaseReviewListResponse(BaseModel):
-    items: list[HiBobPurchaseReviewResponse]
-    total: int
-    page: int
-    per_page: int
+HiBobPurchaseReviewListResponse = PaginatedResponse[HiBobPurchaseReviewResponse]
 
 
 class HiBobPurchaseSyncStatusResponse(BaseModel):

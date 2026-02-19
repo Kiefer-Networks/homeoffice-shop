@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin, require_staff
 from src.api.dependencies.database import get_db
-from src.audit.service import audit_context, write_audit_log
+from src.audit.service import log_admin_action
 from src.models.dto.product import (
     PriceRefreshResponse, ProductCreate, ProductResponse, ProductUpdate,
     RefreshPreviewResponse, RefreshApplyRequest,
@@ -41,9 +41,8 @@ async def create_product(
     if product.amazon_asin:
         await product_service.enrich_from_amazon(db, product, product.amazon_asin)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.product.created",
+    await log_admin_action(
+        db, request, admin.id, "admin.product.created",
         resource_type="product", resource_id=product.id,
         details={
             "name": product.name,
@@ -52,7 +51,6 @@ async def create_product(
             "amazon_asin": body.amazon_asin,
             "brand": body.brand,
         },
-        ip_address=ip, user_agent=ua,
     )
 
     return product
@@ -70,12 +68,10 @@ async def update_product(
         db, product_id, body.model_dump(exclude_unset=True),
     )
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.product.updated",
+    await log_admin_action(
+        db, request, admin.id, "admin.product.updated",
         resource_type="product", resource_id=product.id,
         details={"changes": changes, "product_name": product.name},
-        ip_address=ip, user_agent=ua,
     )
     return product
 
@@ -89,12 +85,10 @@ async def activate_product(
 ):
     product = await product_service.set_active(db, product_id, True)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.product.activated",
+    await log_admin_action(
+        db, request, admin.id, "admin.product.activated",
         resource_type="product", resource_id=product.id,
         details={"product_name": product.name},
-        ip_address=ip, user_agent=ua,
     )
     return product
 
@@ -108,12 +102,10 @@ async def deactivate_product(
 ):
     product = await product_service.set_active(db, product_id, False)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.product.deactivated",
+    await log_admin_action(
+        db, request, admin.id, "admin.product.deactivated",
         resource_type="product", resource_id=product.id,
         details={"product_name": product.name},
-        ip_address=ip, user_agent=ua,
     )
     return product
 
@@ -127,12 +119,10 @@ async def archive_product(
 ):
     product = await product_service.archive(db, product_id)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.product.archived",
+    await log_admin_action(
+        db, request, admin.id, "admin.product.archived",
         resource_type="product", resource_id=product_id,
         details={"name": product.name},
-        ip_address=ip, user_agent=ua,
     )
     return product
 
@@ -146,12 +136,10 @@ async def restore_product(
 ):
     product = await product_service.restore(db, product_id)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.product.restored",
+    await log_admin_action(
+        db, request, admin.id, "admin.product.restored",
         resource_type="product", resource_id=product_id,
         details={"name": product.name},
-        ip_address=ip, user_agent=ua,
     )
     return product
 
@@ -166,12 +154,10 @@ async def refresh_preview(
     preview = await product_service.generate_refresh_preview(db, product_id)
 
     product = await product_service.get_by_id(db, product_id)
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.product.refresh_previewed",
+    await log_admin_action(
+        db, request, admin.id, "admin.product.refresh_previewed",
         resource_type="product", resource_id=product.id,
         details={"product_name": product.name, "diff_fields": [d.field for d in preview.diffs], "images_updated": preview.images_updated},
-        ip_address=ip, user_agent=ua,
     )
 
     return preview
@@ -189,12 +175,10 @@ async def refresh_apply(
         db, product_id, body.fields, body.values,
     )
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.product.refresh_applied",
+    await log_admin_action(
+        db, request, admin.id, "admin.product.refresh_applied",
         resource_type="product", resource_id=product.id,
         details={"product_name": product.name, "changes": changes},
-        ip_address=ip, user_agent=ua,
     )
 
     return product
@@ -208,10 +192,8 @@ async def trigger_price_refresh(
 ):
     result = await product_service.refresh_all_prices(db)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=user.id, action="product.price_refresh_triggered",
+    await log_admin_action(
+        db, request, user.id, "product.price_refresh_triggered",
         resource_type="product", details=result,
-        ip_address=ip, user_agent=ua,
     )
     return result

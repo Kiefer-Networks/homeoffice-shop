@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from src.models.dto.common import PaginatedResponse
+
 
 class AuditLogResponse(BaseModel):
     id: UUID
@@ -18,11 +20,7 @@ class AuditLogResponse(BaseModel):
     created_at: datetime
 
 
-class AuditLogListResponse(BaseModel):
-    items: list[AuditLogResponse]
-    total: int
-    page: int
-    per_page: int
+AuditLogListResponse = PaginatedResponse[AuditLogResponse]
 
 
 class AuditFiltersResponse(BaseModel):

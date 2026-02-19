@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from src.models.dto.budget import BudgetTimelineEntry, UserBudgetOverrideResponse
+from src.models.dto.common import PaginatedResponse
 from src.models.dto.order import OrderResponse
 
 
@@ -37,11 +38,7 @@ class UserAdminResponse(UserResponse):
     updated_at: datetime
 
 
-class UserAdminListResponse(BaseModel):
-    items: list[UserAdminResponse]
-    total: int
-    page: int
-    per_page: int
+UserAdminListResponse = PaginatedResponse[UserAdminResponse]
 
 
 class UserSearchResult(BaseModel):

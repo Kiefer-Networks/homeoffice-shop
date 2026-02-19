@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.api.dependencies.rate_limit import rate_limit
-from src.audit.service import audit_context, write_audit_log
+from src.audit.service import log_admin_action
 from src.core.exceptions import BadRequestError
 from src.models.dto.backup import (
     BackupFileResponse,
@@ -36,12 +36,10 @@ async def export_backup(
     filepath = await backup_service.get_backup_path(filename)
     size = filepath.stat().st_size
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.backup.exported",
+    await log_admin_action(
+        db, request, admin.id, "admin.backup.exported",
         resource_type="database",
         details={"filename": filename, "size_bytes": size},
-        ip_address=ip, user_agent=ua,
     )
 
     return FileResponse(
@@ -86,12 +84,10 @@ async def delete_backup(
 ):
     await backup_service.delete_backup(filename)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.backup.deleted",
+    await log_admin_action(
+        db, request, admin.id, "admin.backup.deleted",
         resource_type="database",
         details={"filename": filename},
-        ip_address=ip, user_agent=ua,
     )
 
     return Response(status_code=204)
@@ -124,16 +120,14 @@ async def update_schedule(
         updated_by=admin.id,
     )
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.backup.schedule_updated",
+    await log_admin_action(
+        db, request, admin.id, "admin.backup.schedule_updated",
         resource_type="database",
         details={
             "enabled": body.enabled, "frequency": body.frequency,
             "hour": body.hour, "minute": body.minute, "weekday": body.weekday,
             "max_backups": body.max_backups,
         },
-        ip_address=ip, user_agent=ua,
     )
 
     return BackupScheduleResponse(**schedule)

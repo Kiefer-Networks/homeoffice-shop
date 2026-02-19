@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin, require_staff
 from src.api.dependencies.database import get_db
-from src.audit.service import audit_context, write_audit_log
+from src.audit.service import log_admin_action
 from src.models.dto import DetailResponse
 from src.models.dto.budget import (
     UserBudgetOverrideCreate,
@@ -83,16 +83,14 @@ async def update_user_role(
 ):
     target, old_role = await user_service.change_role(db, user_id, body.role, admin.id)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.user.role_changed",
+    await log_admin_action(
+        db, request, admin.id, "admin.user.role_changed",
         resource_type="user", resource_id=user_id,
         details={
             "old_role": old_role,
             "new_role": body.role,
             "target_user_email": target.email,
         },
-        ip_address=ip, user_agent=ua,
     )
 
     await notify_user_email(
@@ -120,12 +118,10 @@ async def update_probation_override(
         if body.probation_override
         else "admin.user.early_access_revoked"
     )
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action=action,
+    await log_admin_action(
+        db, request, admin.id, action,
         resource_type="user", resource_id=user_id,
         details={"probation_override": body.probation_override},
-        ip_address=ip, user_agent=ua,
     )
 
     return {"detail": f"Probation override set to {body.probation_override}"}
@@ -151,9 +147,8 @@ async def create_budget_override(
         created_by=staff.id,
     )
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=staff.id, action="admin.budget_override.created",
+    await log_admin_action(
+        db, request, staff.id, "admin.budget_override.created",
         resource_type="user_budget_override", resource_id=override.id,
         details={
             "user_id": str(user_id),
@@ -163,7 +158,6 @@ async def create_budget_override(
             "initial_cents": body.initial_cents,
             "yearly_increment_cents": body.yearly_increment_cents,
         },
-        ip_address=ip, user_agent=ua,
     )
     return override
 
@@ -180,15 +174,13 @@ async def update_budget_override(
     data = body.model_dump(exclude_unset=True)
     override = await user_service.update_budget_override(db, user_id, override_id, data)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=staff.id, action="admin.budget_override.updated",
+    await log_admin_action(
+        db, request, staff.id, "admin.budget_override.updated",
         resource_type="user_budget_override", resource_id=override_id,
         details={
             "user_id": str(user_id),
             **{k: (str(v) if hasattr(v, 'isoformat') else v) for k, v in data.items()},
         },
-        ip_address=ip, user_agent=ua,
     )
     return override
 
@@ -203,12 +195,10 @@ async def delete_budget_override(
 ):
     await user_service.delete_budget_override(db, user_id, override_id)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=staff.id, action="admin.budget_override.deleted",
+    await log_admin_action(
+        db, request, staff.id, "admin.budget_override.deleted",
         resource_type="user_budget_override", resource_id=override_id,
         details={"user_id": str(user_id)},
-        ip_address=ip, user_agent=ua,
     )
 
     return Response(status_code=204)

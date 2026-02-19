@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
-from src.audit.service import audit_context, export_audit_csv, get_audit_filter_options, query_audit_logs, write_audit_log
+from src.audit.service import export_audit_csv, get_audit_filter_options, log_admin_action, query_audit_logs
 from src.models.dto.audit import AuditFiltersResponse, AuditLogListResponse
 from src.models.orm.user import User
 
@@ -73,12 +73,10 @@ async def export_audit_logs(
         q=q,
     )
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.audit.exported",
+    await log_admin_action(
+        db, request, admin.id, "admin.audit.exported",
         resource_type="audit_log",
         details={"filters": {"user_id": str(user_id) if user_id else None, "action": action, "resource_type": resource_type}},
-        ip_address=ip, user_agent=ua,
     )
 
     return StreamingResponse(

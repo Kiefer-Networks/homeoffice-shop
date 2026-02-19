@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import get_current_user
 from src.api.dependencies.database import get_db
-from src.audit.service import audit_context, write_audit_log
+from src.audit.service import log_admin_action
 from src.core.config import settings
 from src.core.exceptions import BadRequestError, UnauthorizedError
 from src.models.dto.auth import TokenResponse
@@ -40,24 +40,20 @@ async def _handle_oauth_callback(
     name: str,
     provider_id: str,
 ) -> TokenResponse:
-    ip, ua = audit_context(request)
-
     try:
         user = await validate_oauth_user(db, email, provider, provider_id)
     except UnauthorizedError:
-        await write_audit_log(
-            db, user_id=uuid.UUID(int=0), action="auth.login_blocked",
+        await log_admin_action(
+            db, request, uuid.UUID(int=0), "auth.login_blocked",
             resource_type="user",
             details={"email": email, "provider": provider},
-            ip_address=ip, user_agent=ua,
         )
         raise
     except BadRequestError:
-        await write_audit_log(
-            db, user_id=uuid.UUID(int=0), action="auth.login_blocked_probation",
+        await log_admin_action(
+            db, request, uuid.UUID(int=0), "auth.login_blocked_probation",
             resource_type="user",
             details={"email": email, "provider": provider},
-            ip_address=ip, user_agent=ua,
         )
         raise
 
@@ -65,9 +61,9 @@ async def _handle_oauth_callback(
 
     tokens = await issue_tokens(db, user.id, user.email, user.role)
 
-    await write_audit_log(
-        db, user_id=user.id, action="auth.login",
-        resource_type="user", ip_address=ip, user_agent=ua,
+    await log_admin_action(
+        db, request, user.id, "auth.login",
+        resource_type="user",
         details={"provider": provider, "email": user.email},
     )
 
@@ -125,7 +121,6 @@ async def refresh_token(
 
     tokens = await refresh_tokens(db, refresh_token_cookie)
 
-    ip, ua = audit_context(request)
     payload = {}
     try:
         payload = decode_token(tokens.access_token)
@@ -133,11 +128,10 @@ async def refresh_token(
         pass
 
     if payload.get("sub"):
-        await write_audit_log(
-            db, user_id=uuid.UUID(payload["sub"]),
-            action="auth.token_refresh",
+        await log_admin_action(
+            db, request, uuid.UUID(payload["sub"]),
+            "auth.token_refresh",
             resource_type="user",
-            ip_address=ip, user_agent=ua,
         )
 
     response.set_cookie(
@@ -164,11 +158,9 @@ async def logout_user(
 ):
     await logout(db, user.id)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=user.id, action="auth.logout",
+    await log_admin_action(
+        db, request, user.id, "auth.logout",
         resource_type="user",
-        ip_address=ip, user_agent=ua,
     )
 
     response = Response(status_code=204)

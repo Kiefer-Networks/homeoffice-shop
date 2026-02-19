@@ -9,6 +9,7 @@ import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate, parseEuroToCents, centsToEuroInput } from '@/lib/utils'
 import { Plus, X, Pencil, Trash2, ArrowUpDown, Search, Loader2 } from 'lucide-react'
+import { DEFAULT_PAGE_SIZE } from '@/lib/constants'
 import { getErrorMessage } from '@/lib/error'
 import { useAuthStore } from '@/stores/authStore'
 import { EmployeeDetailModal } from './EmployeeDetailModal'
@@ -47,7 +48,7 @@ export function AdminBudgetAdjustmentsPage() {
   const [syncRunning, setSyncRunning] = useState(false)
 
   const { addToast } = useUiStore()
-  const perPage = 20
+  const perPage = DEFAULT_PAGE_SIZE
 
   // Poll purchase sync status
   useEffect(() => {

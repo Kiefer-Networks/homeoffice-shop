@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
-from src.audit.service import audit_context, write_audit_log
+from src.audit.service import log_admin_action
 from src.models.dto.notification import NotificationPrefResponse, NotificationPrefUpdate
 from src.models.orm.user import User
 from src.services import notification_service
@@ -34,9 +34,8 @@ async def update_my_preferences(
         email_events=body.email_events,
     )
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=user.id, action="admin.notification_prefs.updated",
+    await log_admin_action(
+        db, request, user.id, "admin.notification_prefs.updated",
         resource_type="notification_pref",
         details={
             k: v for k, v in {
@@ -46,7 +45,6 @@ async def update_my_preferences(
                 "email_events": body.email_events,
             }.items() if v is not None
         },
-        ip_address=ip, user_agent=ua,
     )
 
     return result

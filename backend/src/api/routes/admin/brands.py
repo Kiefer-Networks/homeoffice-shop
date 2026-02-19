@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
-from src.audit.service import audit_context, write_audit_log
+from src.audit.service import log_admin_action
 from src.models.dto.brand import BrandCreate, BrandResponse, BrandUpdate
 from src.models.orm.user import User
 from src.services import brand_service
@@ -30,12 +30,10 @@ async def create_brand(
 ):
     brand = await brand_service.create(db, name=body.name)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.brand.created",
+    await log_admin_action(
+        db, request, admin.id, "admin.brand.created",
         resource_type="brand", resource_id=brand.id,
         details={"name": brand.name},
-        ip_address=ip, user_agent=ua,
     )
     return brand
 
@@ -52,12 +50,10 @@ async def update_brand(
         db, brand_id, name=body.name, logo_url=body.logo_url,
     )
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.brand.updated",
+    await log_admin_action(
+        db, request, admin.id, "admin.brand.updated",
         resource_type="brand", resource_id=brand.id,
         details=changes,
-        ip_address=ip, user_agent=ua,
     )
     return brand
 
@@ -71,11 +67,9 @@ async def delete_brand(
 ):
     name = await brand_service.delete(db, brand_id)
 
-    ip, ua = audit_context(request)
-    await write_audit_log(
-        db, user_id=admin.id, action="admin.brand.deleted",
+    await log_admin_action(
+        db, request, admin.id, "admin.brand.deleted",
         resource_type="brand", resource_id=brand_id,
         details={"name": name},
-        ip_address=ip, user_agent=ua,
     )
     return Response(status_code=204)
