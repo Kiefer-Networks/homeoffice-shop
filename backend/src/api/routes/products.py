@@ -5,11 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import get_current_user
 from src.api.dependencies.database import get_db
-from src.core.exceptions import BadRequestError, NotFoundError
+from src.core.exceptions import BadRequestError
 
 VALID_SORTS = {"relevance", "price_asc", "price_desc", "name_asc", "name_desc", "newest"}
 from src.models.dto.product import ProductListResponse, ProductResponse
-from src.models.orm.product import Product
 from src.models.orm.user import User
 from src.services import product_service
 
@@ -62,7 +61,4 @@ async def get_product(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    product = await db.get(Product, product_id)
-    if not product:
-        raise NotFoundError("Product not found")
-    return product
+    return await product_service.get_by_id(db, product_id)

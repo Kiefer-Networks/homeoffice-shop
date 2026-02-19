@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 _SAFE_FILENAME_RE = re.compile(r"^homeoffice_shop_\d{4}-\d{2}-\d{2}(_\d{6})?\.dump$")
 
+_backup_lock = asyncio.Lock()
+
 
 def _backup_dir() -> Path:
     p = Path(settings.backup_dir)
@@ -32,32 +34,40 @@ async def _enforce_retention() -> None:
 
 
 async def run_backup(triggered_by: str = "scheduler") -> str:
-    """Execute pg_dump and store the file. Returns the filename."""
-    now = datetime.now(timezone.utc)
-    filename = f"homeoffice_shop_{now.strftime('%Y-%m-%d_%H%M%S')}.dump"
-    filepath = _backup_dir() / filename
+    """Execute pg_dump and store the file. Returns the filename.
 
-    env = {**os.environ, "PGPASSWORD": settings.db_password}
+    Acquires _backup_lock so only one backup can run at a time.
+    Raises RuntimeError if a backup is already in progress or pg_dump fails.
+    """
+    if _backup_lock.locked():
+        raise RuntimeError("A backup is already in progress")
 
-    process = await asyncio.create_subprocess_exec(
-        "pg_dump",
-        "-h", settings.db_host,
-        "-p", str(settings.db_port),
-        "-U", settings.db_user,
-        "-Fc",
-        settings.db_name,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-        env=env,
-    )
+    async with _backup_lock:
+        now = datetime.now(timezone.utc)
+        filename = f"homeoffice_shop_{now.strftime('%Y-%m-%d_%H%M%S')}.dump"
+        filepath = _backup_dir() / filename
 
-    stdout, stderr = await process.communicate()
+        env = {**os.environ, "PGPASSWORD": settings.db_password}
 
-    if process.returncode != 0:
-        logger.error("pg_dump failed (exit %d): %s", process.returncode, stderr.decode())
-        raise RuntimeError("pg_dump failed")
+        process = await asyncio.create_subprocess_exec(
+            "pg_dump",
+            "-h", settings.db_host,
+            "-p", str(settings.db_port),
+            "-U", settings.db_user,
+            "-Fc",
+            settings.db_name,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=env,
+        )
 
-    await asyncio.to_thread(filepath.write_bytes, stdout)
-    await _enforce_retention()
-    logger.info("Backup created: %s (%d bytes, triggered by %s)", filename, len(stdout), triggered_by)
-    return filename
+        stdout, stderr = await process.communicate()
+
+        if process.returncode != 0:
+            logger.error("pg_dump failed (exit %d): %s", process.returncode, stderr.decode())
+            raise RuntimeError("pg_dump failed")
+
+        await asyncio.to_thread(filepath.write_bytes, stdout)
+        await _enforce_retention()
+        logger.info("Backup created: %s (%d bytes, triggered by %s)", filename, len(stdout), triggered_by)
+        return filename

@@ -409,6 +409,7 @@ async def create_product(
     )
     db.add(product)
     await db.flush()
+    await db.refresh(product)
     return product
 
 
@@ -512,6 +513,7 @@ async def enrich_from_amazon(
                     product.price_max_cents = max(variant_prices)
 
             await db.flush()
+            await db.refresh(product)
     except Exception:
         logger.exception("Failed to auto-download images for product %s", product.id)
 

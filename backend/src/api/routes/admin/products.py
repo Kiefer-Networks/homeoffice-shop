@@ -59,7 +59,6 @@ async def create_product(
         ip_address=ip, user_agent=ua,
     )
 
-    await db.refresh(product)
     return product
 
 
