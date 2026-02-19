@@ -20,7 +20,7 @@ import type { Product, Category, Facets } from '@/types'
 export function CatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const filterStore = useFilterStore()
-  const { cart, setCart, setOpen: setCartOpen } = useCartStore()
+  const { cart, setOpen: setCartOpen } = useCartStore()
   const { addToast } = useUiStore()
 
   const [products, setProducts] = useState<Product[]>([])
