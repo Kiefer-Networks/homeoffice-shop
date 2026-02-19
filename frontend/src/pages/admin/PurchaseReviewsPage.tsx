@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -79,7 +79,7 @@ export function PurchaseReviewsPage() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [loading, setLoading] = useState(true)
-  const [syncing, setSyncing] = useState(false)
+  const [syncRunning, setSyncRunning] = useState(false)
   const { addToast } = useUiStore()
 
   // Match dialog state
@@ -93,6 +93,32 @@ export function PurchaseReviewsPage() {
 
   // Action loading
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+
+  // Poll purchase sync status
+  const checkSyncStatus = useCallback(async () => {
+    try {
+      const { data } = await adminApi.getPurchaseSyncStatus()
+      setSyncRunning(data.running)
+      return data.running
+    } catch {
+      return false
+    }
+  }, [])
+
+  useEffect(() => {
+    checkSyncStatus()
+    const id = setInterval(checkSyncStatus, 5000)
+    return () => clearInterval(id)
+  }, [checkSyncStatus])
+
+  // Reload data when sync finishes
+  const prevSyncRunning = useRef(syncRunning)
+  useEffect(() => {
+    if (prevSyncRunning.current && !syncRunning) {
+      loadReviews()
+    }
+    prevSyncRunning.current = syncRunning
+  }, [syncRunning])
 
   // Debounce search input
   useEffect(() => {
@@ -124,15 +150,12 @@ export function PurchaseReviewsPage() {
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
   const handleSync = async () => {
-    setSyncing(true)
     try {
       await adminApi.triggerPurchaseSync()
-      addToast({ title: 'Purchase sync started', description: 'Running in background. Results will appear shortly.' })
-      setTimeout(() => { loadReviews(); setSyncing(false) }, 5000)
-      setTimeout(() => loadReviews(), 15000)
+      setSyncRunning(true)
+      addToast({ title: 'Purchase sync started', description: 'Running in background. Results will appear when finished.' })
     } catch (err: unknown) {
       addToast({ title: 'Sync failed', description: getErrorMessage(err), variant: 'destructive' })
-      setSyncing(false)
     }
   }
 
@@ -203,12 +226,20 @@ export function PurchaseReviewsPage() {
 
   return (
     <div>
+      {/* Sync Running Banner */}
+      {syncRunning && (
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+          <span>Purchase sync is running. Data on this page will refresh automatically when finished.</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Purchase Reviews ({total})</h1>
-        <Button onClick={handleSync} disabled={syncing}>
-          <RefreshCcw className={`h-4 w-4 mr-1 ${syncing ? 'animate-spin' : ''}`} />
-          Sync Purchases
+        <Button onClick={handleSync} disabled={syncRunning}>
+          <RefreshCcw className={`h-4 w-4 mr-1 ${syncRunning ? 'animate-spin' : ''}`} />
+          {syncRunning ? 'Syncing...' : 'Sync Purchases'}
         </Button>
       </div>
 

@@ -16,6 +16,7 @@ from src.models.dto.hibob import (
     HiBobSyncLogListResponse,
     HiBobSyncLogResponse,
 )
+from src.models.orm.hibob_purchase_sync_log import HiBobPurchaseSyncLog
 from src.models.orm.user import User
 from src.notifications.service import notify_staff_email, notify_staff_slack
 from src.services import hibob_service
@@ -177,6 +178,21 @@ async def get_sync_logs(
 ):
     items, total = await hibob_service.get_sync_logs(db, page=page, per_page=per_page)
     return {"items": items, "total": total, "page": page, "per_page": per_page}
+
+
+@router.get("/purchase-sync-status")
+async def purchase_sync_status(
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Return whether a purchase sync is currently running."""
+    result = await db.execute(
+        select(HiBobPurchaseSyncLog)
+        .where(HiBobPurchaseSyncLog.status == "running")
+        .limit(1)
+    )
+    running = result.scalar_one_or_none() is not None
+    return {"running": running}
 
 
 @router.post("/purchase-sync", status_code=202)

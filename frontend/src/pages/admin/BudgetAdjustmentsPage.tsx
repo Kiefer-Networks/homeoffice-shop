@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate, parseEuroToCents, centsToEuroInput } from '@/lib/utils'
-import { Plus, X, Pencil, Trash2, ArrowUpDown, Search } from 'lucide-react'
+import { Plus, X, Pencil, Trash2, ArrowUpDown, Search, Loader2 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { useAuthStore } from '@/stores/authStore'
 import { EmployeeDetailModal } from './EmployeeDetailModal'
@@ -42,10 +42,34 @@ export function AdminBudgetAdjustmentsPage() {
   // Employee detail modal
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
 
+  const [syncRunning, setSyncRunning] = useState(false)
+
   const { addToast } = useUiStore()
   const perPage = 20
 
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  // Poll purchase sync status
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const { data } = await adminApi.getPurchaseSyncStatus()
+        setSyncRunning(data.running)
+      } catch { /* ignore */ }
+    }
+    check()
+    const id = setInterval(check, 5000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Reload data when sync finishes
+  const prevSyncRunning = useRef(syncRunning)
+  useEffect(() => {
+    if (prevSyncRunning.current && !syncRunning) {
+      load()
+    }
+    prevSyncRunning.current = syncRunning
+  }, [syncRunning])
 
   const load = useCallback(() => {
     const params: Record<string, string | number> = { page, per_page: perPage, sort }
@@ -192,6 +216,14 @@ export function AdminBudgetAdjustmentsPage() {
 
   return (
     <div>
+      {/* Sync Running Banner */}
+      {syncRunning && (
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+          <span>Purchase sync is running. Budget adjustments may change when finished.</span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Budget Adjustments</h1>
         <Button onClick={() => setShowCreateDialog(true)}><Plus className="h-4 w-4 mr-1" /> Add Adjustment</Button>
