@@ -18,6 +18,7 @@ class HiBobClientProtocol(Protocol):
     async def get_avatar_url(self, employee_id: str) -> str | None: ...
     async def get_custom_table(self, employee_id: str, table_id: str) -> list[dict]: ...
     async def create_custom_table_entry(self, employee_id: str, table_id: str, entry: dict) -> dict: ...
+    async def delete_custom_table_entry(self, employee_id: str, table_id: str, entry_id: str) -> None: ...
 
 
 class HiBobClient:
@@ -159,6 +160,30 @@ class HiBobClient:
                 return resp.json() if resp.content else {}
 
 
+    async def delete_custom_table_entry(self, employee_id: str, table_id: str, entry_id: str) -> None:
+        """Delete an entry from an employee's custom table."""
+        max_retries = 5
+        for attempt in range(max_retries + 1):
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.delete(
+                    f"{HIBOB_API_BASE}/people/custom-tables/{employee_id}/{table_id}/{entry_id}",
+                    headers=self._headers,
+                )
+                if resp.status_code == 429 and attempt < max_retries:
+                    wait = min(2 ** attempt, 10)
+                    logger.warning(
+                        "HiBob rate limit hit for employee %s, retrying in %ds (attempt %d/%d)",
+                        employee_id, wait, attempt + 1, max_retries,
+                    )
+                    await asyncio.sleep(wait)
+                    continue
+                if resp.status_code >= 400:
+                    raise RuntimeError(
+                        f"HiBob custom table DELETE failed ({resp.status_code}): {resp.text}"
+                    )
+                return
+
+
 class FakeHiBobClient:
     """Test fake returning predefined data."""
 
@@ -183,3 +208,6 @@ class FakeHiBobClient:
         key = (employee_id, table_id)
         self.custom_tables.setdefault(key, []).append(entry)
         return entry
+
+    async def delete_custom_table_entry(self, employee_id: str, table_id: str, entry_id: str) -> None:
+        pass

@@ -61,6 +61,8 @@ export const adminApi = {
     api.put(`/api/admin/orders/${orderId}/items/${itemId}/check`, { vendor_ordered }),
   syncOrderToHiBob: (orderId: string) =>
     api.post<{ detail: string; synced_at: string; order: Order }>(`/api/admin/orders/${orderId}/sync-hibob`),
+  unsyncOrderFromHiBob: (orderId: string) =>
+    api.delete<{ detail: string; order: Order }>(`/api/admin/orders/${orderId}/sync-hibob`),
 
   // Users
   listUsers: (params?: Record<string, string | number>) =>

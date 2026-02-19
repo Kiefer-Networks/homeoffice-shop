@@ -15,6 +15,89 @@ from src.services.settings_service import get_setting, load_settings
 logger = logging.getLogger(__name__)
 
 
+async def unsync_order_from_hibob(
+    db: AsyncSession,
+    order_id: UUID,
+    admin_id: UUID,
+    client: HiBobClientProtocol,
+) -> int:
+    """Remove order entries from HiBob and reset sync status.
+
+    Returns the number of entries deleted.
+    Raises ValueError on validation failures.
+    """
+    result = await db.execute(
+        select(Order).where(Order.id == order_id).with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise ValueError("Order not found")
+
+    if order.hibob_synced_at is None:
+        raise ValueError("Order is not synced to HiBob")
+
+    user = await db.get(User, order.user_id)
+    if not user or not user.hibob_id:
+        raise ValueError("User has no HiBob ID linked")
+
+    await load_settings(db)
+    table_id = get_setting("hibob_purchase_table_id")
+    if not table_id:
+        raise ValueError("HiBob purchase table not configured")
+
+    col_description = get_setting("hibob_purchase_col_description")
+
+    # Load order items with product names to match against HiBob entries
+    items_result = await db.execute(
+        select(OrderItem, Product.name)
+        .join(Product, OrderItem.product_id == Product.id, isouter=True)
+        .where(OrderItem.order_id == order_id)
+    )
+    items = items_result.all()
+
+    # Build expected descriptions to match HiBob entries
+    expected_descriptions = set()
+    for item, product_name in items:
+        desc = product_name or "Product"
+        if item.variant_value:
+            desc = f"{desc} ({item.variant_value})"
+        expected_descriptions.add(desc)
+
+    # Fetch current entries from HiBob
+    entries = await client.get_custom_table(user.hibob_id, table_id)
+
+    # Find matching entries by description
+    entries_to_delete = [
+        e for e in entries
+        if e.get(col_description) in expected_descriptions
+    ]
+
+    if not entries_to_delete:
+        logger.warning(
+            "No matching HiBob entries found for order %s (expected: %s, found: %s)",
+            order_id, expected_descriptions, [e.get(col_description) for e in entries],
+        )
+
+    # Delete matching entries from HiBob
+    deleted = 0
+    for i, entry in enumerate(entries_to_delete):
+        entry_id = str(entry["id"])
+        await client.delete_custom_table_entry(user.hibob_id, table_id, entry_id)
+        deleted += 1
+        if i < len(entries_to_delete) - 1:
+            await asyncio.sleep(1.5)
+
+    # Reset sync status in DB
+    order.hibob_synced_at = None
+    order.hibob_synced_by = None
+
+    for item, _ in items:
+        item.hibob_synced = False
+
+    await db.flush()
+    return deleted
+
+
 async def sync_order_to_hibob(
     db: AsyncSession,
     order_id: UUID,

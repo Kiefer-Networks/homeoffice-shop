@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { adminApi } from '@/services/adminApi'
 import { formatCents, formatDate } from '@/lib/utils'
 import { useUiStore } from '@/stores/uiStore'
@@ -44,6 +44,11 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
   const [showHiBobConfirm, setShowHiBobConfirm] = useState(false)
   const [hibobSyncing, setHibobSyncing] = useState(false)
 
+  // HiBob unsync
+  const [showHiBobDeleteModal, setShowHiBobDeleteModal] = useState(false)
+  const [hibobDeleteInput, setHibobDeleteInput] = useState('')
+  const [hibobDeleting, setHibobDeleting] = useState(false)
+
   const { addToast } = useUiStore()
   const apiUrl = import.meta.env.VITE_API_URL || ''
 
@@ -55,6 +60,8 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
       setAdminNote('')
       setExpectedDelivery('')
       setShowHiBobConfirm(false)
+      setShowHiBobDeleteModal(false)
+      setHibobDeleteInput('')
     }
   }, [order])
 
@@ -179,6 +186,23 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
       addToast({ title: 'Sync failed', description: getErrorMessage(err), variant: 'destructive' })
     } finally {
       setHibobSyncing(false)
+    }
+  }
+
+  // --- HiBob unsync ---
+  const handleHiBobUnsync = async () => {
+    if (!order) return
+    setHibobDeleting(true)
+    try {
+      const { data } = await adminApi.unsyncOrderFromHiBob(order.id)
+      setShowHiBobDeleteModal(false)
+      setHibobDeleteInput('')
+      await refreshOrder(order.id)
+      addToast({ title: data.detail })
+    } catch (err: unknown) {
+      addToast({ title: 'Unsync failed', description: getErrorMessage(err), variant: 'destructive' })
+    } finally {
+      setHibobDeleting(false)
     }
   }
 
@@ -447,9 +471,13 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
                 {order.status === 'delivered' && !pendingAction && (
                   <div className="flex items-center gap-2 mt-3">
                     {order.hibob_synced_at ? (
-                      <div className="flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))]">
+                      <div className="flex items-center gap-2 text-sm">
                         <Check className="h-4 w-4 text-green-600" />
-                        <span>Synced to HiBob on {formatDate(order.hibob_synced_at)}</span>
+                        <span className="text-[hsl(var(--muted-foreground))]">Synced to HiBob on {formatDate(order.hibob_synced_at)}</span>
+                        <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700 h-7 px-2"
+                          onClick={() => setShowHiBobDeleteModal(true)}>
+                          <Trash2 className="h-3 w-3 mr-1" /> Remove
+                        </Button>
                       </div>
                     ) : showHiBobConfirm ? (
                       <div className="flex items-center gap-2">
@@ -475,6 +503,42 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
           </>
         )}
       </DialogContent>
+
+      {/* HiBob DELETE confirmation modal */}
+      <Dialog open={showHiBobDeleteModal} onOpenChange={(open) => {
+        if (!open) { setShowHiBobDeleteModal(false); setHibobDeleteInput('') }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove HiBob Sync</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">
+              This will delete the synced entries from the employee's HiBob profile.
+              This action affects a <strong>production system</strong>.
+            </p>
+            <p className="text-sm">
+              Type <strong>DELETE</strong> to confirm:
+            </p>
+            <Input
+              value={hibobDeleteInput}
+              onChange={(e) => setHibobDeleteInput(e.target.value)}
+              placeholder="DELETE"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowHiBobDeleteModal(false); setHibobDeleteInput('') }}
+              disabled={hibobDeleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleHiBobUnsync}
+              disabled={hibobDeleteInput !== 'DELETE' || hibobDeleting}>
+              {hibobDeleting ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Deleting...</> : 'Delete from HiBob'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 }

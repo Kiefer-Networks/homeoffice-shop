@@ -24,7 +24,7 @@ from src.models.dto.order import (
 )
 from src.models.orm.user import User
 from src.services import order_service
-from src.services.hibob_order_sync import sync_order_to_hibob
+from src.services.hibob_order_sync import sync_order_to_hibob, unsync_order_from_hibob
 
 router = APIRouter(prefix="/orders", tags=["admin-orders"])
 
@@ -288,5 +288,33 @@ async def sync_order_hibob(
     return {
         "detail": f"Synced {entries_created} item{'s' if entries_created != 1 else ''} to HiBob",
         "synced_at": order_data.get("hibob_synced_at") if order_data else None,
+        "order": order_data,
+    }
+
+
+@router.delete("/{order_id}/sync-hibob")
+async def unsync_order_hibob(
+    order_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_staff),
+):
+    client = HiBobClient()
+    try:
+        entries_deleted = await unsync_order_from_hibob(db, order_id, admin.id, client)
+    except ValueError as e:
+        raise BadRequestError(str(e))
+
+    ip = request.client.host if request.client else None
+    await write_audit_log(
+        db, user_id=admin.id, action="admin.order.hibob_unsynced",
+        resource_type="order", resource_id=order_id,
+        details={"entries_deleted": entries_deleted},
+        ip_address=ip,
+    )
+
+    order_data = await order_service.get_order_with_items(db, order_id, include_invoices=True)
+    return {
+        "detail": f"Removed {entries_deleted} entr{'y' if entries_deleted == 1 else 'ies'} from HiBob",
         "order": order_data,
     }
