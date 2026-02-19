@@ -50,6 +50,7 @@ async def create_order_from_cart(
         select(CartItem, Product)
         .join(Product, CartItem.product_id == Product.id)
         .where(CartItem.user_id == user_id)
+        .with_for_update()
     )
     rows = result.all()
 

@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 import logging
 import re
 from datetime import datetime, timezone
@@ -185,7 +186,7 @@ async def export_audit_csv(
     )
     writer.writeheader()
     for item in items:
-        item["details"] = str(item["details"]) if item["details"] else ""
+        item["details"] = json.dumps(item["details"], default=str) if item["details"] else ""
         writer.writerow(item)
 
     return output.getvalue()

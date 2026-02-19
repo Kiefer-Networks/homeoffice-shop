@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,7 +24,7 @@ class CartItem(Base):
         UUID(as_uuid=True), ForeignKey("products.id"), nullable=False
     )
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    price_at_add_cents: Mapped[int] = mapped_column(Integer, nullable=False)
+    price_at_add_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     variant_asin: Mapped[str | None] = mapped_column(String(20), nullable=True)
     variant_value: Mapped[str | None] = mapped_column(String(100), nullable=True)
     added_at: Mapped[datetime] = mapped_column(

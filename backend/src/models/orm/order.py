@@ -78,7 +78,7 @@ class OrderItem(Base):
         UUID(as_uuid=True), ForeignKey("products.id"), nullable=False
     )
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    price_cents: Mapped[int] = mapped_column(Integer, nullable=False)
+    price_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     external_url: Mapped[str] = mapped_column(Text, nullable=False)
     vendor_ordered: Mapped[bool] = mapped_column(default=False, nullable=False)
     variant_asin: Mapped[str | None] = mapped_column(String(20), nullable=True)

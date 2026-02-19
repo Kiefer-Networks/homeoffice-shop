@@ -95,6 +95,9 @@ async def send_test_email(to: str) -> bool:
     if not smtp["hostname"]:
         return False
 
+    if "\n" in to or "\r" in to:
+        raise ValueError("Invalid email recipient: contains newline characters")
+
     from_name = get_setting("company_name")
     from_address = get_setting("smtp_from_address")
 
