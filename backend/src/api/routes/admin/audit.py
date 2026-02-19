@@ -22,7 +22,7 @@ async def list_audit_logs(
     resource_id: UUID | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
-    q: str | None = None,
+    q: str | None = Query(None, max_length=200),
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -59,7 +59,7 @@ async def export_audit_logs(
     resource_type: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
-    q: str | None = None,
+    q: str | None = Query(None, max_length=200),
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):

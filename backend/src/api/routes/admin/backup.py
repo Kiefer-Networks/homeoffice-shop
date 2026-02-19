@@ -37,7 +37,7 @@ async def export_backup(
     except RuntimeError as exc:
         raise BadRequestError(str(exc))
 
-    filepath = backup_service.get_backup_path(filename)
+    filepath = await backup_service.get_backup_path(filename)
     size = filepath.stat().st_size
 
     ip, ua = audit_context(request)
@@ -72,7 +72,7 @@ async def download_backup(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    filepath = backup_service.get_backup_path(filename)
+    filepath = await backup_service.get_backup_path(filename)
 
     return FileResponse(
         path=str(filepath),
@@ -106,7 +106,7 @@ async def get_schedule(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    schedule = await backup_service.get_schedule(db)
+    schedule = await backup_service.get_schedule()
     return BackupScheduleResponse(**schedule)
 
 

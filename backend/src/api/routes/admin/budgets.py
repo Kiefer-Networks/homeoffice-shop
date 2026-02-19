@@ -22,7 +22,7 @@ router = APIRouter(prefix="/budgets", tags=["admin-budgets"])
 @router.get("/adjustments", response_model=BudgetAdjustmentListResponse)
 async def list_adjustments(
     user_id: UUID | None = None,
-    q: str | None = None,
+    q: str | None = Query(None, max_length=200),
     sort: Literal["newest", "oldest", "amount_asc", "amount_desc"] = "newest",
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=100),

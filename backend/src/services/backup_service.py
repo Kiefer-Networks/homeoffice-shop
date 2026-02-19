@@ -4,6 +4,7 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,9 +16,6 @@ logger = logging.getLogger(__name__)
 
 SAFE_FILENAME_RE = re.compile(r"^homeoffice_shop_\d{4}-\d{2}-\d{2}(_\d{6})?\.dump$")
 
-# Keep backward-compatible aliases for existing imports
-_SAFE_FILENAME_RE = SAFE_FILENAME_RE
-
 _backup_lock = asyncio.Lock()
 
 
@@ -25,10 +23,6 @@ def backup_dir() -> Path:
     p = Path(settings.backup_dir)
     p.mkdir(parents=True, exist_ok=True)
     return p
-
-
-# Keep backward-compatible alias for existing imports
-_backup_dir = backup_dir
 
 
 async def _enforce_retention() -> None:
@@ -114,7 +108,7 @@ async def list_backups() -> list[dict]:
     return await asyncio.to_thread(_sync_list)
 
 
-def get_backup_path(filename: str) -> Path:
+async def get_backup_path(filename: str) -> Path:
     """Validate filename and return the full path.
 
     Raises BadRequestError for invalid filenames.
@@ -124,7 +118,7 @@ def get_backup_path(filename: str) -> Path:
         raise BadRequestError("Invalid filename")
 
     filepath = backup_dir() / filename
-    if not filepath.is_file():
+    if not await asyncio.to_thread(filepath.is_file):
         raise NotFoundError("Backup not found")
 
     return filepath
@@ -140,13 +134,13 @@ async def delete_backup(filename: str) -> None:
         raise BadRequestError("Invalid filename")
 
     filepath = backup_dir() / filename
-    if not filepath.is_file():
+    if not await asyncio.to_thread(filepath.is_file):
         raise NotFoundError("Backup not found")
 
     await asyncio.to_thread(filepath.unlink)
 
 
-async def get_schedule(db: AsyncSession) -> dict:
+async def get_schedule() -> dict:
     """Read backup schedule from settings and return as a dict."""
     return {
         "enabled": get_setting("backup_schedule_enabled") == "true",
@@ -169,7 +163,7 @@ async def update_schedule(
     minute: int | None = None,
     weekday: int | None = None,
     max_backups: int | None = None,
-    updated_by=None,
+    updated_by: UUID | None = None,
 ) -> dict:
     """Update backup schedule settings and return the new schedule."""
     if enabled is not None:
@@ -197,4 +191,4 @@ async def update_schedule(
             db, "backup_max_backups", str(max_backups), updated_by=updated_by,
         )
 
-    return await get_schedule(db)
+    return await get_schedule()

@@ -9,4 +9,5 @@ class HealthResponse(BaseModel):
 
 class HealthDetailedResponse(BaseModel):
     status: str
+    version: str | None = None
     checks: dict[str, Any]

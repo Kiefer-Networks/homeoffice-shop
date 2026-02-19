@@ -1,4 +1,5 @@
 import logging
+from datetime import date
 from urllib.parse import urlparse
 from uuid import UUID
 
@@ -152,8 +153,8 @@ async def create_budget_override(
     db: AsyncSession,
     user_id: UUID,
     *,
-    effective_from,
-    effective_until=None,
+    effective_from: date,
+    effective_until: date | None = None,
     initial_cents: int,
     yearly_increment_cents: int,
     reason: str,

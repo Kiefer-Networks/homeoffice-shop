@@ -36,8 +36,8 @@ async def amazon_search(
 
 @router.get("/product", response_model=AmazonProductResponse)
 async def amazon_product(
+    request: Request,
     asin: str = Query(min_length=10, max_length=10),
-    request: Request = None,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):

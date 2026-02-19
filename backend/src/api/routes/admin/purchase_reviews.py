@@ -23,8 +23,8 @@ router = APIRouter(prefix="/purchase-reviews", tags=["admin-purchase-reviews"])
 async def list_reviews(
     status: Literal["pending", "matched", "adjusted", "dismissed"] | None = None,
     user_id: UUID | None = None,
-    q: str | None = None,
-    sort: str = "date_desc",
+    q: str | None = Query(None, max_length=200),
+    sort: Literal["date_desc", "date_asc", "amount_desc", "amount_asc", "employee_asc", "employee_desc"] = "date_desc",
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),

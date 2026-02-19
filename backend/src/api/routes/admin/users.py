@@ -2,7 +2,7 @@ from uuid import UUID
 
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin, require_staff
@@ -210,3 +210,5 @@ async def delete_budget_override(
         details={"user_id": str(user_id)},
         ip_address=ip, user_agent=ua,
     )
+
+    return Response(status_code=204)

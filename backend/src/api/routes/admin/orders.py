@@ -31,7 +31,7 @@ router = APIRouter(prefix="/orders", tags=["admin-orders"])
 @router.get("", response_model=OrderListResponse)
 async def list_all_orders(
     status: Literal["pending", "ordered", "delivered", "rejected", "cancelled"] | None = None,
-    q: str | None = None,
+    q: str | None = Query(None, max_length=200),
     sort: Literal["newest", "oldest", "total_asc", "total_desc"] | None = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
