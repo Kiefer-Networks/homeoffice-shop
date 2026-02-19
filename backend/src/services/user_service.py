@@ -1,3 +1,5 @@
+import logging
+from urllib.parse import urlparse
 from uuid import UUID
 
 from sqlalchemy import select, func
@@ -11,6 +13,14 @@ from src.models.orm.user_budget_override import UserBudgetOverride
 from src.repositories import user_repo
 from src.services import budget_service, order_service
 from src.services.auth_service import logout as revoke_user_sessions
+
+logger = logging.getLogger(__name__)
+
+_ALLOWED_AVATAR_HOSTS = {
+    "images.hibob.com",
+    "lh3.googleusercontent.com",
+    "www.gravatar.com",
+}
 
 
 async def get_departments(db: AsyncSession) -> list[str]:
@@ -189,3 +199,50 @@ async def delete_budget_override(
         raise NotFoundError("Budget override not found")
     await db.delete(override)
     await db.flush()
+
+
+# ── Functions extracted from routes ──────────────────────────────────────────
+
+
+async def list_users(
+    db: AsyncSession,
+    *,
+    page: int = 1,
+    per_page: int = 50,
+    q: str | None = None,
+    department: str | None = None,
+    role: str | None = None,
+    is_active: bool | None = None,
+    sort: str = "name_asc",
+) -> dict:
+    """List users with pagination and filtering. Wraps user_repo.get_all()."""
+    users, total = await user_repo.get_all(
+        db, page=page, per_page=per_page, q=q,
+        department=department, role=role, is_active=is_active, sort=sort,
+    )
+    return {"items": users, "total": total, "page": page, "per_page": per_page}
+
+
+async def search_users(
+    db: AsyncSession, q: str, limit: int = 20,
+) -> list[User]:
+    """Search active users by name or email. Wraps user_repo.search_active()."""
+    return await user_repo.search_active(db, q, limit)
+
+
+async def get_avatar_url(db: AsyncSession, user_id: UUID) -> str:
+    """Look up a user's avatar URL and validate it against the allow-list.
+
+    Returns the validated avatar URL string.
+    Raises NotFoundError if the user or avatar is missing.
+    Raises BadRequestError if the URL is not from an allowed host.
+    """
+    target_user = await user_repo.get_by_id(db, user_id)
+    if not target_user or not target_user.avatar_url:
+        raise NotFoundError("Avatar not found")
+
+    parsed = urlparse(target_user.avatar_url)
+    if parsed.scheme not in ("https",) or parsed.hostname not in _ALLOWED_AVATAR_HOSTS:
+        raise BadRequestError("Invalid avatar URL")
+
+    return target_user.avatar_url

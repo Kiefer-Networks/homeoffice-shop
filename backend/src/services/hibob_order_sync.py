@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.integrations.hibob.client import HiBobClientProtocol
+from src.integrations.hibob.client import HiBobClient, HiBobClientProtocol
 from src.models.orm.order import Order, OrderItem
 from src.models.orm.product import Product
 from src.models.orm.user import User
@@ -19,13 +19,16 @@ async def unsync_order_from_hibob(
     db: AsyncSession,
     order_id: UUID,
     admin_id: UUID,
-    client: HiBobClientProtocol,
+    client: HiBobClientProtocol | None = None,
 ) -> int:
     """Remove order entries from HiBob and reset sync status.
 
     Returns the number of entries deleted.
     Raises ValueError on validation failures.
     """
+    if client is None:
+        client = HiBobClient()
+
     result = await db.execute(
         select(Order).where(Order.id == order_id).with_for_update()
     )
@@ -102,7 +105,7 @@ async def sync_order_to_hibob(
     db: AsyncSession,
     order_id: UUID,
     admin_id: UUID,
-    client: HiBobClientProtocol,
+    client: HiBobClientProtocol | None = None,
 ) -> int:
     """Push order items to the employee's HiBob custom table.
 
@@ -113,6 +116,9 @@ async def sync_order_to_hibob(
     per-item sync status so a retry after partial failure only
     sends the remaining items.
     """
+    if client is None:
+        client = HiBobClient()
+
     # Lock the order row to prevent concurrent syncs
     result = await db.execute(
         select(Order).where(Order.id == order_id).with_for_update()

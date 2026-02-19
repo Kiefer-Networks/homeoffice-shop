@@ -5,25 +5,35 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.core.config import settings
-from src.services.settings_service import get_setting
+from src.core.exceptions import BadRequestError, NotFoundError
+from src.services.settings_service import get_setting, update_setting
 
 logger = logging.getLogger(__name__)
 
-_SAFE_FILENAME_RE = re.compile(r"^homeoffice_shop_\d{4}-\d{2}-\d{2}(_\d{6})?\.dump$")
+SAFE_FILENAME_RE = re.compile(r"^homeoffice_shop_\d{4}-\d{2}-\d{2}(_\d{6})?\.dump$")
+
+# Keep backward-compatible aliases for existing imports
+_SAFE_FILENAME_RE = SAFE_FILENAME_RE
 
 _backup_lock = asyncio.Lock()
 
 
-def _backup_dir() -> Path:
+def backup_dir() -> Path:
     p = Path(settings.backup_dir)
     p.mkdir(parents=True, exist_ok=True)
     return p
 
 
+# Keep backward-compatible alias for existing imports
+_backup_dir = backup_dir
+
+
 async def _enforce_retention() -> None:
     """Delete oldest backups when exceeding retention count."""
-    bdir = _backup_dir()
+    bdir = backup_dir()
     dumps = sorted(bdir.glob("homeoffice_shop_*.dump"), key=lambda f: f.stat().st_mtime)
     limit = int(get_setting("backup_max_backups") or str(settings.backup_retention_count))
     limit = max(limit, 1)
@@ -45,7 +55,7 @@ async def run_backup(triggered_by: str = "scheduler") -> str:
     async with _backup_lock:
         now = datetime.now(timezone.utc)
         filename = f"homeoffice_shop_{now.strftime('%Y-%m-%d_%H%M%S')}.dump"
-        filepath = _backup_dir() / filename
+        filepath = backup_dir() / filename
 
         env = {**os.environ, "PGPASSWORD": settings.db_password}
 
@@ -71,3 +81,120 @@ async def run_backup(triggered_by: str = "scheduler") -> str:
         await _enforce_retention()
         logger.info("Backup created: %s (%d bytes, triggered by %s)", filename, len(stdout), triggered_by)
         return filename
+
+
+# ── Functions extracted from routes ──────────────────────────────────────────
+
+
+async def list_backups() -> list[dict]:
+    """List all backup files sorted by newest first.
+
+    Returns a list of dicts with filename, size_bytes, and created_at.
+    """
+    bdir = backup_dir()
+
+    def _sync_list():
+        files = sorted(
+            bdir.glob("homeoffice_shop_*.dump"),
+            key=lambda f: f.stat().st_mtime,
+            reverse=True,
+        )
+        items = []
+        for f in files:
+            stat = f.stat()
+            items.append({
+                "filename": f.name,
+                "size_bytes": stat.st_size,
+                "created_at": datetime.fromtimestamp(
+                    stat.st_mtime, tz=timezone.utc
+                ).isoformat(),
+            })
+        return items
+
+    return await asyncio.to_thread(_sync_list)
+
+
+def get_backup_path(filename: str) -> Path:
+    """Validate filename and return the full path.
+
+    Raises BadRequestError for invalid filenames.
+    Raises NotFoundError if the file does not exist.
+    """
+    if not SAFE_FILENAME_RE.match(filename):
+        raise BadRequestError("Invalid filename")
+
+    filepath = backup_dir() / filename
+    if not filepath.is_file():
+        raise NotFoundError("Backup not found")
+
+    return filepath
+
+
+async def delete_backup(filename: str) -> None:
+    """Validate and delete a backup file.
+
+    Raises BadRequestError for invalid filenames.
+    Raises NotFoundError if the file does not exist.
+    """
+    if not SAFE_FILENAME_RE.match(filename):
+        raise BadRequestError("Invalid filename")
+
+    filepath = backup_dir() / filename
+    if not filepath.is_file():
+        raise NotFoundError("Backup not found")
+
+    await asyncio.to_thread(filepath.unlink)
+
+
+async def get_schedule(db: AsyncSession) -> dict:
+    """Read backup schedule from settings and return as a dict."""
+    return {
+        "enabled": get_setting("backup_schedule_enabled") == "true",
+        "frequency": get_setting("backup_schedule_frequency") or "daily",
+        "hour": int(get_setting("backup_schedule_hour") or "2"),
+        "minute": int(get_setting("backup_schedule_minute") or "0"),
+        "weekday": int(get_setting("backup_schedule_weekday") or "0"),
+        "max_backups": int(
+            get_setting("backup_max_backups") or str(settings.backup_retention_count)
+        ),
+    }
+
+
+async def update_schedule(
+    db: AsyncSession,
+    *,
+    enabled: bool | None = None,
+    frequency: str | None = None,
+    hour: int | None = None,
+    minute: int | None = None,
+    weekday: int | None = None,
+    max_backups: int | None = None,
+    updated_by=None,
+) -> dict:
+    """Update backup schedule settings and return the new schedule."""
+    if enabled is not None:
+        await update_setting(
+            db, "backup_schedule_enabled", str(enabled).lower(), updated_by=updated_by,
+        )
+    if frequency is not None:
+        await update_setting(
+            db, "backup_schedule_frequency", frequency, updated_by=updated_by,
+        )
+    if hour is not None:
+        await update_setting(
+            db, "backup_schedule_hour", str(hour), updated_by=updated_by,
+        )
+    if minute is not None:
+        await update_setting(
+            db, "backup_schedule_minute", str(minute), updated_by=updated_by,
+        )
+    if weekday is not None:
+        await update_setting(
+            db, "backup_schedule_weekday", str(weekday), updated_by=updated_by,
+        )
+    if max_backups is not None:
+        await update_setting(
+            db, "backup_max_backups", str(max_backups), updated_by=updated_by,
+        )
+
+    return await get_schedule(db)

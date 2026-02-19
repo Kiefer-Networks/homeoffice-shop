@@ -94,3 +94,15 @@ async def seed_defaults(db: AsyncSession) -> None:
         if not result.scalar_one_or_none():
             db.add(AppSetting(key=key, value=value))
     await db.flush()
+
+
+_REDACTED_KEYS = {"smtp_password"}
+
+
+async def get_all_settings_redacted(db: AsyncSession) -> dict[str, str]:
+    """Return all settings with sensitive values replaced by '********'."""
+    all_settings = await get_all_settings(db)
+    for key in _REDACTED_KEYS:
+        if key in all_settings and all_settings[key]:
+            all_settings[key] = "********"
+    return all_settings

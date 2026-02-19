@@ -315,9 +315,12 @@ async def search_products(
 
 
 async def refresh_all_prices(
-    db: AsyncSession, amazon_client
+    db: AsyncSession, amazon_client=None,
 ) -> dict:
     """Refresh prices for all products with amazon_asin."""
+    if amazon_client is None:
+        amazon_client = AmazonClient()
+
     result = await db.execute(
         select(Product).where(Product.amazon_asin.isnot(None))
     )

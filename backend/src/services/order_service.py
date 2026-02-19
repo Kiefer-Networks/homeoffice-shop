@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import uuid as _uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
@@ -33,6 +34,10 @@ VALID_TRANSITIONS: dict[str, set[str]] = {
     "delivered": set(),
     "cancelled": set(),
 }
+
+ALLOWED_INVOICE_TYPES = {"application/pdf", "image/jpeg", "image/png"}
+ALLOWED_INVOICE_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
+MAX_INVOICE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 
 async def create_order_from_cart(
@@ -531,3 +536,51 @@ async def delete_invoice(
         await asyncio.to_thread(file_path.unlink)
 
     return str(file_path)
+
+
+async def upload_invoice(
+    db: AsyncSession,
+    order_id: UUID,
+    filename: str,
+    content: bytes,
+    content_type: str | None,
+    uploader_id: UUID,
+) -> OrderInvoice:
+    """Validate, store, and record an invoice file for an order.
+
+    Handles file-type validation, size checks, directory creation,
+    disk writes, and DB record creation.
+    """
+    from src.core.config import settings as _settings
+
+    # Validate file type
+    if content_type not in ALLOWED_INVOICE_TYPES:
+        raise BadRequestError("Invalid file type. Allowed: PDF, JPEG, PNG")
+
+    # Validate extension
+    ext = Path(filename).suffix.lower()
+    if ext not in ALLOWED_INVOICE_EXTENSIONS:
+        raise BadRequestError(
+            f"Invalid file extension. Allowed: {', '.join(ALLOWED_INVOICE_EXTENSIONS)}"
+        )
+
+    # Validate file size
+    if len(content) > MAX_INVOICE_SIZE_BYTES:
+        raise BadRequestError(
+            f"File too large. Maximum size is {MAX_INVOICE_SIZE_BYTES // (1024 * 1024)} MB"
+        )
+
+    # Create directory
+    invoice_dir = _settings.upload_dir / "invoices" / str(order_id)
+    invoice_dir.mkdir(parents=True, exist_ok=True)
+
+    # Generate unique filename
+    stored_name = f"{_uuid.uuid4()}{ext}"
+    file_path = invoice_dir / stored_name
+
+    # Write file (non-blocking)
+    await asyncio.to_thread(file_path.write_bytes, content)
+
+    # Create DB record
+    invoice = await add_invoice(db, order_id, filename, str(file_path), uploader_id)
+    return invoice
