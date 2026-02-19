@@ -53,6 +53,9 @@ class Order(Base):
     hibob_synced_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
+    delivery_reminder_sent: Mapped[bool] = mapped_column(
+        default=False, nullable=False
+    )
 
     items: Mapped[list["OrderItem"]] = relationship(
         "OrderItem", back_populates="order", cascade="all, delete-orphan"

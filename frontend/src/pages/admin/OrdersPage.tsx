@@ -437,7 +437,7 @@ export function AdminOrdersPage() {
               {selected.expected_delivery && (
                 <div className="text-sm">
                   <span className="font-medium">Expected delivery:</span>{' '}
-                  <span className="text-[hsl(var(--muted-foreground))]">{selected.expected_delivery}</span>
+                  <span className="text-[hsl(var(--muted-foreground))]">{formatDate(selected.expected_delivery)}</span>
                 </div>
               )}
 
@@ -577,9 +577,10 @@ export function AdminOrdersPage() {
             <div>
               <label className="text-sm font-medium">Expected delivery (optional)</label>
               <Input
+                type="date"
                 value={expectedDelivery}
                 onChange={(e) => setExpectedDelivery(e.target.value)}
-                placeholder="e.g. 2-3 weeks, March 2026..."
+                min={new Date().toISOString().split('T')[0]}
                 className="mt-1"
               />
             </div>
