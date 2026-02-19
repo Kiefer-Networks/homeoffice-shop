@@ -170,6 +170,13 @@ async def update_schedule(
     if frequency is not None and frequency not in VALID_FREQUENCIES:
         raise BadRequestError(f"Invalid frequency: must be one of {VALID_FREQUENCIES}")
 
+    if hour is not None and not (0 <= hour <= 23):
+        raise BadRequestError("Hour must be between 0 and 23")
+    if minute is not None and not (0 <= minute <= 59):
+        raise BadRequestError("Minute must be between 0 and 59")
+    if weekday is not None and not (0 <= weekday <= 6):
+        raise BadRequestError("Weekday must be between 0 (Monday) and 6 (Sunday)")
+
     if enabled is not None:
         await update_setting(
             db, "backup_schedule_enabled", str(enabled).lower(), updated_by=updated_by,

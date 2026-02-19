@@ -26,10 +26,11 @@ async def create(
     return token
 
 
-async def get_by_jti(db: AsyncSession, jti: str) -> RefreshToken | None:
-    result = await db.execute(
-        select(RefreshToken).where(RefreshToken.jti == jti)
-    )
+async def get_by_jti(db: AsyncSession, jti: str, *, for_update: bool = False) -> RefreshToken | None:
+    stmt = select(RefreshToken).where(RefreshToken.jti == jti)
+    if for_update:
+        stmt = stmt.with_for_update()
+    result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
 

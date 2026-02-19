@@ -67,6 +67,9 @@ async def send_email(
         from_name = get_setting("company_name")
         from_address = get_setting("smtp_from_address")
 
+        if "\n" in to or "\r" in to:
+            raise ValueError("Invalid email recipient: contains newline characters")
+
         message = MIMEMultipart("alternative")
         message["From"] = formataddr((from_name, from_address))
         message["To"] = to

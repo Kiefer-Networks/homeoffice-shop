@@ -106,7 +106,7 @@ async def add_to_cart(
             CartItem.user_id == user_id,
             CartItem.product_id == product_id,
             CartItem.variant_asin == variant_asin,
-        )
+        ).with_for_update()
     )
     cart_item = existing.scalar_one_or_none()
 

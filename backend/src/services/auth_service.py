@@ -60,7 +60,7 @@ async def refresh_tokens(db: AsyncSession, refresh_token_str: str) -> TokenPair:
     if not jti or not token_family or not user_id_str:
         raise UnauthorizedError("Invalid refresh token payload")
 
-    stored_token = await refresh_token_repo.get_by_jti(db, jti)
+    stored_token = await refresh_token_repo.get_by_jti(db, jti, for_update=True)
     if not stored_token:
         raise UnauthorizedError("Refresh token not found")
 
