@@ -71,11 +71,15 @@ async def sync_purchases(
     db: AsyncSession,
     client: HiBobClientProtocol,
     triggered_by: UUID | None = None,
+    log_id: UUID | None = None,
 ) -> HiBobPurchaseSyncLog:
     """Sync HiBob custom table purchases into the shop budget system."""
-    log = HiBobPurchaseSyncLog(status="running", triggered_by=triggered_by)
-    db.add(log)
-    await db.flush()
+    if log_id:
+        log = await db.get(HiBobPurchaseSyncLog, log_id)
+    else:
+        log = HiBobPurchaseSyncLog(status="running", triggered_by=triggered_by)
+        db.add(log)
+        await db.flush()
 
     try:
         # Reload settings from DB to handle multi-worker cache

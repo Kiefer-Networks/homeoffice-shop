@@ -1,7 +1,9 @@
 import asyncio
 import logging
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query, Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin
@@ -13,11 +15,14 @@ from src.models.dto.hibob import (
     HiBobPurchaseSyncLogListResponse,
     HiBobSyncLogListResponse,
 )
+from src.models.orm.hibob_purchase_sync_log import HiBobPurchaseSyncLog
 from src.models.orm.user import User
 from src.notifications.service import notify_staff_email, notify_staff_slack
 from src.services import hibob_service
 from src.services.purchase_sync import sync_purchases
 from src.services.settings_service import get_setting
+
+SYNC_STALE_MINUTES = 30
 
 logger = logging.getLogger(__name__)
 
@@ -91,10 +96,12 @@ async def _run_employee_sync(admin_id, ip: str | None, user_agent: str | None = 
                 )
 
             # After successful employee sync, also trigger purchase sync
+            purchase_log_id = None
             if log.status == "completed":
                 table_id = get_setting("hibob_purchase_table_id")
                 if table_id:
-                    purchase_log = await sync_purchases(db, client, triggered_by=admin_id)
+                    purchase_log_id = await _create_sync_log(admin_id)
+                    purchase_log = await sync_purchases(db, client, triggered_by=admin_id, log_id=purchase_log_id)
                     if purchase_log.pending_review > 0:
                         await notify_staff_email(
                             db, event="hibob.purchase_review",
@@ -110,15 +117,41 @@ async def _run_employee_sync(admin_id, ip: str | None, user_agent: str | None = 
             await db.commit()
         except Exception:
             await db.rollback()
+            if purchase_log_id:
+                await _mark_sync_failed(purchase_log_id)
             logger.exception("Background employee sync failed")
+
+
+async def _create_sync_log(triggered_by):
+    """Create a sync log entry in a separate committed transaction.
+
+    This ensures the 'running' status is visible to all workers immediately.
+    """
+    async with async_session_factory() as status_db:
+        entry = HiBobPurchaseSyncLog(status="running", triggered_by=triggered_by)
+        status_db.add(entry)
+        await status_db.commit()
+        return entry.id
+
+
+async def _mark_sync_failed(log_id) -> None:
+    """Mark a sync log as failed in a separate transaction (for error recovery)."""
+    async with async_session_factory() as err_db:
+        log = await err_db.get(HiBobPurchaseSyncLog, log_id)
+        if log and log.status == "running":
+            log.status = "failed"
+            log.error_message = "Unexpected error in background task"
+            log.completed_at = datetime.now(timezone.utc)
+            await err_db.commit()
 
 
 async def _run_purchase_sync(admin_id, ip: str | None, user_agent: str | None = None) -> None:
     """Run purchase sync in the background with its own DB session."""
+    log_id = await _create_sync_log(admin_id)
     async with async_session_factory() as db:
         try:
             client = HiBobClient()
-            purchase_log = await sync_purchases(db, client, triggered_by=admin_id)
+            purchase_log = await sync_purchases(db, client, triggered_by=admin_id, log_id=log_id)
 
             await write_audit_log(
                 db, user_id=admin_id, action="admin.hibob.purchase_sync_triggered",
@@ -149,6 +182,7 @@ async def _run_purchase_sync(admin_id, ip: str | None, user_agent: str | None = 
             await db.commit()
         except Exception:
             await db.rollback()
+            await _mark_sync_failed(log_id)
             logger.exception("Background purchase sync failed")
 
 
@@ -178,10 +212,20 @@ async def get_sync_logs(
 
 @router.get("/purchase-sync-status")
 async def purchase_sync_status(
+    db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
     """Return whether a purchase sync is currently running."""
-    running = _purchase_sync_lock.locked() or _employee_sync_lock.locked()
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=SYNC_STALE_MINUTES)
+    result = await db.execute(
+        select(HiBobPurchaseSyncLog)
+        .where(
+            HiBobPurchaseSyncLog.status == "running",
+            HiBobPurchaseSyncLog.started_at > cutoff,
+        )
+        .limit(1)
+    )
+    running = result.scalar_one_or_none() is not None
     return {"running": running}
 
 
