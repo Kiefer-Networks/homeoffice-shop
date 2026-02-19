@@ -2,7 +2,6 @@ import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin
@@ -12,11 +11,8 @@ from src.integrations.hibob.client import HiBobClient
 from src.integrations.hibob.sync import sync_employees
 from src.models.dto.hibob import (
     HiBobPurchaseSyncLogListResponse,
-    HiBobPurchaseSyncLogResponse,
     HiBobSyncLogListResponse,
-    HiBobSyncLogResponse,
 )
-from src.models.orm.hibob_purchase_sync_log import HiBobPurchaseSyncLog
 from src.models.orm.user import User
 from src.notifications.service import notify_staff_email, notify_staff_slack
 from src.services import hibob_service
@@ -182,16 +178,10 @@ async def get_sync_logs(
 
 @router.get("/purchase-sync-status")
 async def purchase_sync_status(
-    db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
     """Return whether a purchase sync is currently running."""
-    result = await db.execute(
-        select(HiBobPurchaseSyncLog)
-        .where(HiBobPurchaseSyncLog.status == "running")
-        .limit(1)
-    )
-    running = result.scalar_one_or_none() is not None
+    running = _purchase_sync_lock.locked() or _employee_sync_lock.locked()
     return {"running": running}
 
 

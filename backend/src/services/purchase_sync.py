@@ -253,6 +253,10 @@ async def sync_purchases(
         log.auto_adjusted = auto_adjusted_count
         log.pending_review = pending_count
         log.completed_at = datetime.now(timezone.utc)
+        logger.info(
+            "Purchase sync completed: %d entries, %d matched, %d adjusted, %d pending",
+            entries_found, matched_count, auto_adjusted_count, pending_count,
+        )
 
     except Exception as e:
         log.status = "failed"
