@@ -378,8 +378,8 @@ async def update_order_item_check(
     order = order_result.scalar_one_or_none()
     if not order:
         raise NotFoundError("Order not found")
-    if order.status not in ("pending", "ordered"):
-        raise BadRequestError("Cannot modify items on a completed order")
+    if order.status not in ("pending", "ordered", "delivered"):
+        raise BadRequestError("Cannot modify items on a rejected or cancelled order")
 
     result = await db.execute(
         select(OrderItem).where(
