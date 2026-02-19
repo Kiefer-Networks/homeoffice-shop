@@ -213,6 +213,7 @@ export interface Order {
   invoices: OrderInvoice[]
   created_at: string
   updated_at: string
+  hibob_synced_at: string | null
 }
 
 export interface BudgetResponse {

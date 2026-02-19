@@ -8,7 +8,7 @@ import { adminApi } from '@/services/adminApi'
 import { formatCents, formatDate } from '@/lib/utils'
 import { useUiStore } from '@/stores/uiStore'
 import {
-  Search, ExternalLink, ChevronDown, ChevronUp, Upload, Download, Trash2, Loader2, FileText, Link2,
+  Search, ExternalLink, ChevronDown, ChevronUp, Upload, Download, Trash2, Loader2, FileText, Link2, CloudUpload, Check,
 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { getAccessToken } from '@/lib/token'
@@ -67,6 +67,10 @@ export function AdminOrdersPage() {
   // Invoice upload
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // HiBob sync
+  const [showHiBobDialog, setShowHiBobDialog] = useState(false)
+  const [hibobSyncing, setHibobSyncing] = useState(false)
 
   const { addToast } = useUiStore()
   const apiUrl = import.meta.env.VITE_API_URL || ''
@@ -206,6 +210,22 @@ export function AdminOrdersPage() {
       addToast({ title: 'Invoice deleted' })
     } catch (err: unknown) {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+    }
+  }
+
+  // --- HiBob sync ---
+  const handleHiBobSync = async () => {
+    if (!selected) return
+    setHibobSyncing(true)
+    try {
+      const { data } = await adminApi.syncOrderToHiBob(selected.id)
+      setShowHiBobDialog(false)
+      await refreshSelected(selected.id)
+      addToast({ title: data.detail })
+    } catch (err: unknown) {
+      addToast({ title: 'Sync failed', description: getErrorMessage(err), variant: 'destructive' })
+    } finally {
+      setHibobSyncing(false)
     }
   }
 
@@ -525,6 +545,22 @@ export function AdminOrdersPage() {
                   ))}
                 </div>
               )}
+
+              {/* HiBob sync */}
+              {selected.status === 'delivered' && (
+                <div className="flex items-center gap-2 pt-2 border-t">
+                  {selected.hibob_synced_at ? (
+                    <div className="flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))]">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span>Synced to HiBob on {formatDate(selected.hibob_synced_at)}</span>
+                    </div>
+                  ) : (
+                    <Button variant="outline" onClick={() => setShowHiBobDialog(true)}>
+                      <CloudUpload className="h-4 w-4 mr-1" /> Sync to HiBob
+                    </Button>
+                  )}
+                </div>
+              )}
             </>
           )}
         </DialogContent>
@@ -568,6 +604,24 @@ export function AdminOrdersPage() {
               disabled={statusLoading || (newStatus === 'rejected' && !adminNote)}
             >
               {statusLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Updating...</> : 'Confirm'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== HiBob Sync Confirmation Dialog ===== */}
+      <Dialog open={showHiBobDialog} onOpenChange={setShowHiBobDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sync to HiBob</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-[hsl(var(--muted-foreground))]">
+            This will create {selected?.items.length ?? 0} entr{(selected?.items.length ?? 0) === 1 ? 'y' : 'ies'} in the employee's HiBob profile. Continue?
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowHiBobDialog(false)}>Cancel</Button>
+            <Button onClick={handleHiBobSync} disabled={hibobSyncing}>
+              {hibobSyncing ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Syncing...</> : 'Confirm'}
             </Button>
           </DialogFooter>
         </DialogContent>

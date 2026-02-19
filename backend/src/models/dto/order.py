@@ -66,6 +66,7 @@ class OrderResponse(BaseModel):
     invoices: list[OrderInvoiceResponse] = []
     created_at: datetime
     updated_at: datetime
+    hibob_synced_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

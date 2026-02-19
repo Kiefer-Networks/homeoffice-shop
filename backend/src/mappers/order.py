@@ -51,4 +51,5 @@ def order_to_dict(
         "invoices": invoices or [],
         "created_at": order.created_at,
         "updated_at": order.updated_at,
+        "hibob_synced_at": order.hibob_synced_at,
     }

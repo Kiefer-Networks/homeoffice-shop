@@ -47,6 +47,12 @@ class Order(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+    hibob_synced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    hibob_synced_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
 
     items: Mapped[list["OrderItem"]] = relationship(
         "OrderItem", back_populates="order", cascade="all, delete-orphan"
@@ -74,6 +80,7 @@ class OrderItem(Base):
     vendor_ordered: Mapped[bool] = mapped_column(default=False, nullable=False)
     variant_asin: Mapped[str | None] = mapped_column(String(20), nullable=True)
     variant_value: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    hibob_synced: Mapped[bool] = mapped_column(default=False, nullable=False)
 
     order: Mapped["Order"] = relationship("Order", back_populates="items")
 

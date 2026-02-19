@@ -17,6 +17,7 @@ class HiBobClientProtocol(Protocol):
     async def get_employees(self) -> list[HiBobEmployee]: ...
     async def get_avatar_url(self, employee_id: str) -> str | None: ...
     async def get_custom_table(self, employee_id: str, table_id: str) -> list[dict]: ...
+    async def create_custom_table_entry(self, employee_id: str, table_id: str, entry: dict) -> dict: ...
 
 
 class HiBobClient:
@@ -132,6 +133,28 @@ class HiBobClient:
                 return resp.json().get("values", [])
 
 
+    async def create_custom_table_entry(self, employee_id: str, table_id: str, entry: dict) -> dict:
+        """Create a new entry in an employee's custom table."""
+        max_retries = 5
+        for attempt in range(max_retries + 1):
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    f"{HIBOB_API_BASE}/people/custom-tables/{employee_id}/{table_id}",
+                    headers={**self._headers, "Content-Type": "application/json"},
+                    json=entry,
+                )
+                if resp.status_code == 429 and attempt < max_retries:
+                    wait = min(2 ** attempt, 10)
+                    logger.warning(
+                        "HiBob rate limit hit for employee %s, retrying in %ds (attempt %d/%d)",
+                        employee_id, wait, attempt + 1, max_retries,
+                    )
+                    await asyncio.sleep(wait)
+                    continue
+                resp.raise_for_status()
+                return resp.json() if resp.content else {}
+
+
 class FakeHiBobClient:
     """Test fake returning predefined data."""
 
@@ -151,3 +174,8 @@ class FakeHiBobClient:
 
     async def get_custom_table(self, employee_id: str, table_id: str) -> list[dict]:
         return self.custom_tables.get((employee_id, table_id), [])
+
+    async def create_custom_table_entry(self, employee_id: str, table_id: str, entry: dict) -> dict:
+        key = (employee_id, table_id)
+        self.custom_tables.setdefault(key, []).append(entry)
+        return entry

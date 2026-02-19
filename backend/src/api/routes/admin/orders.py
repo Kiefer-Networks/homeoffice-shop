@@ -12,6 +12,7 @@ from src.api.dependencies.database import get_db
 from src.audit.service import write_audit_log
 from src.core.config import settings
 from src.core.exceptions import BadRequestError, NotFoundError
+from src.integrations.hibob.client import HiBobClient
 from src.models.dto import DetailResponse
 from src.models.dto.order import (
     OrderItemCheckUpdate,
@@ -23,6 +24,7 @@ from src.models.dto.order import (
 )
 from src.models.orm.user import User
 from src.services import order_service
+from src.services.hibob_order_sync import sync_order_to_hibob
 
 router = APIRouter(prefix="/orders", tags=["admin-orders"])
 
@@ -259,3 +261,32 @@ async def check_order_item(
         ip_address=ip,
     )
     return {"detail": "Item updated", "vendor_ordered": item.vendor_ordered}
+
+
+@router.post("/{order_id}/sync-hibob")
+async def sync_order_hibob(
+    order_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_staff),
+):
+    client = HiBobClient()
+    try:
+        entries_created = await sync_order_to_hibob(db, order_id, admin.id, client)
+    except ValueError as e:
+        raise BadRequestError(str(e))
+
+    ip = request.client.host if request.client else None
+    await write_audit_log(
+        db, user_id=admin.id, action="admin.order.hibob_synced",
+        resource_type="order", resource_id=order_id,
+        details={"entries_created": entries_created},
+        ip_address=ip,
+    )
+
+    order_data = await order_service.get_order_with_items(db, order_id, include_invoices=True)
+    return {
+        "detail": f"Synced {entries_created} item{'s' if entries_created != 1 else ''} to HiBob",
+        "synced_at": order_data.get("hibob_synced_at") if order_data else None,
+        "order": order_data,
+    }
