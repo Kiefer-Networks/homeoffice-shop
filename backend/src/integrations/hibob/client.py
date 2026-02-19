@@ -151,6 +151,11 @@ class HiBobClient:
                     )
                     await asyncio.sleep(wait)
                     continue
+                if resp.status_code >= 400:
+                    logger.error(
+                        "HiBob custom table POST failed for employee %s: %d %s — payload: %s",
+                        employee_id, resp.status_code, resp.text, entry,
+                    )
                 resp.raise_for_status()
                 return resp.json() if resp.content else {}
 
