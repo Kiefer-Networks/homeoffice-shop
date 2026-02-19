@@ -26,8 +26,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/backup", tags=["admin-backup"])
 
-_backup_lock = asyncio.Lock()
-
 
 @router.post(
     "/export",
@@ -38,31 +36,27 @@ async def export_backup(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    if _backup_lock.locked():
-        raise BadRequestError("A backup is already in progress")
+    try:
+        filename = await run_backup(triggered_by=str(admin.id))
+    except RuntimeError as exc:
+        raise BadRequestError(str(exc))
 
-    async with _backup_lock:
-        try:
-            filename = await run_backup(triggered_by=str(admin.id))
-        except RuntimeError:
-            raise BadRequestError("Database backup failed")
+    filepath = _backup_dir() / filename
+    size = filepath.stat().st_size
 
-        filepath = _backup_dir() / filename
-        size = filepath.stat().st_size
+    ip, ua = audit_context(request)
+    await write_audit_log(
+        db, user_id=admin.id, action="admin.backup.exported",
+        resource_type="database",
+        details={"filename": filename, "size_bytes": size},
+        ip_address=ip, user_agent=ua,
+    )
 
-        ip, ua = audit_context(request)
-        await write_audit_log(
-            db, user_id=admin.id, action="admin.backup.exported",
-            resource_type="database",
-            details={"filename": filename, "size_bytes": size},
-            ip_address=ip, user_agent=ua,
-        )
-
-        return FileResponse(
-            path=str(filepath),
-            media_type="application/octet-stream",
-            filename=filename,
-        )
+    return FileResponse(
+        path=str(filepath),
+        media_type="application/octet-stream",
+        filename=filename,
+    )
 
 
 @router.get("/list", response_model=BackupListResponse)
@@ -124,7 +118,7 @@ async def delete_backup(
         db, user_id=admin.id, action="admin.backup.deleted",
         resource_type="database",
         details={"filename": filename},
-        ip_address=ip,
+        ip_address=ip, user_agent=ua,
     )
 
     return Response(status_code=204)
@@ -174,7 +168,7 @@ async def update_schedule(
             "hour": body.hour, "minute": body.minute, "weekday": body.weekday,
             "max_backups": body.max_backups,
         },
-        ip_address=ip,
+        ip_address=ip, user_agent=ua,
     )
 
     return await get_schedule(db=db, admin=admin)

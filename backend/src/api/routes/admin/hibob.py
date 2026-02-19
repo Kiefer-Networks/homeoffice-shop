@@ -1,12 +1,12 @@
 import asyncio
 
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.audit.service import audit_context
+from src.core.exceptions import ConflictError
 from src.models.dto.hibob import (
     HiBobPurchaseSyncLogListResponse,
     HiBobSyncLogListResponse,
@@ -32,7 +32,7 @@ async def trigger_sync(
     admin: User = Depends(require_admin),
 ):
     if is_employee_sync_locked():
-        return JSONResponse(status_code=409, content={"detail": "Sync already in progress"})
+        raise ConflictError("Sync already in progress")
     ip, ua = audit_context(request)
     asyncio.create_task(guarded_employee_sync(admin.id, ip, ua))
     return {"detail": "Sync started in background"}
@@ -66,7 +66,7 @@ async def trigger_purchase_sync(
     admin: User = Depends(require_admin),
 ):
     if is_purchase_sync_locked():
-        return JSONResponse(status_code=409, content={"detail": "Purchase sync already in progress"})
+        raise ConflictError("Sync already in progress")
     ip, ua = audit_context(request)
     asyncio.create_task(guarded_purchase_sync(admin.id, ip, ua))
     return {"detail": "Purchase sync started in background"}

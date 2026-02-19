@@ -51,7 +51,7 @@ class OrderResponse(BaseModel):
     user_id: UUID
     user_email: str | None = None
     user_display_name: str | None = None
-    status: str
+    status: Literal["pending", "ordered", "delivered", "rejected", "cancelled"]
     total_cents: int
     delivery_note: str | None = None
     admin_note: str | None = None

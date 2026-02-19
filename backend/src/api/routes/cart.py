@@ -76,7 +76,7 @@ async def remove_from_cart(
             db, user_id=user.id, action="cart.item_removed",
             resource_type="cart_item",
             details={"product_id": str(product_id)},
-            ip_address=ip,
+            ip_address=ip, user_agent=ua,
         )
     return Response(status_code=204)
 
