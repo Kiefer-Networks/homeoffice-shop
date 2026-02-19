@@ -194,19 +194,22 @@ export function CreateProductDialog({ open, onClose, onCreated, categories, bran
           )}
 
           <Input placeholder="Product name *" value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />
-          <select value={form.brand_id} onChange={(e) => setForm(f => ({ ...f, brand_id: e.target.value }))}
+          <label htmlFor="create-brand" className="sr-only">Brand</label>
+          <select id="create-brand" value={form.brand_id} onChange={(e) => setForm(f => ({ ...f, brand_id: e.target.value }))}
             className="w-full rounded-md border px-3 py-2 text-sm">
             <option value="">Select brand *</option>
             {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
-          <select value={form.category_id} onChange={(e) => setForm(f => ({ ...f, category_id: e.target.value }))}
+          <label htmlFor="create-category" className="sr-only">Category</label>
+          <select id="create-category" value={form.category_id} onChange={(e) => setForm(f => ({ ...f, category_id: e.target.value }))}
             className="w-full rounded-md border px-3 py-2 text-sm">
             <option value="">Select category *</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <Input placeholder="Price in EUR (e.g. 1,299.99)" value={form.price_euro} onChange={(e) => setForm(f => ({ ...f, price_euro: e.target.value }))} />
           <Input placeholder="External URL *" value={form.external_url} onChange={(e) => setForm(f => ({ ...f, external_url: e.target.value }))} />
-          <textarea placeholder="Description" value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
+          <label htmlFor="create-description" className="sr-only">Description</label>
+          <textarea id="create-description" placeholder="Description" value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
             className="w-full rounded-md border px-3 py-2 text-sm min-h-[80px]" />
 
           <VariantTable variants={loadedVariants} />

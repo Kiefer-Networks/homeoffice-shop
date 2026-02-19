@@ -74,19 +74,22 @@ export function EditProductDialog({ product, open, onClose, onUpdated, categorie
         <DialogHeader><DialogTitle>Edit Product</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <Input placeholder="Product name *" value={editForm.name} onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))} />
-          <select value={editForm.brand_id} onChange={(e) => setEditForm(f => ({ ...f, brand_id: e.target.value }))}
+          <label htmlFor="edit-brand" className="sr-only">Brand</label>
+          <select id="edit-brand" value={editForm.brand_id} onChange={(e) => setEditForm(f => ({ ...f, brand_id: e.target.value }))}
             className="w-full rounded-md border px-3 py-2 text-sm">
             <option value="">Select brand</option>
             {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
-          <select value={editForm.category_id} onChange={(e) => setEditForm(f => ({ ...f, category_id: e.target.value }))}
+          <label htmlFor="edit-category" className="sr-only">Category</label>
+          <select id="edit-category" value={editForm.category_id} onChange={(e) => setEditForm(f => ({ ...f, category_id: e.target.value }))}
             className="w-full rounded-md border px-3 py-2 text-sm">
             <option value="">Select category *</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <Input placeholder="Price in EUR (e.g. 1,299.99)" value={editForm.price_euro} onChange={(e) => setEditForm(f => ({ ...f, price_euro: e.target.value }))} />
           <Input placeholder="External URL *" value={editForm.external_url} onChange={(e) => setEditForm(f => ({ ...f, external_url: e.target.value }))} />
-          <textarea placeholder="Description" value={editForm.description} onChange={(e) => setEditForm(f => ({ ...f, description: e.target.value }))}
+          <label htmlFor="edit-description" className="sr-only">Description</label>
+          <textarea id="edit-description" placeholder="Description" value={editForm.description} onChange={(e) => setEditForm(f => ({ ...f, description: e.target.value }))}
             className="w-full rounded-md border px-3 py-2 text-sm min-h-[80px]" />
 
           {product?.variants && <VariantTable variants={product.variants} />}

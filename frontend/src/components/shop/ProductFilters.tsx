@@ -17,6 +17,7 @@ export function ProductFilters({ facets, categories }: Props) {
         <h3 className="font-semibold mb-2 text-sm">Category</h3>
         <div className="space-y-1">
           <button
+            aria-label="Filter by category: All Categories"
             onClick={() => setFilter('category', '')}
             className={`block w-full text-left px-2 py-1 rounded text-sm ${!category ? 'bg-[hsl(var(--primary))] text-white' : 'hover:bg-gray-100'}`}
           >
@@ -25,6 +26,7 @@ export function ProductFilters({ facets, categories }: Props) {
           {categories.map((cat) => (
             <button
               key={cat.id}
+              aria-label={`Filter by category: ${cat.name}`}
               onClick={() => setFilter('category', cat.id)}
               className={`block w-full text-left px-2 py-1 rounded text-sm ${category === cat.id ? 'bg-[hsl(var(--primary))] text-white' : 'hover:bg-gray-100'}`}
             >
@@ -44,6 +46,7 @@ export function ProductFilters({ facets, categories }: Props) {
           <h3 className="font-semibold mb-2 text-sm">Brand</h3>
           <div className="space-y-1 max-h-40 overflow-y-auto">
             <button
+              aria-label="Filter by brand: All Brands"
               onClick={() => setFilter('brand', '')}
               className={`block w-full text-left px-2 py-1 rounded text-sm ${!brand ? 'font-medium' : 'hover:bg-gray-100'}`}
             >
@@ -52,6 +55,7 @@ export function ProductFilters({ facets, categories }: Props) {
             {facets.brands.map((b) => (
               <button
                 key={b.value}
+                aria-label={`Filter by brand: ${b.value}`}
                 onClick={() => setFilter('brand', b.value)}
                 className={`block w-full text-left px-2 py-1 rounded text-sm ${brand === b.value ? 'bg-[hsl(var(--primary))] text-white' : 'hover:bg-gray-100'}`}
               >
@@ -67,6 +71,7 @@ export function ProductFilters({ facets, categories }: Props) {
           <h3 className="font-semibold mb-2 text-sm">Color</h3>
           <div className="space-y-1 max-h-40 overflow-y-auto">
             <button
+              aria-label="Filter by color: All Colors"
               onClick={() => setFilter('color', '')}
               className={`block w-full text-left px-2 py-1 rounded text-sm ${!color ? 'font-medium' : 'hover:bg-gray-100'}`}
             >
@@ -75,6 +80,7 @@ export function ProductFilters({ facets, categories }: Props) {
             {facets.colors.map((c) => (
               <button
                 key={c.value}
+                aria-label={`Filter by color: ${c.value}`}
                 onClick={() => setFilter('color', c.value)}
                 className={`block w-full text-left px-2 py-1 rounded text-sm ${color === c.value ? 'bg-[hsl(var(--primary))] text-white' : 'hover:bg-gray-100'}`}
               >
@@ -90,6 +96,7 @@ export function ProductFilters({ facets, categories }: Props) {
           <h3 className="font-semibold mb-2 text-sm">Material</h3>
           <div className="space-y-1 max-h-40 overflow-y-auto">
             <button
+              aria-label="Filter by material: All Materials"
               onClick={() => setFilter('material', '')}
               className={`block w-full text-left px-2 py-1 rounded text-sm ${!material ? 'font-medium' : 'hover:bg-gray-100'}`}
             >
@@ -98,6 +105,7 @@ export function ProductFilters({ facets, categories }: Props) {
             {facets.materials.map((m) => (
               <button
                 key={m.value}
+                aria-label={`Filter by material: ${m.value}`}
                 onClick={() => setFilter('material', m.value)}
                 className={`block w-full text-left px-2 py-1 rounded text-sm ${material === m.value ? 'bg-[hsl(var(--primary))] text-white' : 'hover:bg-gray-100'}`}
               >
@@ -131,7 +139,9 @@ export function ProductFilters({ facets, categories }: Props) {
 
       <div>
         <h3 className="font-semibold mb-2 text-sm">Sort</h3>
+        <label htmlFor="sort-select" className="sr-only">Sort</label>
         <select
+          id="sort-select"
           value={sort}
           onChange={(e) => setFilter('sort', e.target.value)}
           className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
