@@ -19,7 +19,7 @@ from src.models.orm.cart_item import CartItem
 from src.models.orm.order import Order, OrderInvoice, OrderItem
 from src.models.orm.product import Product
 from src.models.orm.user import User
-from src.notifications.service import notify_staff_slack, notify_user_email
+from src.notifications.service import notify_staff_email, notify_staff_slack, notify_user_email
 from src.mappers.order import order_item_to_dict, invoice_to_dict, order_to_dict
 from src.services.budget_service import check_budget_for_order, refresh_budget_cache
 
@@ -195,6 +195,58 @@ async def notify_status_changed(
             db, event="order.status_changed",
             text=f"Order {str(order.id)[:8]} status changed to {new_status}.",
         )
+
+
+async def notify_order_created(
+    db: AsyncSession,
+    order: Order,
+    user: User,
+    order_data: dict | None,
+) -> None:
+    """Send email and Slack notifications after a new order is created."""
+    from src.core.config import settings as _settings
+    await notify_staff_email(
+        db, event="order.created",
+        subject=f"New Order from {user.display_name}",
+        template_name="order_created.html",
+        context={
+            "user_name": user.display_name,
+            "user_email": user.email,
+            "items": order_data["items"] if order_data else [],
+            "total_cents": order.total_cents,
+            "delivery_note": order.delivery_note,
+            "admin_url": f"{_settings.frontend_url}/admin/orders/{order.id}",
+        },
+    )
+    await notify_staff_slack(
+        db, event="order.created",
+        text=f"New order from {user.display_name} ({user.email}) - Total: EUR {order.total_cents / 100:.2f}",
+    )
+
+
+async def notify_order_cancelled_by_user(
+    db: AsyncSession,
+    order: Order,
+    user: User,
+    reason: str,
+) -> None:
+    """Send email and Slack notifications after a user cancels their order."""
+    await notify_staff_email(
+        db, event="order.cancelled",
+        subject=f"Order Cancelled by {user.display_name}",
+        template_name="order_cancelled.html",
+        context={
+            "user_name": user.display_name,
+            "user_email": user.email,
+            "order_id": str(order.id),
+            "reason": reason,
+            "total_cents": order.total_cents,
+        },
+    )
+    await notify_staff_slack(
+        db, event="order.cancelled",
+        text=f"Order #{str(order.id)[:8]} cancelled by {user.display_name}: {reason}",
+    )
 
 
 _order_item_to_dict = order_item_to_dict
@@ -430,6 +482,33 @@ async def add_invoice(
     )
     db.add(invoice)
     await db.flush()
+    return invoice
+
+
+async def get_invoice(
+    db: AsyncSession, order_id: UUID, invoice_id: UUID
+) -> OrderInvoice:
+    """Retrieve an invoice record with path traversal validation."""
+    result = await db.execute(
+        select(OrderInvoice).where(
+            OrderInvoice.id == invoice_id,
+            OrderInvoice.order_id == order_id,
+        )
+    )
+    invoice = result.scalar_one_or_none()
+    if not invoice:
+        raise NotFoundError("Invoice not found")
+
+    from src.core.config import settings as _settings
+    file_path = Path(invoice.file_path).resolve()
+    upload_root = _settings.upload_dir.resolve()
+
+    if not file_path.is_relative_to(upload_root):
+        raise BadRequestError("Invalid file path")
+
+    if not file_path.exists():
+        raise NotFoundError("Invoice file not found on disk")
+
     return invoice
 
 

@@ -8,12 +8,31 @@ from sqlalchemy import select, func, and_, or_, literal_column
 from sqlalchemy.exc import DataError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.config import settings
 from src.core.exceptions import BadRequestError, NotFoundError
+from src.integrations.amazon.client import AmazonClient
+from src.models.dto.product import ProductFieldDiff, RefreshPreviewResponse
 from src.models.orm.brand import Brand
 from src.models.orm.product import Product
 from src.models.orm.category import Category
+from src.services.image_service import download_and_store_product_images
 
 logger = logging.getLogger(__name__)
+
+REFRESHABLE_FIELDS = {
+    "name": "Name",
+    "description": "Description",
+    "brand": "Brand",
+    "price_cents": "Price",
+    "color": "Color",
+    "material": "Material",
+    "product_dimensions": "Dimensions",
+    "item_weight": "Weight",
+    "item_model_number": "Model Number",
+    "specifications": "Specifications",
+    "product_information": "Product Information",
+    "variants": "Variants",
+}
 
 # Bidirectional synonym map for search expansion
 SEARCH_SYNONYMS: dict[str, list[str]] = {
@@ -441,3 +460,162 @@ async def restore(db: AsyncSession, product_id: UUID) -> Product:
     await db.flush()
     await db.refresh(product)
     return product
+
+
+# ── Amazon enrichment ────────────────────────────────────────────────────────
+
+
+async def enrich_from_amazon(
+    db: AsyncSession, product: Product, amazon_asin: str
+) -> None:
+    """Fetch Amazon data for a product and update images, specs, and variants."""
+    try:
+        client = AmazonClient()
+        amazon_data = await client.get_product(amazon_asin)
+        if amazon_data:
+            main_image = amazon_data.images[0] if amazon_data.images else None
+            gallery = amazon_data.images[1:] if len(amazon_data.images) > 1 else []
+
+            paths = await download_and_store_product_images(
+                product.id, main_image, gallery, settings.upload_dir, product.name,
+            )
+            product.image_url = paths.main_image
+            product.image_gallery = paths.gallery
+
+            if amazon_data.specifications:
+                product.specifications = amazon_data.specifications
+            if amazon_data.brand:
+                product.brand = amazon_data.brand
+
+            product.color = amazon_data.color
+            product.material = amazon_data.material
+            product.product_dimensions = amazon_data.product_dimensions
+            product.item_weight = amazon_data.item_weight
+            product.item_model_number = amazon_data.item_model_number
+            product.product_information = amazon_data.product_information
+
+            if amazon_data.variants:
+                missing = [v.asin for v in amazon_data.variants if v.price_cents == 0]
+                if missing:
+                    try:
+                        prices = await client.get_variant_prices(missing)
+                        for v in amazon_data.variants:
+                            if v.asin in prices:
+                                v.price_cents = prices[v.asin]
+                    except Exception:
+                        logger.exception("Failed to fetch variant prices for product %s", product.id)
+
+                product.variants = [v.model_dump() for v in amazon_data.variants]
+                variant_prices = [v.price_cents for v in amazon_data.variants if v.price_cents > 0]
+                if variant_prices:
+                    product.price_min_cents = min(variant_prices)
+                    product.price_max_cents = max(variant_prices)
+
+            await db.flush()
+    except Exception:
+        logger.exception("Failed to auto-download images for product %s", product.id)
+
+
+async def generate_refresh_preview(
+    db: AsyncSession, product_id: UUID
+) -> RefreshPreviewResponse:
+    """Fetch fresh Amazon data and return a diff preview for the product."""
+    product = await get_by_id(db, product_id)
+    if not product.amazon_asin:
+        raise BadRequestError("Product has no Amazon ASIN")
+
+    try:
+        client = AmazonClient()
+        amazon_data = await client.get_product(product.amazon_asin)
+    except Exception:
+        logger.exception("ScraperAPI call failed for ASIN %s", product.amazon_asin)
+        raise BadRequestError("Amazon API request failed. Please try again later.")
+
+    if not amazon_data:
+        raise BadRequestError("Amazon lookup returned no data")
+
+    images_updated = False
+    main_image = amazon_data.images[0] if amazon_data.images else None
+    gallery = amazon_data.images[1:] if len(amazon_data.images) > 1 else []
+
+    try:
+        paths = await download_and_store_product_images(
+            product.id, main_image, gallery, settings.upload_dir, product.name,
+        )
+        product.image_url = paths.main_image
+        product.image_gallery = paths.gallery
+        images_updated = True
+        await db.flush()
+    except Exception:
+        logger.exception("Image download failed for product %s", product.id)
+
+    if amazon_data.variants:
+        variant_asins = [v.asin for v in amazon_data.variants if v.price_cents == 0]
+        if variant_asins:
+            try:
+                prices = await client.get_variant_prices(variant_asins)
+                for v in amazon_data.variants:
+                    if v.asin in prices:
+                        v.price_cents = prices[v.asin]
+            except Exception:
+                logger.exception("Failed to fetch variant prices")
+
+    diffs: list[ProductFieldDiff] = []
+    for field, label in REFRESHABLE_FIELDS.items():
+        if field == "variants":
+            new_variants = [v.model_dump() for v in amazon_data.variants] if amazon_data.variants else None
+            old_variants = product.variants
+            if new_variants and new_variants != old_variants:
+                diffs.append(ProductFieldDiff(
+                    field=field, label=label,
+                    old_value=old_variants, new_value=new_variants,
+                ))
+            continue
+        old_value = getattr(product, field)
+        new_value = getattr(amazon_data, field, None)
+        if new_value is not None and old_value != new_value:
+            diffs.append(ProductFieldDiff(
+                field=field, label=label,
+                old_value=old_value, new_value=new_value,
+            ))
+
+    return RefreshPreviewResponse(
+        product_id=product.id,
+        images_updated=images_updated,
+        image_url=product.image_url,
+        image_gallery=product.image_gallery,
+        diffs=diffs,
+    )
+
+
+async def apply_refresh(
+    db: AsyncSession, product_id: UUID, fields: list[str], values: dict
+) -> tuple[Product, dict]:
+    """Apply selected refresh fields to a product."""
+    product = await get_by_id(db, product_id)
+
+    unknown = [f for f in fields if f not in REFRESHABLE_FIELDS]
+    if unknown:
+        raise BadRequestError(f"Unknown fields: {', '.join(unknown)}")
+
+    changes: dict[str, dict] = {}
+    for field in fields:
+        if field not in values:
+            continue
+        old_value = getattr(product, field)
+        new_value = values[field]
+        setattr(product, field, new_value)
+        changes[field] = {"old": old_value, "new": new_value}
+
+    if "variants" in changes and product.variants:
+        variant_prices = [v.get("price_cents", 0) for v in product.variants if v.get("price_cents", 0) > 0]
+        if variant_prices:
+            product.price_min_cents = min(variant_prices)
+            product.price_max_cents = max(variant_prices)
+
+    if "brand" in changes and product.brand:
+        product.brand_id = await resolve_brand_id(db, product.brand)
+
+    await db.flush()
+    await db.refresh(product)
+    return product, changes

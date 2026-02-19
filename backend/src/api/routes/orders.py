@@ -9,7 +9,6 @@ from src.audit.service import audit_context, write_audit_log
 from src.core.exceptions import NotFoundError
 from src.models.dto.order import OrderCancelRequest, OrderCreate, OrderListResponse, OrderResponse
 from src.models.orm.user import User
-from src.notifications.service import notify_staff_email, notify_staff_slack
 from src.services import order_service
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -74,24 +73,7 @@ async def create_order(
 
     order_data = await order_service.get_order_with_items(db, order.id)
 
-    from src.core.config import settings
-    await notify_staff_email(
-        db, event="order.created",
-        subject=f"New Order from {user.display_name}",
-        template_name="order_created.html",
-        context={
-            "user_name": user.display_name,
-            "user_email": user.email,
-            "items": order_data["items"] if order_data else [],
-            "total_cents": order.total_cents,
-            "delivery_note": order.delivery_note,
-            "admin_url": f"{settings.frontend_url}/admin/orders/{order.id}",
-        },
-    )
-    await notify_staff_slack(
-        db, event="order.created",
-        text=f"New order from {user.display_name} ({user.email}) - Total: EUR {order.total_cents / 100:.2f}",
-    )
+    await order_service.notify_order_created(db, order, user, order_data)
 
     return order_data
 
@@ -116,22 +98,7 @@ async def cancel_my_order(
         ip_address=ip, user_agent=ua,
     )
 
-    await notify_staff_email(
-        db, event="order.cancelled",
-        subject=f"Order Cancelled by {user.display_name}",
-        template_name="order_cancelled.html",
-        context={
-            "user_name": user.display_name,
-            "user_email": user.email,
-            "order_id": str(order.id),
-            "reason": body.reason,
-            "total_cents": order.total_cents,
-        },
-    )
-    await notify_staff_slack(
-        db, event="order.cancelled",
-        text=f"Order #{str(order.id)[:8]} cancelled by {user.display_name}: {body.reason}",
-    )
+    await order_service.notify_order_cancelled_by_user(db, order, user, body.reason)
 
     order_data = await order_service.get_order_with_items(db, order.id)
     return order_data
