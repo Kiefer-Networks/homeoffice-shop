@@ -38,8 +38,8 @@ export function AdminProductsPage() {
   const { addToast } = useUiStore()
 
   useEffect(() => {
-    productApi.getCategories().then(({ data }) => setCategories(data))
-    adminApi.listBrands().then(({ data }) => setBrands(data))
+    productApi.getCategories().then(({ data }) => setCategories(data)).catch(() => {})
+    adminApi.listBrands().then(({ data }) => setBrands(data)).catch(() => {})
   }, [])
 
   const load = useCallback(() => {

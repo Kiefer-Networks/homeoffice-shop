@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -18,6 +19,7 @@ interface Props {
 export function ProductCard({ product, onRefreshCart, onShowDetail }: Props) {
   const { addToast } = useUiStore()
   const setCartOpen = useCartStore((s) => s.setOpen)
+  const [adding, setAdding] = useState(false)
 
   const hasVariants = product.variants && product.variants.length > 0
 
@@ -28,6 +30,8 @@ export function ProductCard({ product, onRefreshCart, onShowDetail }: Props) {
       onShowDetail(product)
       return
     }
+    if (adding) return
+    setAdding(true)
     try {
       await cartApi.addItem(product.id)
       onRefreshCart()
@@ -35,6 +39,8 @@ export function ProductCard({ product, onRefreshCart, onShowDetail }: Props) {
       addToast({ title: 'Added to cart', description: product.name })
     } catch (err: unknown) {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+    } finally {
+      setAdding(false)
     }
   }
 
@@ -72,9 +78,9 @@ export function ProductCard({ product, onRefreshCart, onShowDetail }: Props) {
               : formatCents(product.price_cents)
             }
           </span>
-          <Button size="sm" onClick={handleAddToCart} disabled={!product.is_active}>
+          <Button size="sm" onClick={handleAddToCart} disabled={!product.is_active || adding}>
             <ShoppingCart className="h-4 w-4 mr-1" />
-            {hasVariants ? 'Select' : 'Add'}
+            {hasVariants ? 'Select' : adding ? 'Adding...' : 'Add'}
           </Button>
         </div>
       </CardContent>

@@ -33,7 +33,7 @@ export function CatalogPage() {
 
   useEffect(() => {
     filterStore.syncFromUrl(searchParams)
-    productApi.getCategories().then(({ data }) => setCategories(data))
+    productApi.getCategories().then(({ data }) => setCategories(data)).catch(() => {})
   }, [])
 
   const refreshCart = useCallback(async () => {
