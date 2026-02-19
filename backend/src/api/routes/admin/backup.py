@@ -51,7 +51,6 @@ async def export_backup(
 
 @router.get("/list", response_model=BackupListResponse)
 async def list_backups(
-    db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
     items = await backup_service.list_backups()
@@ -63,7 +62,6 @@ async def list_backups(
 @router.get("/download/{filename}")
 async def download_backup(
     filename: str,
-    db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
     filepath = await backup_service.get_backup_path(filename)
@@ -95,7 +93,6 @@ async def delete_backup(
 
 @router.get("/schedule", response_model=BackupScheduleResponse)
 async def get_schedule(
-    db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
     schedule = await backup_service.get_schedule()

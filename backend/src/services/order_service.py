@@ -56,7 +56,7 @@ async def create_order_from_cart(
     if not rows:
         raise BadRequestError("Cart is empty")
 
-    has_unavailable = any(not p.is_active for _, p in rows)
+    has_unavailable = any(not p.is_active or p.archived_at is not None for _, p in rows)
     if has_unavailable:
         raise BadRequestError(
             "Some items are no longer available. Please remove them from your cart."

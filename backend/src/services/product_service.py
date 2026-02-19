@@ -472,6 +472,7 @@ async def restore(db: AsyncSession, product_id: UUID) -> Product:
     if not product.archived_at:
         raise BadRequestError("Product is not archived")
     product.archived_at = None
+    product.is_active = True
     await db.flush()
     await db.refresh(product)
     return product

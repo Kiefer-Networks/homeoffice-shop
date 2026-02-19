@@ -87,7 +87,7 @@ async def add_to_cart(
     variant_asin: str | None = None,
 ) -> CartItem:
     product = await db.get(Product, product_id)
-    if not product or not product.is_active:
+    if not product or not product.is_active or product.archived_at is not None:
         raise BadRequestError("Product not available")
 
     # Resolve variant info

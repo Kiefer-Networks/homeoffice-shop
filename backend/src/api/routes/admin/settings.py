@@ -38,11 +38,17 @@ async def update_setting(
     if key not in settings_service.DEFAULT_SETTINGS:
         raise BadRequestError(f"Unknown setting key: {key}")
 
+    SENSITIVE_KEYS = {"smtp_password", "slack_webhook_url"}
+
     # Skip update if the value is the redaction marker (password not changed)
-    if key == "smtp_password" and body.value == "********":
+    if key in SENSITIVE_KEYS and body.value == "********":
         return {"key": key, "value": "********"}
 
     old_value = settings_service.get_setting(key)
+    masked = key in SENSITIVE_KEYS
+    display_old = "********" if masked else old_value
+    display_new = "********" if masked else body.value
+
     await settings_service.update_setting(db, key, body.value, admin.id)
 
     await log_admin_action(
@@ -50,13 +56,15 @@ async def update_setting(
         resource_type="app_setting",
         details={
             "key": key,
-            "old_value": "********" if key == "smtp_password" else old_value,
-            "new_value": "********" if key == "smtp_password" else body.value,
+            "old_value": display_old,
+            "new_value": display_new,
         },
     )
 
-    display_value = "********" if key == "smtp_password" else body.value
-    return {"key": key, "value": display_value}
+    value = body.value
+    if key in SENSITIVE_KEYS:
+        value = "********"
+    return {"key": key, "value": value}
 
 
 @router.post("/test-email", response_model=DetailResponse)

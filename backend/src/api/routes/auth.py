@@ -99,8 +99,11 @@ async def google_callback(
     token = await oauth.google.authorize_access_token(request)
     userinfo = token.get("userinfo", {})
     email = userinfo.get("email", "")
-    name = userinfo.get("name", email)
     sub = userinfo.get("sub", "")
+    name = userinfo.get("name", email)
+
+    if not email or not sub:
+        raise BadRequestError("Invalid OAuth response: missing email or user ID")
 
     response = RedirectResponse(url=f"{settings.frontend_url}/callback")
     await _handle_oauth_callback(
