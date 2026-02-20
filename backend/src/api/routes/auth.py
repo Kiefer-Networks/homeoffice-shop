@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import uuid
 
@@ -12,6 +11,7 @@ from src.api.dependencies.database import get_db
 from src.audit.service import log_admin_action
 from src.core.config import settings
 from src.core.exceptions import BadRequestError, UnauthorizedError
+from src.core.tasks import create_background_task
 from src.models.dto.auth import TokenResponse
 from src.models.orm.user import User
 from src.core.security import decode_token
@@ -77,7 +77,7 @@ async def _handle_oauth_callback(
     tokens = await issue_tokens(db, user.id, user.email, user.role)
 
     if is_first_login:
-        asyncio.create_task(_send_welcome_email(user.email, user.display_name))
+        create_background_task(_send_welcome_email(user.email, user.display_name))
 
     await log_admin_action(
         db, request, user.id, "auth.login",

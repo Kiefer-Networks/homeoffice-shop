@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from typing import Literal
 from uuid import UUID
@@ -9,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import log_admin_action
+from src.core.tasks import create_background_task
 from src.models.dto.budget import (
     BudgetAdjustmentCreate,
     BudgetAdjustmentListResponse,
@@ -86,7 +86,7 @@ async def create_adjustment(
 
     if target_email:
         available = await budget_service.get_available_budget_cents(db, body.user_id)
-        asyncio.create_task(
+        create_background_task(
             _send_budget_notification(
                 target_email,
                 body.amount_cents,
