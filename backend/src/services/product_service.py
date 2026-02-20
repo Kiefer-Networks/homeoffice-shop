@@ -394,6 +394,8 @@ async def create_product(
     is_active: bool = True,
     max_quantity_per_user: int = 1,
 ) -> Product:
+    if price_cents < 0:
+        raise BadRequestError("Price must not be negative")
     if price_cents == 0:
         is_active = False
 
@@ -431,6 +433,9 @@ async def update_product(
     db: AsyncSession, product_id: UUID, data: dict,
 ) -> tuple[Product, dict]:
     product = await get_by_id(db, product_id)
+
+    if "price_cents" in data and data["price_cents"] < 0:
+        raise BadRequestError("Price must not be negative")
 
     changes = {}
     for field, value in data.items():

@@ -224,6 +224,10 @@ async def create_budget_rule(
     yearly_increment_cents: int,
     created_by: UUID,
 ) -> BudgetRule:
+    if initial_cents < 0:
+        raise BadRequestError("Initial budget must not be negative")
+    if yearly_increment_cents < 0:
+        raise BadRequestError("Yearly increment must not be negative")
     rule = BudgetRule(
         effective_from=effective_from,
         initial_cents=initial_cents,
@@ -243,6 +247,10 @@ async def update_budget_rule(
     rule = await db.get(BudgetRule, rule_id)
     if not rule:
         raise NotFoundError("Budget rule not found")
+    if data.get("initial_cents") is not None and data["initial_cents"] < 0:
+        raise BadRequestError("Initial budget must not be negative")
+    if data.get("yearly_increment_cents") is not None and data["yearly_increment_cents"] < 0:
+        raise BadRequestError("Yearly increment must not be negative")
     if data.get("effective_from") is not None:
         rule.effective_from = data["effective_from"]
     if data.get("initial_cents") is not None:
