@@ -14,6 +14,7 @@ from src.core.security import (
 )
 from src.models.orm.user import User
 from src.repositories import refresh_token_repo, user_repo
+from src.services.budget_service import calculate_total_budget_cents
 from src.services.settings_service import get_setting_int
 
 
@@ -138,5 +139,7 @@ async def validate_oauth_user(
     if is_first_login:
         user.provider = provider
         user.provider_id = provider_id
+
+    user.total_budget_cents = calculate_total_budget_cents(user.start_date)
 
     return user, is_first_login

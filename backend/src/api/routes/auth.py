@@ -15,9 +15,9 @@ from src.core.exceptions import BadRequestError, UnauthorizedError
 from src.models.dto.auth import TokenResponse
 from src.models.orm.user import User
 from src.core.security import decode_token
+from src.notifications.email import mask_email
 from src.notifications.service import notify_user_email
 from src.services.auth_service import issue_tokens, logout, refresh_tokens, validate_oauth_user
-from src.services.budget_service import calculate_total_budget_cents
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ async def _send_welcome_email(email: str, display_name: str) -> None:
             context={"display_name": display_name},
         )
     except Exception:
-        logger.exception("Failed to send welcome email to %s", email)
+        logger.exception("Failed to send welcome email to %s", mask_email(email))
 
 
 async def _handle_oauth_callback(
@@ -73,8 +73,6 @@ async def _handle_oauth_callback(
             details={"email": email, "provider": provider},
         )
         raise
-
-    user.total_budget_cents = calculate_total_budget_cents(user.start_date)
 
     tokens = await issue_tokens(db, user.id, user.email, user.role)
 

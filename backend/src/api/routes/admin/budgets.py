@@ -16,6 +16,7 @@ from src.models.dto.budget import (
     BudgetAdjustmentUpdate,
 )
 from src.models.orm.user import User
+from src.notifications.email import mask_email
 from src.notifications.service import notify_user_email
 from src.services import budget_service
 
@@ -39,7 +40,7 @@ async def _send_budget_notification(
             },
         )
     except Exception:
-        logger.exception("Failed to send budget adjustment email to %s", email)
+        logger.exception("Failed to send budget adjustment email to %s", mask_email(email))
 
 
 @router.get("/adjustments", response_model=BudgetAdjustmentListResponse)
@@ -65,7 +66,7 @@ async def create_adjustment(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):
-    adjustment = await budget_service.create_adjustment(
+    adjustment, target_email = await budget_service.create_adjustment(
         db,
         user_id=body.user_id,
         amount_cents=body.amount_cents,
@@ -83,13 +84,11 @@ async def create_adjustment(
         },
     )
 
-    # Notify the affected user about the budget adjustment
-    target_user = await db.get(User, body.user_id)
-    if target_user:
+    if target_email:
         available = await budget_service.get_available_budget_cents(db, body.user_id)
         asyncio.create_task(
             _send_budget_notification(
-                target_user.email,
+                target_email,
                 body.amount_cents,
                 body.reason,
                 available,

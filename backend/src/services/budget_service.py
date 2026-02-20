@@ -336,7 +336,8 @@ async def create_adjustment(
     amount_cents: int,
     reason: str,
     created_by: UUID,
-) -> BudgetAdjustment:
+) -> tuple[BudgetAdjustment, str | None]:
+    """Create a budget adjustment and return (adjustment, target_user_email)."""
     target = await db.get(User, user_id)
     if not target:
         raise NotFoundError("User not found")
@@ -350,7 +351,7 @@ async def create_adjustment(
     db.add(adjustment)
     await db.flush()
     await refresh_budget_cache(db, user_id)
-    return adjustment
+    return adjustment, target.email
 
 
 async def update_adjustment(
