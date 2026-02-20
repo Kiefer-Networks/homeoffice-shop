@@ -1,10 +1,20 @@
 import logging
+import re
 
 import httpx
 
 from src.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+_SLACK_MENTION_RE = re.compile(r"@(channel|here|everyone)")
+
+
+def sanitize_slack_text(text: str) -> str:
+    """Escape Slack special characters and @-mentions in user-provided text."""
+    text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    text = _SLACK_MENTION_RE.sub(r"@\u200B\1", text)
+    return text
 
 
 async def send_slack_message(text: str, blocks: list[dict] | None = None) -> bool:

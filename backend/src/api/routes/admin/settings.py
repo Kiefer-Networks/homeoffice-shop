@@ -10,7 +10,7 @@ from src.core.exceptions import BadRequestError
 from src.models.dto import DetailResponse
 from src.models.dto.settings import AppSettingResponse, AppSettingUpdate, AppSettingsResponse, TestEmailRequest
 from src.models.orm.user import User
-from src.notifications.email import send_test_email
+from src.notifications.email import mask_email, send_test_email
 from src.services import settings_service
 
 logger = logging.getLogger(__name__)
@@ -88,5 +88,5 @@ async def test_email(
     except BadRequestError:
         raise
     except Exception:
-        logger.exception("Failed to send test email to %s", body.to)
+        logger.exception("Failed to send test email to %s", mask_email(body.to))
         raise BadRequestError("Failed to send test email. Check SMTP configuration.")

@@ -23,6 +23,7 @@ from src.models.orm.order import Order, OrderInvoice, OrderItem
 from src.models.orm.product import Product
 from src.models.orm.user import User
 from src.notifications.service import notify_staff_email, notify_staff_slack, notify_user_email
+from src.notifications.slack import sanitize_slack_text
 from src.mappers.order import order_item_to_dict, invoice_to_dict, order_to_dict
 from src.services.budget_service import check_budget_for_order, refresh_budget_cache
 
@@ -224,7 +225,7 @@ async def notify_order_created(
     )
     await notify_staff_slack(
         db, event="order.created",
-        text=f"New order from {user.display_name} ({user.email}) - Total: EUR {order.total_cents / 100:.2f}",
+        text=f"New order from {sanitize_slack_text(user.display_name)} - Total: EUR {order.total_cents / 100:.2f}",
     )
 
 
@@ -249,7 +250,7 @@ async def notify_order_cancelled_by_user(
     )
     await notify_staff_slack(
         db, event="order.cancelled",
-        text=f"Order #{str(order.id)[:8]} cancelled by {user.display_name}: {reason}",
+        text=f"Order #{str(order.id)[:8]} cancelled by {sanitize_slack_text(user.display_name)}: {sanitize_slack_text(reason)}",
     )
 
 

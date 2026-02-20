@@ -44,7 +44,13 @@ def _is_placeholder_address(address: str | None) -> bool:
     return "your-company.com" in address
 
 
-def _mask_email(address: str) -> str:
+def _sanitize_header(value: str) -> str:
+    """Strip newline characters to prevent email header injection."""
+    return value.replace("\r", "").replace("\n", "")
+
+
+def mask_email(address: str) -> str:
+    """Mask an email address for safe logging (exported for use in other modules)."""
     if "@" in address:
         return address.split("@")[0][:2] + "***@" + address.split("@")[-1]
     return "***"
@@ -92,7 +98,7 @@ async def send_email(
 ) -> bool:
     smtp = _get_smtp_config()
     if not smtp["hostname"]:
-        logger.debug("SMTP not configured, skipping email to %s", to)
+        logger.debug("SMTP not configured, skipping email to %s", mask_email(to))
         return False
 
     if template_name not in ALLOWED_TEMPLATES:
@@ -113,7 +119,8 @@ async def send_email(
         template = _jinja_env.get_template(template_name)
         html_body = template.render(**context)
 
-        from_name = get_setting("company_name")
+        from_name = _sanitize_header(get_setting("company_name"))
+        subject = _sanitize_header(subject)
 
         if "\n" in to or "\r" in to:
             raise ValueError("Invalid email recipient: contains newline characters")
@@ -128,11 +135,11 @@ async def send_email(
         message.attach(MIMEText(html_body, "html"))
 
         await _send_with_retry(message, smtp)
-        masked = _mask_email(to)
+        masked = mask_email(to)
         logger.info("Email sent to %s: %s", masked, subject)
         return True
     except Exception:
-        masked = _mask_email(to)
+        masked = mask_email(to)
         logger.exception("Failed to send email to %s", masked)
         return False
 
@@ -151,7 +158,7 @@ async def send_test_email(to: str) -> bool:
     if "\n" in to or "\r" in to:
         raise ValueError("Invalid email recipient: contains newline characters")
 
-    from_name = get_setting("company_name")
+    from_name = _sanitize_header(get_setting("company_name"))
 
     message = MIMEMultipart("alternative")
     message["From"] = formataddr((from_name, from_address))
@@ -166,6 +173,6 @@ async def send_test_email(to: str) -> bool:
     ))
 
     await _send_with_retry(message, smtp)
-    masked = _mask_email(to)
+    masked = mask_email(to)
     logger.info("Test email sent to %s", masked)
     return True
