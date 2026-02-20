@@ -110,15 +110,25 @@ async def add_to_cart(
     )
     cart_item = existing.scalar_one_or_none()
 
+    # Sum quantity across ALL variants of this product for max_quantity check
+    total_result = await db.execute(
+        select(func.coalesce(func.sum(CartItem.quantity), 0)).where(
+            CartItem.user_id == user_id,
+            CartItem.product_id == product_id,
+        )
+    )
+    existing_total: int = total_result.scalar() or 0
+
     if cart_item:
-        new_qty = cart_item.quantity + quantity
-        if new_qty > product.max_quantity_per_user:
+        # Subtract this variant's current qty since it's included in the total
+        new_total = existing_total - cart_item.quantity + cart_item.quantity + quantity
+        if new_total > product.max_quantity_per_user:
             raise BadRequestError(
                 f"Maximum quantity per user is {product.max_quantity_per_user}"
             )
-        cart_item.quantity = new_qty
+        cart_item.quantity = cart_item.quantity + quantity
     else:
-        if quantity > product.max_quantity_per_user:
+        if existing_total + quantity > product.max_quantity_per_user:
             raise BadRequestError(
                 f"Maximum quantity per user is {product.max_quantity_per_user}"
             )
@@ -154,10 +164,20 @@ async def update_cart_item(
         return None
 
     product = await db.get(Product, product_id)
-    if product and quantity > product.max_quantity_per_user:
-        raise BadRequestError(
-            f"Maximum quantity per user is {product.max_quantity_per_user}"
+    if product:
+        # Sum all other variants of this product to enforce cross-variant limit
+        other_result = await db.execute(
+            select(func.coalesce(func.sum(CartItem.quantity), 0)).where(
+                CartItem.user_id == user_id,
+                CartItem.product_id == product_id,
+                CartItem.id != cart_item.id,
+            )
         )
+        other_total: int = other_result.scalar() or 0
+        if other_total + quantity > product.max_quantity_per_user:
+            raise BadRequestError(
+                f"Maximum quantity per user is {product.max_quantity_per_user}"
+            )
 
     cart_item.quantity = quantity
     await db.flush()
