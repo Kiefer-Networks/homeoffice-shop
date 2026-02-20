@@ -65,10 +65,16 @@ async def create_order_from_cart(
         )
 
     def _current_price(ci: CartItem, p: Product) -> int:
-        if ci.variant_asin and p.variants:
-            for v in p.variants:
-                if v.get("asin") == ci.variant_asin and v.get("price_cents", 0) > 0:
-                    return v["price_cents"]
+        if ci.variant_asin:
+            if p.variants:
+                for v in p.variants:
+                    if v.get("asin") == ci.variant_asin and v.get("price_cents", 0) > 0:
+                        return v["price_cents"]
+            # Variant was in cart but is no longer available in product
+            raise BadRequestError(
+                f"Variant {ci.variant_asin} is no longer available for {p.name}. "
+                "Please remove it from your cart."
+            )
         return p.price_cents
 
     has_price_changes = any(ci.price_at_add_cents != _current_price(ci, p) for ci, p in rows)
@@ -93,15 +99,10 @@ async def create_order_from_cart(
     db.add(order)
 
     for cart_item, product in rows:
-        # Use variant-specific price and URL if applicable
-        item_price = product.price_cents
+        # _current_price already validated variant availability above
+        item_price = _current_price(cart_item, product)
         item_url = product.external_url
         if cart_item.variant_asin:
-            if product.variants:
-                for v in product.variants:
-                    if v.get("asin") == cart_item.variant_asin and v.get("price_cents", 0) > 0:
-                        item_price = v["price_cents"]
-                        break
             item_url = f"https://www.amazon.de/dp/{cart_item.variant_asin}"
 
         order_item = OrderItem(

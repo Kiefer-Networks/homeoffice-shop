@@ -262,12 +262,17 @@ async def update_budget_rule(
 
 
 async def delete_budget_rule(db: AsyncSession, rule_id: UUID) -> dict:
+    # Lock all rules to prevent concurrent deletion of the last rule
+    count_result = await db.execute(
+        select(func.count()).select_from(BudgetRule).with_for_update()
+    )
+    total = count_result.scalar() or 0
+    if total <= 1:
+        raise BadRequestError("Cannot delete the last budget rule")
+
     rule = await db.get(BudgetRule, rule_id)
     if not rule:
         raise NotFoundError("Budget rule not found")
-    count_result = await db.execute(select(BudgetRule.id))
-    if len(count_result.all()) <= 1:
-        raise BadRequestError("Cannot delete the last budget rule")
     details = {
         "effective_from": str(rule.effective_from),
         "initial_cents": rule.initial_cents,
