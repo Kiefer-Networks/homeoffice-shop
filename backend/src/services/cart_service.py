@@ -143,7 +143,7 @@ async def update_cart_item(
         select(CartItem).where(
             CartItem.user_id == user_id,
             CartItem.product_id == product_id,
-        )
+        ).with_for_update()
     )
     cart_item = result.scalar_one_or_none()
     if not cart_item:
