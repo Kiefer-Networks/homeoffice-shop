@@ -21,8 +21,8 @@ async def _scheduler_loop() -> None:
         try:
             now = datetime.now(timezone.utc)
 
-            # Run once daily at REMINDER_HOUR
-            if now.hour != REMINDER_HOUR or now.minute != 0:
+            # Run once daily during REMINDER_HOUR (any minute, deduped by last_run_date)
+            if now.hour != REMINDER_HOUR:
                 continue
 
             run_key = now.strftime("%Y-%m-%d")
