@@ -91,7 +91,6 @@ async def create_order_from_cart(
         delivery_note=delivery_note,
     )
     db.add(order)
-    await db.flush()
 
     for cart_item, product in rows:
         # Use variant-specific price and URL if applicable
@@ -119,7 +118,7 @@ async def create_order_from_cart(
     await db.execute(delete(CartItem).where(CartItem.user_id == user_id))
 
     await refresh_budget_cache(db, user_id)
-    await db.flush()
+    await db.flush()  # single atomic flush: order + items + cart deletion + cache
 
     return order
 
@@ -280,8 +279,8 @@ async def cancel_order_by_user(
     order.cancelled_by = user_id
     order.cancelled_at = datetime.now(timezone.utc)
 
-    await db.flush()
     await refresh_budget_cache(db, order.user_id)
+    await db.flush()  # single atomic flush: status change + cache update
 
     return order
 
