@@ -186,7 +186,7 @@ async def refresh_budget_cache(db: AsyncSession, user_id: UUID) -> None:
 async def check_budget_for_order(
     db: AsyncSession, user_id: UUID, order_total_cents: int
 ) -> bool:
-    """Check if user has sufficient budget using live calculation with row lock."""
+    """Check if user has sufficient budget using locked queries to prevent races."""
     result = await db.execute(
         select(User).where(User.id == user_id).with_for_update()
     )
@@ -194,10 +194,23 @@ async def check_budget_for_order(
     if not user:
         return False
 
-    spent = await get_live_spent_cents(db, user_id)
-    adjustments = await get_live_adjustment_cents(db, user_id)
-    available = user.total_budget_cents + adjustments - spent
+    # Lock relevant order rows to prevent concurrent checkout exploits
+    spent_result = await db.execute(
+        select(func.coalesce(func.sum(Order.total_cents), 0)).where(
+            Order.user_id == user_id,
+            Order.status.in_(["pending", "ordered", "delivered"]),
+        ).with_for_update()
+    )
+    spent = spent_result.scalar() or 0
 
+    adj_result = await db.execute(
+        select(func.coalesce(func.sum(BudgetAdjustment.amount_cents), 0)).where(
+            BudgetAdjustment.user_id == user_id
+        ).with_for_update()
+    )
+    adjustments = adj_result.scalar() or 0
+
+    available = user.total_budget_cents + adjustments - spent
     return order_total_cents <= available
 
 
