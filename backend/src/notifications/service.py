@@ -20,7 +20,8 @@ async def notify_staff_email(
     subject: str,
     template_name: str,
     context: dict,
-) -> None:
+) -> int:
+    """Send an email to all eligible staff members. Returns the number of emails sent."""
     staff = await user_repo.get_active_staff(db)
     prefs = await notification_pref_repo.get_all(db)
 
@@ -42,10 +43,13 @@ async def notify_staff_email(
 
         recipients.append(member.email)
 
-    if recipients:
-        await asyncio.gather(
-            *(send_email(addr, subject, template_name, context) for addr in recipients)
-        )
+    if not recipients:
+        return 0
+
+    results = await asyncio.gather(
+        *(send_email(addr, subject, template_name, context) for addr in recipients)
+    )
+    return sum(1 for r in results if r is True)
 
 
 async def notify_staff_slack(
@@ -80,5 +84,6 @@ async def notify_user_email(
     subject: str,
     template_name: str,
     context: dict,
-) -> None:
-    await send_email(to, subject, template_name, context)
+) -> bool:
+    """Send an email to a single user. Returns True if the email was sent."""
+    return await send_email(to, subject, template_name, context)
