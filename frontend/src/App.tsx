@@ -9,6 +9,7 @@ import { AdminLayout } from '@/components/layout/AdminLayout'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { CallbackPage } from '@/pages/auth/CallbackPage'
 import { ProbationBlockedPage } from '@/pages/auth/ProbationBlockedPage'
+import { NotFoundPage } from '@/pages/NotFoundPage'
 import { CatalogPage } from '@/pages/shop/CatalogPage'
 import { OrdersPage } from '@/pages/shop/OrdersPage'
 import { ProfilePage } from '@/pages/ProfilePage'
@@ -227,6 +228,9 @@ export default function App() {
             <Route path="/admin/sync-log" element={<AdminOnlyGuard><RouteErrorBoundary><Suspense fallback={<AdminFallback />}><AdminSyncLogPage /></Suspense></RouteErrorBoundary></AdminOnlyGuard>} />
             <Route path="/admin/backups" element={<AdminOnlyGuard><RouteErrorBoundary><Suspense fallback={<AdminFallback />}><AdminBackupPage /></Suspense></RouteErrorBoundary></AdminOnlyGuard>} />
           </Route>
+
+          {/* Catch-all */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
         <ToastContainer />
       </AppInit>
