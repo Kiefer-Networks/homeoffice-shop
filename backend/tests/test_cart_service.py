@@ -149,7 +149,9 @@ class TestAddToCart:
         )
         existing_result = MagicMock()
         existing_result.scalar_one_or_none.return_value = existing
-        mock_db.execute.return_value = existing_result
+        total_result = MagicMock()
+        total_result.scalar.return_value = 1
+        mock_db.execute = AsyncMock(side_effect=[existing_result, total_result])
 
         with pytest.raises(BadRequestError, match="Maximum quantity"):
             await add_to_cart(mock_db, existing.user_id, product.id, quantity=1)
@@ -160,7 +162,9 @@ class TestAddToCart:
         mock_db.get.return_value = product
         existing_result = MagicMock()
         existing_result.scalar_one_or_none.return_value = None
-        mock_db.execute.return_value = existing_result
+        total_result = MagicMock()
+        total_result.scalar.return_value = 0
+        mock_db.execute = AsyncMock(side_effect=[existing_result, total_result])
 
         item = await add_to_cart(mock_db, uuid.uuid4(), product.id, quantity=1)
         assert item.quantity == 1
@@ -177,7 +181,9 @@ class TestAddToCart:
         )
         existing_result = MagicMock()
         existing_result.scalar_one_or_none.return_value = existing
-        mock_db.execute.return_value = existing_result
+        total_result = MagicMock()
+        total_result.scalar.return_value = 2
+        mock_db.execute = AsyncMock(side_effect=[existing_result, total_result])
 
         item = await add_to_cart(mock_db, user_id, product.id, quantity=2)
         assert item.quantity == 4
@@ -215,7 +221,9 @@ class TestUpdateCartItem:
 
         result = MagicMock()
         result.scalar_one_or_none.return_value = existing
-        mock_db.execute.return_value = result
+        other_result = MagicMock()
+        other_result.scalar.return_value = 0
+        mock_db.execute = AsyncMock(side_effect=[result, other_result])
         mock_db.get.return_value = product
 
         with pytest.raises(BadRequestError, match="Maximum quantity"):
