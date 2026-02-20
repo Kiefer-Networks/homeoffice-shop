@@ -2,6 +2,7 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.models.orm.admin_notification_pref import DEFAULT_EMAIL_EVENTS
 from src.notifications.email import send_email
 from src.notifications.slack import send_slack_message
 from src.repositories import user_repo, notification_pref_repo
@@ -25,14 +26,17 @@ async def notify_staff_email(
     for member in staff:
         pref = prefs.get(member.id)
 
-        # Manager without prefs row: skip admin-only events
-        if not pref and member.role == "manager" and event in ADMIN_ONLY_EVENTS:
-            continue
-
-        if pref and not pref.email_enabled:
-            continue
-        if pref and event not in (pref.email_events or []):
-            continue
+        if not pref:
+            # No prefs row: apply model defaults and skip admin-only for managers
+            if member.role == "manager" and event in ADMIN_ONLY_EVENTS:
+                continue
+            if event not in DEFAULT_EMAIL_EVENTS:
+                continue
+        else:
+            if not pref.email_enabled:
+                continue
+            if event not in (pref.email_events or []):
+                continue
 
         await send_email(member.email, subject, template_name, context)
 
