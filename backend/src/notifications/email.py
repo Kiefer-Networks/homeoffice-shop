@@ -85,8 +85,8 @@ def _get_smtp_config() -> dict:
         "port": port,
         "username": get_setting("smtp_username") or None,
         "password": get_setting("smtp_password") or None,
-        "start_tls": use_tls if port == 587 else False,
-        "use_tls": use_tls if port != 587 else False,
+        "start_tls": use_tls and port != 465,
+        "use_tls": port == 465,
     }
 
 
