@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr, formatdate, make_msgid
@@ -47,6 +48,16 @@ def _is_placeholder_address(address: str | None) -> bool:
 def _sanitize_header(value: str) -> str:
     """Strip newline characters to prevent email header injection."""
     return value.replace("\r", "").replace("\n", "")
+
+
+def _html_to_plaintext(html_body: str) -> str:
+    """Convert HTML to plaintext for the email alternative part."""
+    text = re.sub(r"<br\s*/?>", "\n", html_body)
+    text = re.sub(r"</(?:p|div|tr|li|h[1-6])>", "\n", text)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
 
 
 def mask_email(address: str) -> str:
@@ -132,6 +143,7 @@ async def send_email(
         message["Date"] = formatdate(localtime=True)
         domain = from_address.split("@")[-1] if "@" in from_address else "localhost"
         message["Message-ID"] = make_msgid(domain=domain)
+        message.attach(MIMEText(_html_to_plaintext(html_body), "plain"))
         message.attach(MIMEText(html_body, "html"))
 
         await _send_with_retry(message, smtp)
