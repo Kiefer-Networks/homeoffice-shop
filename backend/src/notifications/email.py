@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -23,7 +24,50 @@ ALLOWED_TEMPLATES = {
     "role_changed.html",
     "purchase_review_pending.html",
     "delivery_reminder.html",
+    "welcome.html",
+    "budget_adjusted.html",
 }
+
+_RETRY_DELAYS = (1, 2, 4)
+
+_TRANSIENT_EXCEPTIONS = (
+    aiosmtplib.SMTPConnectError,
+    aiosmtplib.SMTPConnectTimeoutError,
+    aiosmtplib.SMTPServerDisconnected,
+)
+
+
+def _is_placeholder_address(address: str | None) -> bool:
+    """Return True if the from-address is empty or contains a placeholder domain."""
+    if not address or not address.strip():
+        return True
+    return "your-company.com" in address
+
+
+def _mask_email(address: str) -> str:
+    if "@" in address:
+        return address.split("@")[0][:2] + "***@" + address.split("@")[-1]
+    return "***"
+
+
+async def _send_with_retry(message: MIMEMultipart, smtp: dict) -> None:
+    """Send an email message with retry on transient SMTP errors."""
+    last_exc: Exception | None = None
+    for attempt, delay in enumerate(_RETRY_DELAYS, 1):
+        try:
+            await aiosmtplib.send(message, **smtp)
+            return
+        except aiosmtplib.SMTPResponseException as exc:
+            if exc.code >= 500:
+                raise
+            logger.warning("Transient SMTP error (attempt %d/%d): %s", attempt, len(_RETRY_DELAYS), exc)
+            last_exc = exc
+        except _TRANSIENT_EXCEPTIONS as exc:
+            logger.warning("Transient SMTP error (attempt %d/%d): %s", attempt, len(_RETRY_DELAYS), exc)
+            last_exc = exc
+        if attempt < len(_RETRY_DELAYS):
+            await asyncio.sleep(delay)
+    raise last_exc  # type: ignore[misc]
 
 
 def _get_smtp_config() -> dict:
@@ -55,6 +99,11 @@ async def send_email(
         logger.error("Blocked email with disallowed template: %s", template_name)
         return False
 
+    from_address = get_setting("smtp_from_address")
+    if _is_placeholder_address(from_address):
+        logger.warning("SMTP from-address is a placeholder (%s), skipping email", from_address)
+        return False
+
     try:
         # Inject branding context
         context.setdefault("company_name", get_setting("company_name"))
@@ -65,7 +114,6 @@ async def send_email(
         html_body = template.render(**context)
 
         from_name = get_setting("company_name")
-        from_address = get_setting("smtp_from_address")
 
         if "\n" in to or "\r" in to:
             raise ValueError("Invalid email recipient: contains newline characters")
@@ -79,12 +127,12 @@ async def send_email(
         message["Message-ID"] = make_msgid(domain=domain)
         message.attach(MIMEText(html_body, "html"))
 
-        await aiosmtplib.send(message, **smtp)
-        masked = to.split("@")[0][:2] + "***@" + to.split("@")[-1] if "@" in to else "***"
+        await _send_with_retry(message, smtp)
+        masked = _mask_email(to)
         logger.info("Email sent to %s: %s", masked, subject)
         return True
     except Exception:
-        masked = to.split("@")[0][:2] + "***@" + to.split("@")[-1] if "@" in to else "***"
+        masked = _mask_email(to)
         logger.exception("Failed to send email to %s", masked)
         return False
 
@@ -95,11 +143,15 @@ async def send_test_email(to: str) -> bool:
     if not smtp["hostname"]:
         return False
 
+    from_address = get_setting("smtp_from_address")
+    if _is_placeholder_address(from_address):
+        logger.warning("SMTP from-address is a placeholder (%s), skipping test email", from_address)
+        return False
+
     if "\n" in to or "\r" in to:
         raise ValueError("Invalid email recipient: contains newline characters")
 
     from_name = get_setting("company_name")
-    from_address = get_setting("smtp_from_address")
 
     message = MIMEMultipart("alternative")
     message["From"] = formataddr((from_name, from_address))
@@ -113,7 +165,7 @@ async def send_test_email(to: str) -> bool:
         "html",
     ))
 
-    await aiosmtplib.send(message, **smtp)
-    masked = to.split("@")[0][:2] + "***@" + to.split("@")[-1]
+    await _send_with_retry(message, smtp)
+    masked = _mask_email(to)
     logger.info("Test email sent to %s", masked)
     return True
