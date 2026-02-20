@@ -2,7 +2,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
-from src.api.dependencies.database import async_session_factory
+from src.core.database import async_session_factory
 from src.services.settings_service import load_settings
 
 logger = logging.getLogger(__name__)

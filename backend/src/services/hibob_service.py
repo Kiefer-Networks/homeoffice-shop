@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies.database import async_session_factory
+from src.core.database import async_session_factory
 from src.audit.service import write_audit_log
 from src.integrations.hibob.client import HiBobClient
 from src.integrations.hibob.sync import sync_employees

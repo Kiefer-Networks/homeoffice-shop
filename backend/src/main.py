@@ -11,7 +11,7 @@ from src.core.logging import setup_logging
 
 setup_logging()
 
-from src.api.dependencies.database import async_session_factory
+from src.core.database import async_session_factory
 from src.api.middleware.cors import setup_cors
 from src.api.middleware.rate_limit import RateLimitMiddleware
 from src.api.middleware.request_id import RequestIdMiddleware

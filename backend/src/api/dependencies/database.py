@@ -1,24 +1,11 @@
 from collections.abc import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.config import settings
+from src.core.database import async_session_factory, engine  # noqa: F401 - re-exported
 
-
-engine = create_async_engine(
-    settings.database_url,
-    pool_size=20,
-    max_overflow=10,
-    pool_pre_ping=True,
-    echo=False,
-    connect_args={"server_settings": {"statement_timeout": "30000"}},
-)
-
-async_session_factory = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
+async_session_factory = async_session_factory
+engine = engine
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
