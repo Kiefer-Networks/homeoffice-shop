@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +24,7 @@ async def notify_staff_email(
     staff = await user_repo.get_active_staff(db)
     prefs = await notification_pref_repo.get_all(db)
 
+    recipients: list[str] = []
     for member in staff:
         pref = prefs.get(member.id)
 
@@ -38,7 +40,12 @@ async def notify_staff_email(
             if event not in (pref.email_events or []):
                 continue
 
-        await send_email(member.email, subject, template_name, context)
+        recipients.append(member.email)
+
+    if recipients:
+        await asyncio.gather(
+            *(send_email(addr, subject, template_name, context) for addr in recipients)
+        )
 
 
 async def notify_staff_slack(
