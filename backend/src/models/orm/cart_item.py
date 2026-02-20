@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -12,6 +12,12 @@ class CartItem(Base):
     __tablename__ = "cart_items"
     __table_args__ = (
         UniqueConstraint("user_id", "product_id", "variant_asin", name="uq_cart_user_product_variant"),
+        Index(
+            "uq_cart_user_product_no_variant",
+            "user_id", "product_id",
+            unique=True,
+            postgresql_where=text("variant_asin IS NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
