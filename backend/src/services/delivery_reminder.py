@@ -72,7 +72,11 @@ async def send_delivery_reminders(db: AsyncSession) -> int:
                 await db.flush()
                 continue
 
-            await notify_user_email(
+            # Mark before sending to prevent infinite daily retries on SMTP failure
+            order.delivery_reminder_sent = True
+            await db.flush()
+
+            success = await notify_user_email(
                 to=recipient,
                 subject=f"Delivery confirmation needed: Order #{str(order.id)[:8]}",
                 template_name="delivery_reminder.html",
@@ -85,15 +89,18 @@ async def send_delivery_reminders(db: AsyncSession) -> int:
                 },
             )
 
-            order.delivery_reminder_sent = True
-            await db.flush()
-            sent += 1
-
-            logger.info(
-                "Delivery reminder sent for order %s to manager %s",
-                order.id, recipient,
-            )
+            if success:
+                sent += 1
+                logger.info(
+                    "Delivery reminder sent for order %s to manager %s",
+                    order.id, recipient,
+                )
+            else:
+                logger.warning(
+                    "Delivery reminder email failed for order %s to %s",
+                    order.id, recipient,
+                )
         except Exception:
-            logger.exception("Failed to send delivery reminder for order %s", order.id)
+            logger.exception("Failed to process delivery reminder for order %s", order.id)
 
     return sent
