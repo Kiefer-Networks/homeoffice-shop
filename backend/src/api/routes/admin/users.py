@@ -1,6 +1,6 @@
-from uuid import UUID
-
+import logging
 from typing import Literal
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,11 +21,27 @@ from src.models.dto.user import (
     UserRoleUpdate,
     UserSearchResult,
 )
+from src.core.tasks import create_background_task
 from src.models.orm.user import User
+from src.notifications.email import mask_email
 from src.notifications.service import notify_user_email
 from src.services import user_service
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/users", tags=["admin-users"])
+
+
+async def _send_role_change_email(email: str, old_role: str, new_role: str) -> None:
+    try:
+        await notify_user_email(
+            email,
+            subject="Your Role Has Been Updated",
+            template_name="role_changed.html",
+            context={"old_role": old_role, "new_role": new_role},
+        )
+    except Exception:
+        logger.exception("Failed to send role change email to %s", mask_email(email))
 
 
 @router.get("/departments", response_model=list[str])
@@ -93,12 +109,7 @@ async def update_user_role(
         },
     )
 
-    await notify_user_email(
-        target.email,
-        subject="Your Role Has Been Updated",
-        template_name="role_changed.html",
-        context={"old_role": old_role, "new_role": body.role},
-    )
+    create_background_task(_send_role_change_email(target.email, old_role, body.role))
 
     return {"detail": f"Role updated to {body.role}"}
 
