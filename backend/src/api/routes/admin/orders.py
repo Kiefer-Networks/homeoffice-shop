@@ -1,3 +1,4 @@
+import logging
 from typing import Literal
 from urllib.parse import quote
 from uuid import UUID
@@ -24,6 +25,8 @@ from src.models.dto.order import (
 from src.models.orm.user import User
 from src.services import order_service
 from src.services.hibob_order_sync import sync_order_to_hibob, unsync_order_from_hibob
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/orders", tags=["admin-orders"])
 
@@ -91,9 +94,12 @@ async def update_order_status(
 
     order_data = await order_service.get_order_with_items(db, order_id, include_invoices=True)
 
-    await order_service.notify_status_changed(
-        db, order, order_data, body.status, body.admin_note,
-    )
+    try:
+        await order_service.notify_status_changed(
+            db, order, order_data, body.status, body.admin_note,
+        )
+    except Exception:
+        logger.exception("Failed to send status notification for order %s", order_id)
 
     return order_data
 

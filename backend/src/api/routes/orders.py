@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -10,6 +11,8 @@ from src.core.exceptions import NotFoundError
 from src.models.dto.order import OrderCancelRequest, OrderCreate, OrderListResponse, OrderResponse
 from src.models.orm.user import User
 from src.services import order_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -70,7 +73,10 @@ async def create_order(
 
     order_data = await order_service.get_order_with_items(db, order.id)
 
-    await order_service.notify_order_created(db, order, user, order_data)
+    try:
+        await order_service.notify_order_created(db, order, user, order_data)
+    except Exception:
+        logger.exception("Failed to send order creation notification for order %s", order.id)
 
     return order_data
 
@@ -93,7 +99,10 @@ async def cancel_my_order(
         details={"reason": body.reason, "total_cents": order.total_cents},
     )
 
-    await order_service.notify_order_cancelled_by_user(db, order, user, body.reason)
+    try:
+        await order_service.notify_order_cancelled_by_user(db, order, user, body.reason)
+    except Exception:
+        logger.exception("Failed to send cancellation notification for order %s", order.id)
 
     order_data = await order_service.get_order_with_items(db, order.id)
     return order_data
