@@ -111,8 +111,11 @@ async def validate_oauth_user(
     email: str,
     provider: str,
     provider_id: str,
-) -> User:
-    """Validate and return the user for OAuth login, raising on failure."""
+) -> tuple[User, bool]:
+    """Validate and return the user for OAuth login, raising on failure.
+
+    Returns a tuple of (user, is_first_login).
+    """
     _, parsed_email = parseaddr(email)
     domain = parsed_email.rsplit("@", 1)[-1] if "@" in parsed_email else ""
 
@@ -131,8 +134,9 @@ async def validate_oauth_user(
     if not user.probation_override and not is_probation_passed(user.start_date):
         raise BadRequestError("PROBATION_NOT_PASSED")
 
-    if not user.provider:
+    is_first_login = user.provider is None
+    if is_first_login:
         user.provider = provider
         user.provider_id = provider_id
 
-    return user
+    return user, is_first_login

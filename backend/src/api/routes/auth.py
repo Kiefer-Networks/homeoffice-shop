@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import uuid
 
 from authlib.integrations.starlette_client import OAuth
@@ -13,8 +15,11 @@ from src.core.exceptions import BadRequestError, UnauthorizedError
 from src.models.dto.auth import TokenResponse
 from src.models.orm.user import User
 from src.core.security import decode_token
+from src.notifications.service import notify_user_email
 from src.services.auth_service import issue_tokens, logout, refresh_tokens, validate_oauth_user
 from src.services.budget_service import calculate_total_budget_cents
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -31,6 +36,18 @@ if settings.google_client_id:
 
 
 
+async def _send_welcome_email(email: str, display_name: str) -> None:
+    try:
+        await notify_user_email(
+            email,
+            subject="Welcome to the Home Office Shop",
+            template_name="welcome.html",
+            context={"display_name": display_name},
+        )
+    except Exception:
+        logger.exception("Failed to send welcome email to %s", email)
+
+
 async def _handle_oauth_callback(
     request: Request,
     response: Response,
@@ -41,7 +58,7 @@ async def _handle_oauth_callback(
     provider_id: str,
 ) -> TokenResponse:
     try:
-        user = await validate_oauth_user(db, email, provider, provider_id)
+        user, is_first_login = await validate_oauth_user(db, email, provider, provider_id)
     except UnauthorizedError:
         await log_admin_action(
             db, request, uuid.UUID(int=0), "auth.login_blocked",
@@ -60,6 +77,9 @@ async def _handle_oauth_callback(
     user.total_budget_cents = calculate_total_budget_cents(user.start_date)
 
     tokens = await issue_tokens(db, user.id, user.email, user.role)
+
+    if is_first_login:
+        asyncio.create_task(_send_welcome_email(user.email, user.display_name))
 
     await log_admin_action(
         db, request, user.id, "auth.login",

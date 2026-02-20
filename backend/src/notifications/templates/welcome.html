@@ -1,0 +1,11 @@
+{% extends "base_layout.html" %}
+{% block content %}
+    <h2 style="margin: 0 0 16px; font-size: 18px; color: #333;">Welcome to {{ company_name }}!</h2>
+    <p style="color: #555;">Your account is set up and ready to go. You can now browse and order home office equipment.</p>
+    {% if frontend_url %}
+    <p style="margin-top: 24px;">
+        <a href="{{ frontend_url }}" style="display: inline-block; padding: 10px 24px; background-color: #1a1a2e; color: #ffffff; text-decoration: none; border-radius: 4px; font-weight: 600;">Go to Shop</a>
+    </p>
+    {% endif %}
+    <p style="color: #555; margin-top: 24px; font-size: 13px;">If you have any questions, please reach out to your administrator.</p>
+{% endblock %}

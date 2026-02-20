@@ -1,0 +1,27 @@
+{% extends "base_layout.html" %}
+{% block content %}
+    <h2 style="margin: 0 0 16px; font-size: 18px; color: #333;">Your Budget Has Been Adjusted</h2>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+        <tr>
+            <td style="padding: 8px 0; color: #555;">Adjustment Amount</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: 600; color: {% if amount_cents >= 0 %}#16a34a{% else %}#dc2626{% endif %};">
+                {% if amount_cents >= 0 %}+{% endif %}{{ "%.2f"|format(amount_cents / 100) }} &euro;
+            </td>
+        </tr>
+        {% if reason %}
+        <tr>
+            <td style="padding: 8px 0; color: #555;">Reason</td>
+            <td style="padding: 8px 0; text-align: right; color: #333;">{{ reason }}</td>
+        </tr>
+        {% endif %}
+        <tr style="border-top: 1px solid #e0e0e0;">
+            <td style="padding: 8px 0; color: #555;">Available Budget</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #333;">{{ "%.2f"|format(available_budget_cents / 100) }} &euro;</td>
+        </tr>
+    </table>
+    {% if frontend_url %}
+    <p>
+        <a href="{{ frontend_url }}" style="color: #1a1a2e; text-decoration: underline;">View your budget in the shop</a>
+    </p>
+    {% endif %}
+{% endblock %}
