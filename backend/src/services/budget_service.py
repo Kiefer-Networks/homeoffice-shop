@@ -117,27 +117,6 @@ def get_budget_timeline(
     return timeline
 
 
-async def calculate_total_budget_from_rules(
-    db: AsyncSession, start_date: date | None, user_id: UUID | None = None
-) -> int:
-    """Calculate total budget using rules/overrides when available."""
-    if start_date is None or start_date > date.today():
-        return 0
-
-    rules = await get_budget_rules(db)
-    overrides = []
-    if user_id:
-        overrides = await get_user_overrides(db, user_id)
-
-    if not rules and not overrides:
-        return calculate_total_budget_cents(start_date)
-
-    timeline = get_budget_timeline(start_date, rules, overrides)
-    if not timeline:
-        return 0
-    return timeline[-1]["cumulative_cents"]
-
-
 async def get_available_budget_cents(db: AsyncSession, user_id: UUID) -> int:
     user = await db.get(User, user_id)
     if not user:
@@ -163,6 +142,15 @@ async def get_live_adjustment_cents(db: AsyncSession, user_id: UUID) -> int:
         )
     )
     return result.scalar() or 0
+
+
+async def get_live_available_cents(
+    db: AsyncSession, user_id: UUID, total_budget_cents: int,
+) -> int:
+    """Calculate available budget from live (non-cached) spent and adjustment values."""
+    spent = await get_live_spent_cents(db, user_id)
+    adjustments = await get_live_adjustment_cents(db, user_id)
+    return total_budget_cents + adjustments - spent
 
 
 async def refresh_budget_cache(db: AsyncSession, user_id: UUID) -> None:

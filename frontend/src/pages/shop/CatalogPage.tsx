@@ -134,7 +134,7 @@ export function CatalogPage() {
         </div>
       </div>
 
-      <CartDrawer onRefreshCart={refreshCart} onCheckout={handleCheckout} />
+      <CartDrawer onCheckout={handleCheckout} />
 
       <ProductDetailModal
         product={selectedProduct}

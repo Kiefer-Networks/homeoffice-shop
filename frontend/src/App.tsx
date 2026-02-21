@@ -29,30 +29,43 @@ const PurchaseReviewsPage = React.lazy(() => import('@/pages/admin/PurchaseRevie
 const AdminBackupPage = React.lazy(() => import('@/pages/admin/BackupPage').then(m => ({ default: m.AdminBackupPage })))
 
 class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean }
+  { children: React.ReactNode; fullPage?: boolean },
+  { hasError: boolean; error: Error | null }
 > {
-  constructor(props: { children: React.ReactNode }) {
+  constructor(props: { children: React.ReactNode; fullPage?: boolean }) {
     super(props)
-    this.state = { hasError: false }
+    this.state = { hasError: false, error: null }
   }
-  static getDerivedStateFromError() {
-    return { hasError: true }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error }
   }
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo)
   }
   render() {
     if (this.state.hasError) {
+      const wrapper = this.props.fullPage
+        ? 'min-h-screen flex items-center justify-center'
+        : 'flex items-center justify-center py-12'
       return (
-        <div className="min-h-screen flex items-center justify-center">
+        <div className={wrapper}>
           <div className="text-center">
-            <p className="text-lg font-medium">An unexpected error occurred.</p>
+            <p className="text-lg font-medium">
+              {this.props.fullPage ? 'An unexpected error occurred.' : 'This page encountered an error.'}
+            </p>
+            {!this.props.fullPage && this.state.error?.message && (
+              <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">
+                {this.state.error.message}
+              </p>
+            )}
             <button
               className="mt-4 px-4 py-2 bg-[hsl(var(--primary))] text-white rounded-md"
-              onClick={() => window.location.reload()}
+              onClick={() => this.props.fullPage
+                ? window.location.reload()
+                : this.setState({ hasError: false, error: null })
+              }
             >
-              Reload page
+              {this.props.fullPage ? 'Reload page' : 'Try again'}
             </button>
           </div>
         </div>
@@ -158,46 +171,9 @@ function AdminFallback() {
   )
 }
 
-class RouteErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean; error: Error | null }
-> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props)
-    this.state = { hasError: false, error: null }
-  }
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error }
-  }
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Route error:', error, errorInfo)
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <p className="text-lg font-medium">This page encountered an error.</p>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">
-              {this.state.error?.message || 'An unexpected error occurred.'}
-            </p>
-            <button
-              className="mt-4 px-4 py-2 bg-[hsl(var(--primary))] text-white rounded-md"
-              onClick={() => this.setState({ hasError: false, error: null })}
-            >
-              Try again
-            </button>
-          </div>
-        </div>
-      )
-    }
-    return this.props.children
-  }
-}
-
 export default function App() {
   return (
-    <ErrorBoundary>
+    <ErrorBoundary fullPage>
     <BrowserRouter>
       <AppInit>
         <Routes>
@@ -215,18 +191,18 @@ export default function App() {
 
           {/* Admin routes */}
           <Route element={<AuthGuard><AdminGuard><AdminLayout /></AdminGuard></AuthGuard>}>
-            <Route path="/admin" element={<RouteErrorBoundary><Suspense fallback={<AdminFallback />}><DashboardPage /></Suspense></RouteErrorBoundary>} />
-            <Route path="/admin/products" element={<RouteErrorBoundary><Suspense fallback={<AdminFallback />}><AdminProductsPage /></Suspense></RouteErrorBoundary>} />
-            <Route path="/admin/brands" element={<RouteErrorBoundary><Suspense fallback={<AdminFallback />}><AdminBrandsPage /></Suspense></RouteErrorBoundary>} />
-            <Route path="/admin/orders" element={<RouteErrorBoundary><Suspense fallback={<AdminFallback />}><AdminOrdersPage /></Suspense></RouteErrorBoundary>} />
-            <Route path="/admin/categories" element={<RouteErrorBoundary><Suspense fallback={<AdminFallback />}><AdminCategoriesPage /></Suspense></RouteErrorBoundary>} />
-            <Route path="/admin/employees" element={<RouteErrorBoundary><Suspense fallback={<AdminFallback />}><AdminEmployeesPage /></Suspense></RouteErrorBoundary>} />
-            <Route path="/admin/budgets" element={<RouteErrorBoundary><Suspense fallback={<AdminFallback />}><AdminBudgetAdjustmentsPage /></Suspense></RouteErrorBoundary>} />
-            <Route path="/admin/purchase-reviews" element={<RouteErrorBoundary><Suspense fallback={<AdminFallback />}><PurchaseReviewsPage /></Suspense></RouteErrorBoundary>} />
-            <Route path="/admin/settings" element={<AdminOnlyGuard><RouteErrorBoundary><Suspense fallback={<AdminFallback />}><AdminSettingsPage /></Suspense></RouteErrorBoundary></AdminOnlyGuard>} />
-            <Route path="/admin/audit" element={<AdminOnlyGuard><RouteErrorBoundary><Suspense fallback={<AdminFallback />}><AdminAuditLogPage /></Suspense></RouteErrorBoundary></AdminOnlyGuard>} />
-            <Route path="/admin/sync-log" element={<AdminOnlyGuard><RouteErrorBoundary><Suspense fallback={<AdminFallback />}><AdminSyncLogPage /></Suspense></RouteErrorBoundary></AdminOnlyGuard>} />
-            <Route path="/admin/backups" element={<AdminOnlyGuard><RouteErrorBoundary><Suspense fallback={<AdminFallback />}><AdminBackupPage /></Suspense></RouteErrorBoundary></AdminOnlyGuard>} />
+            <Route path="/admin" element={<ErrorBoundary><Suspense fallback={<AdminFallback />}><DashboardPage /></Suspense></ErrorBoundary>} />
+            <Route path="/admin/products" element={<ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminProductsPage /></Suspense></ErrorBoundary>} />
+            <Route path="/admin/brands" element={<ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminBrandsPage /></Suspense></ErrorBoundary>} />
+            <Route path="/admin/orders" element={<ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminOrdersPage /></Suspense></ErrorBoundary>} />
+            <Route path="/admin/categories" element={<ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminCategoriesPage /></Suspense></ErrorBoundary>} />
+            <Route path="/admin/employees" element={<ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminEmployeesPage /></Suspense></ErrorBoundary>} />
+            <Route path="/admin/budgets" element={<ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminBudgetAdjustmentsPage /></Suspense></ErrorBoundary>} />
+            <Route path="/admin/purchase-reviews" element={<ErrorBoundary><Suspense fallback={<AdminFallback />}><PurchaseReviewsPage /></Suspense></ErrorBoundary>} />
+            <Route path="/admin/settings" element={<AdminOnlyGuard><ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminSettingsPage /></Suspense></ErrorBoundary></AdminOnlyGuard>} />
+            <Route path="/admin/audit" element={<AdminOnlyGuard><ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminAuditLogPage /></Suspense></ErrorBoundary></AdminOnlyGuard>} />
+            <Route path="/admin/sync-log" element={<AdminOnlyGuard><ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminSyncLogPage /></Suspense></ErrorBoundary></AdminOnlyGuard>} />
+            <Route path="/admin/backups" element={<AdminOnlyGuard><ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminBackupPage /></Suspense></ErrorBoundary></AdminOnlyGuard>} />
           </Route>
 
           {/* Catch-all */}

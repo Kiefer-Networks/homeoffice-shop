@@ -16,7 +16,7 @@ from src.core.exceptions import (
     InvalidStatusTransitionError,
     NotFoundError,
 )
-from src.core.file_validation import ALLOWED_INVOICE_TYPES, MAX_INVOICE_SIZE, validate_file_magic
+from src.core.file_validation import ALLOWED_INVOICE_EXTENSIONS, ALLOWED_INVOICE_TYPES, MAX_INVOICE_SIZE, validate_file_magic
 from src.core.search import ilike_escape
 from src.models.orm.cart_item import CartItem
 from src.models.orm.order import Order, OrderInvoice, OrderItem
@@ -36,9 +36,6 @@ VALID_TRANSITIONS: dict[str, set[str]] = {
     "delivered": set(),
     "cancelled": set(),
 }
-
-ALLOWED_INVOICE_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
-
 
 async def create_order_from_cart(
     db: AsyncSession,

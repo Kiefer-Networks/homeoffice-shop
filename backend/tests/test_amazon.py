@@ -5,12 +5,11 @@ from pathlib import Path
 import pytest
 
 from src.integrations.amazon.client import (
-    AmazonClientProtocol,
-    FakeAmazonClient,
     _extract_asin,
     _parse_price_cents,
 )
 from src.integrations.amazon.models import AmazonProduct, AmazonSearchResult
+from tests.factories import FakeAmazonClient
 from src.services.image_service import (
     ImagePaths,
     _generate_placeholder_svg,
@@ -54,10 +53,6 @@ class TestParsePriceCents:
 
 
 class TestFakeAmazonClient:
-    @pytest.mark.asyncio
-    async def test_implements_protocol(self):
-        client = FakeAmazonClient()
-        assert isinstance(client, AmazonClientProtocol)
 
     @pytest.mark.asyncio
     async def test_search_by_name(self):

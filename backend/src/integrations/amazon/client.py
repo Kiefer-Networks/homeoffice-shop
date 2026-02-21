@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import re
-from typing import Protocol, runtime_checkable
 
 import httpx
 from cachetools import TTLCache
@@ -44,14 +43,6 @@ def _parse_price_cents(price_str: str | None) -> int:
         return int(round(float(cleaned) * 100))
     except ValueError:
         return 0
-
-
-@runtime_checkable
-class AmazonClientProtocol(Protocol):
-    async def search(self, query: str) -> list[AmazonSearchResult]: ...
-    async def get_product(self, asin: str) -> AmazonProduct | None: ...
-    async def get_current_price(self, asin: str) -> int | None: ...
-    async def get_variant_prices(self, asins: list[str]) -> dict[str, int]: ...
 
 
 class AmazonClient:
@@ -249,38 +240,3 @@ class AmazonClient:
         return {asin: price for asin, price in results if price > 0}
 
 
-class FakeAmazonClient:
-    """Test double for AmazonClient."""
-
-    def __init__(self, products: dict[str, AmazonProduct] | None = None):
-        self._products = products or {}
-
-    async def search(self, query: str) -> list[AmazonSearchResult]:
-        results = []
-        for asin, product in self._products.items():
-            if query.lower() in product.name.lower() or query == asin:
-                results.append(AmazonSearchResult(
-                    name=product.name,
-                    asin=asin,
-                    price_cents=product.price_cents,
-                    image_url=product.images[0] if product.images else None,
-                    url=product.url,
-                ))
-        return results
-
-    async def get_product(self, asin: str) -> AmazonProduct | None:
-        return self._products.get(asin)
-
-    async def get_current_price(self, asin: str) -> int | None:
-        product = self._products.get(asin)
-        if product and product.price_cents > 0:
-            return product.price_cents
-        return None
-
-    async def get_variant_prices(self, asins: list[str]) -> dict[str, int]:
-        prices: dict[str, int] = {}
-        for asin in asins:
-            product = self._products.get(asin)
-            if product and product.price_cents > 0:
-                prices[asin] = product.price_cents
-        return prices

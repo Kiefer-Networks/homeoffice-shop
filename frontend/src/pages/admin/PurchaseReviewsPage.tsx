@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { usePurchaseSyncStatus } from '@/hooks/usePurchaseSyncStatus'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -39,7 +40,6 @@ export function PurchaseReviewsPage() {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS)
   const [loading, setLoading] = useState(true)
-  const [syncRunning, setSyncRunning] = useState(false)
   const { addToast } = useUiStore()
 
   // Match dialog state
@@ -53,32 +53,6 @@ export function PurchaseReviewsPage() {
 
   // Action loading
   const [actionLoading, setActionLoading] = useState<string | null>(null)
-
-  // Poll purchase sync status
-  const checkSyncStatus = useCallback(async () => {
-    try {
-      const { data } = await adminApi.getPurchaseSyncStatus()
-      setSyncRunning(data.running)
-      return data.running
-    } catch {
-      return false
-    }
-  }, [])
-
-  useEffect(() => {
-    checkSyncStatus()
-    const id = setInterval(checkSyncStatus, 5000)
-    return () => clearInterval(id)
-  }, [checkSyncStatus])
-
-  // Reload data when sync finishes
-  const prevSyncRunning = useRef(syncRunning)
-  useEffect(() => {
-    if (prevSyncRunning.current && !syncRunning) {
-      loadReviews()
-    }
-    prevSyncRunning.current = syncRunning
-  }, [syncRunning])
 
   const loadReviews = useCallback(async () => {
     setLoading(true)
@@ -95,6 +69,8 @@ export function PurchaseReviewsPage() {
       setLoading(false)
     }
   }, [page, sort, statusFilter, debouncedSearch])
+
+  const syncRunning = usePurchaseSyncStatus(loadReviews)
 
   useEffect(() => { loadReviews() }, [loadReviews])
 

@@ -7,6 +7,7 @@ MAGIC_BYTES = {
 }
 
 ALLOWED_INVOICE_TYPES = {'application/pdf', 'image/jpeg', 'image/png'}
+ALLOWED_INVOICE_EXTENSIONS = {'.pdf', '.jpg', '.jpeg', '.png'}
 MAX_INVOICE_SIZE = 10 * 1024 * 1024  # 10MB
 
 

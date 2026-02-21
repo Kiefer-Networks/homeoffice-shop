@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { usePurchaseSyncStatus } from '@/hooks/usePurchaseSyncStatus'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -45,32 +46,8 @@ export function AdminBudgetAdjustmentsPage() {
   // Employee detail modal
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
 
-  const [syncRunning, setSyncRunning] = useState(false)
-
   const { addToast } = useUiStore()
   const perPage = DEFAULT_PAGE_SIZE
-
-  // Poll purchase sync status
-  useEffect(() => {
-    const check = async () => {
-      try {
-        const { data } = await adminApi.getPurchaseSyncStatus()
-        setSyncRunning(data.running)
-      } catch { /* ignore */ }
-    }
-    check()
-    const id = setInterval(check, 5000)
-    return () => clearInterval(id)
-  }, [])
-
-  // Reload data when sync finishes
-  const prevSyncRunning = useRef(syncRunning)
-  useEffect(() => {
-    if (prevSyncRunning.current && !syncRunning) {
-      load()
-    }
-    prevSyncRunning.current = syncRunning
-  }, [syncRunning])
 
   const load = useCallback(() => {
     const params: Record<string, string | number> = { page, per_page: perPage, sort }
@@ -80,6 +57,8 @@ export function AdminBudgetAdjustmentsPage() {
       setTotal(data.total)
     })
   }, [page, perPage, sort, debouncedSearch])
+
+  const syncRunning = usePurchaseSyncStatus(load)
 
   useEffect(() => { load() }, [load])
   useEffect(() => { setPage(1) }, [debouncedSearch])

@@ -4,17 +4,15 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useCartStore } from '@/stores/cartStore'
 import { useUiStore } from '@/stores/uiStore'
-import { cartApi } from '@/services/cartApi'
 import { formatCents } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/error'
 
 interface Props {
-  onRefreshCart: () => void
   onCheckout: () => void
 }
 
-export function CartDrawer({ onRefreshCart, onCheckout }: Props) {
-  const { cart, isOpen, setOpen } = useCartStore()
+export function CartDrawer({ onCheckout }: Props) {
+  const { cart, isOpen, setOpen, updateItem, removeItem } = useCartStore()
   const { addToast } = useUiStore()
   const drawerRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
@@ -62,12 +60,7 @@ export function CartDrawer({ onRefreshCart, onCheckout }: Props) {
 
   const handleUpdateQty = async (productId: string, qty: number) => {
     try {
-      if (qty <= 0) {
-        await cartApi.removeItem(productId)
-      } else {
-        await cartApi.updateItem(productId, qty)
-      }
-      onRefreshCart()
+      await updateItem(productId, qty)
     } catch (err: unknown) {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     }
@@ -75,8 +68,7 @@ export function CartDrawer({ onRefreshCart, onCheckout }: Props) {
 
   const handleRemove = async (productId: string) => {
     try {
-      await cartApi.removeItem(productId)
-      onRefreshCart()
+      await removeItem(productId)
     } catch (err: unknown) {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     }

@@ -191,30 +191,3 @@ class HiBobClient:
                 return
 
 
-class FakeHiBobClient:
-    """Test fake returning predefined data."""
-
-    def __init__(
-        self,
-        employees: list[HiBobEmployee] | None = None,
-        custom_tables: dict[tuple[str, str], list[dict]] | None = None,
-    ):
-        self.employees = employees or []
-        self.custom_tables = custom_tables or {}
-
-    async def get_employees(self) -> list[HiBobEmployee]:
-        return self.employees
-
-    async def get_avatar_url(self, employee_id: str) -> str | None:
-        return None
-
-    async def get_custom_table(self, employee_id: str, table_id: str) -> list[dict]:
-        return self.custom_tables.get((employee_id, table_id), [])
-
-    async def create_custom_table_entry(self, employee_id: str, table_id: str, entry: dict) -> dict:
-        key = (employee_id, table_id)
-        self.custom_tables.setdefault(key, []).append(entry)
-        return entry
-
-    async def delete_custom_table_entry(self, employee_id: str, table_id: str, entry_id: str) -> None:
-        pass

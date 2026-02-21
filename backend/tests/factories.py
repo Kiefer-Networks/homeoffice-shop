@@ -1,11 +1,13 @@
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
-from src.models.orm.user import User
-from src.models.orm.product import Product
+from src.integrations.amazon.models import AmazonProduct, AmazonSearchResult
+from src.integrations.hibob.models import HiBobEmployee
 from src.models.orm.cart_item import CartItem
 from src.models.orm.order import Order
+from src.models.orm.product import Product
 from src.models.orm.refresh_token import RefreshToken
+from src.models.orm.user import User
 
 
 def make_user(
@@ -107,3 +109,72 @@ def make_refresh_token(*, user_id, jti=None, token_family=None, revoked_at=None)
         expires_at=datetime.now(timezone.utc) + timedelta(days=7),
         revoked_at=revoked_at,
     )
+
+
+# ── Test doubles ─────────────────────────────────────────────────────────────
+
+
+class FakeAmazonClient:
+    """Test double for AmazonClient."""
+
+    def __init__(self, products: dict[str, AmazonProduct] | None = None):
+        self._products = products or {}
+
+    async def search(self, query: str) -> list[AmazonSearchResult]:
+        results = []
+        for asin, product in self._products.items():
+            if query.lower() in product.name.lower() or query == asin:
+                results.append(AmazonSearchResult(
+                    name=product.name,
+                    asin=asin,
+                    price_cents=product.price_cents,
+                    image_url=product.images[0] if product.images else None,
+                    url=product.url,
+                ))
+        return results
+
+    async def get_product(self, asin: str) -> AmazonProduct | None:
+        return self._products.get(asin)
+
+    async def get_current_price(self, asin: str) -> int | None:
+        product = self._products.get(asin)
+        if product and product.price_cents > 0:
+            return product.price_cents
+        return None
+
+    async def get_variant_prices(self, asins: list[str]) -> dict[str, int]:
+        prices: dict[str, int] = {}
+        for asin in asins:
+            product = self._products.get(asin)
+            if product and product.price_cents > 0:
+                prices[asin] = product.price_cents
+        return prices
+
+
+class FakeHiBobClient:
+    """Test double for HiBobClient."""
+
+    def __init__(
+        self,
+        employees: list[HiBobEmployee] | None = None,
+        custom_tables: dict[tuple[str, str], list[dict]] | None = None,
+    ):
+        self.employees = employees or []
+        self.custom_tables = custom_tables or {}
+
+    async def get_employees(self) -> list[HiBobEmployee]:
+        return self.employees
+
+    async def get_avatar_url(self, employee_id: str) -> str | None:
+        return None
+
+    async def get_custom_table(self, employee_id: str, table_id: str) -> list[dict]:
+        return self.custom_tables.get((employee_id, table_id), [])
+
+    async def create_custom_table_entry(self, employee_id: str, table_id: str, entry: dict) -> dict:
+        key = (employee_id, table_id)
+        self.custom_tables.setdefault(key, []).append(entry)
+        return entry
+
+    async def delete_custom_table_entry(self, employee_id: str, table_id: str, entry_id: str) -> None:
+        pass

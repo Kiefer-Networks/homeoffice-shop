@@ -33,14 +33,14 @@ export interface UserSearchResult {
   avatar_url: string | null
 }
 
-export interface BudgetSummary {
+interface BudgetSummary {
   total_budget_cents: number
   spent_cents: number
   adjustment_cents: number
   available_cents: number
 }
 
-export interface BudgetTimelineEntry {
+interface BudgetTimelineEntry {
   year: number
   period_from: string
   period_to: string
@@ -147,7 +147,7 @@ export interface Category {
   created_at: string
 }
 
-export interface CartItem {
+interface CartItem {
   id: string
   product_id: string
   product_name: string
@@ -174,7 +174,7 @@ export interface Cart {
   budget_exceeded: boolean
 }
 
-export interface OrderItem {
+interface OrderItem {
   id: string
   product_id: string
   product_name: string | null

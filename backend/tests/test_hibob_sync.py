@@ -5,7 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.integrations.hibob.client import FakeHiBobClient, HiBobClientProtocol
+from src.integrations.hibob.client import HiBobClientProtocol
+from tests.factories import FakeHiBobClient
 from src.integrations.hibob.models import HiBobEmployee
 from src.integrations.hibob.sync import sync_employees
 from tests.factories import make_user

@@ -13,8 +13,7 @@ import { DEFAULT_PAGE_SIZE, SEARCH_DEBOUNCE_MS } from '@/lib/constants'
 import { getErrorMessage } from '@/lib/error'
 import { ProductRefreshModal } from '@/components/admin/ProductRefreshModal'
 import { ProductTable } from '@/components/admin/ProductTable'
-import { CreateProductDialog } from '@/components/admin/CreateProductDialog'
-import { EditProductDialog } from '@/components/admin/EditProductDialog'
+import { ProductFormDialog } from '@/components/admin/ProductFormDialog'
 import type { SortKey } from '@/components/admin/ProductTable'
 import type { Product, Category, Brand } from '@/types'
 
@@ -58,10 +57,10 @@ export function AdminProductsPage() {
       setProducts(data.items)
       setTotal(data.total)
     })
-  }, [page, sort, debouncedSearch, categoryFilter, activeFilter, archiveFilter])
+  }, [page, sort, debouncedSearch, categoryFilter, archiveFilter])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => { setPage(1) }, [debouncedSearch, categoryFilter, activeFilter, sort, archiveFilter])
+  useEffect(() => { setPage(1) }, [debouncedSearch, categoryFilter, sort, archiveFilter])
 
   const totalPages = Math.max(1, Math.ceil(total / DEFAULT_PAGE_SIZE))
 
@@ -179,20 +178,20 @@ export function AdminProductsPage() {
       </Card>
 
       {/* Create Dialog */}
-      <CreateProductDialog
+      <ProductFormDialog
         open={showCreate}
         onClose={() => setShowCreate(false)}
-        onCreated={() => { setShowCreate(false); load() }}
+        onSaved={() => { setShowCreate(false); load() }}
         categories={categories}
         brands={brands}
       />
 
       {/* Edit Dialog */}
-      <EditProductDialog
+      <ProductFormDialog
         product={editProduct}
         open={!!editProduct}
         onClose={() => setEditProduct(null)}
-        onUpdated={load}
+        onSaved={() => { setEditProduct(null); load() }}
         categories={categories}
         brands={brands}
       />

@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.integrations.hibob.client import FakeHiBobClient
+from tests.factories import FakeHiBobClient
 from src.models.orm.order import Order
 from src.services.purchase_sync import (
     _find_matching_orders,

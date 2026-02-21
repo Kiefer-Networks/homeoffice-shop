@@ -3,7 +3,7 @@ from datetime import date
 from urllib.parse import urlparse
 from uuid import UUID
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.exceptions import BadRequestError, NotFoundError
@@ -63,7 +63,7 @@ async def get_user_detail(db: AsyncSession, user_id: UUID) -> dict:
 
     spent = await budget_service.get_live_spent_cents(db, user_id)
     adjustment_total = await budget_service.get_live_adjustment_cents(db, user_id)
-    available = target.total_budget_cents + adjustment_total - spent
+    available = await budget_service.get_live_available_cents(db, user_id, target.total_budget_cents)
 
     rules = await budget_service.get_budget_rules(db)
     overrides = await budget_service.get_user_overrides(db, user_id)

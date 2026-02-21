@@ -51,9 +51,6 @@ class Settings(BaseSettings):
     backup_dir: str = "/app/backups"
     backup_retention_count: int = 10
 
-    # Uvicorn
-    uvicorn_workers: int = 2
-
     @property
     def database_url(self) -> str:
         base = (
@@ -61,14 +58,6 @@ class Settings(BaseSettings):
             f"@{self.db_host}:{self.db_port}/{self.db_name}"
         )
         return f"{base}?ssl=require" if self.db_ssl else base
-
-    @property
-    def database_url_sync(self) -> str:
-        base = (
-            f"postgresql://{self.db_user}:{self.db_password}"
-            f"@{self.db_host}:{self.db_port}/{self.db_name}"
-        )
-        return f"{base}?sslmode=require" if self.db_ssl else base
 
     @property
     def cors_origins_list(self) -> list[str]:

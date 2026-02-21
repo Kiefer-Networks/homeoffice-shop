@@ -8,7 +8,7 @@ import type { Product, Category } from '@/types'
 
 export type SortKey = 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc' | 'newest'
 
-export interface ProductTableProps {
+interface ProductTableProps {
   products: Product[]
   categories: Category[]
   sort: SortKey
