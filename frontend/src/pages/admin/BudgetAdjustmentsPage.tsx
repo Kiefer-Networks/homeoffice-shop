@@ -58,7 +58,7 @@ export function AdminBudgetAdjustmentsPage() {
     })
   }, [page, perPage, sort, debouncedSearch])
 
-  const syncRunning = usePurchaseSyncStatus(load)
+  const { syncRunning } = usePurchaseSyncStatus(load)
 
   useEffect(() => { load() }, [load])
   useEffect(() => { setPage(1) }, [debouncedSearch])

@@ -70,7 +70,7 @@ export function PurchaseReviewsPage() {
     }
   }, [page, sort, statusFilter, debouncedSearch])
 
-  const syncRunning = usePurchaseSyncStatus(loadReviews)
+  const { syncRunning, setSyncRunning } = usePurchaseSyncStatus(loadReviews)
 
   useEffect(() => { loadReviews() }, [loadReviews])
 

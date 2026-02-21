@@ -30,5 +30,5 @@ export function usePurchaseSyncStatus(onSyncFinished: () => void) {
     prevSyncRunning.current = syncRunning
   }, [syncRunning, onSyncFinished])
 
-  return syncRunning
+  return { syncRunning, setSyncRunning }
 }
