@@ -52,3 +52,5 @@ migrations/versions/__pycache__/
 
 # Logs
 *.log
+
+./claude
