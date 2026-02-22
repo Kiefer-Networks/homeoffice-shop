@@ -79,26 +79,29 @@ async def _run_employee_sync(admin_id: UUID, ip: str | None, user_agent: str | N
                 ip_address=ip, user_agent=user_agent,
             )
 
-            if log.status == "failed":
-                await notify_staff_email(
-                    db, event="hibob.sync_error",
-                    subject="HiBob Sync Failed",
-                    template_name="hibob_sync_error.html",
-                    context={"error_message": log.error_message},
-                )
-            else:
-                await notify_staff_email(
-                    db, event="hibob.sync",
-                    subject="HiBob Sync Complete",
-                    template_name="hibob_sync_complete.html",
-                    context={
-                        "employees_synced": log.employees_synced,
-                        "employees_created": log.employees_created,
-                        "employees_updated": log.employees_updated,
-                        "employees_deactivated": log.employees_deactivated,
-                        "error_message": log.error_message,
-                    },
-                )
+            try:
+                if log.status == "failed":
+                    await notify_staff_email(
+                        db, event="hibob.sync_error",
+                        subject="HiBob Sync Failed",
+                        template_name="hibob_sync_error.html",
+                        context={"error_message": log.error_message},
+                    )
+                else:
+                    await notify_staff_email(
+                        db, event="hibob.sync",
+                        subject="HiBob Sync Complete",
+                        template_name="hibob_sync_complete.html",
+                        context={
+                            "employees_synced": log.employees_synced,
+                            "employees_created": log.employees_created,
+                            "employees_updated": log.employees_updated,
+                            "employees_deactivated": log.employees_deactivated,
+                            "error_message": log.error_message,
+                        },
+                    )
+            except Exception:
+                logger.exception("Failed to send employee sync notification email")
 
             purchase_log_id = None
             if log.status == "completed":
@@ -107,12 +110,15 @@ async def _run_employee_sync(admin_id: UUID, ip: str | None, user_agent: str | N
                     purchase_log_id = await _create_sync_log(admin_id)
                     purchase_log = await sync_purchases(db, client, triggered_by=admin_id, log_id=purchase_log_id)
                     if purchase_log.pending_review > 0:
-                        await notify_staff_email(
-                            db, event="hibob.purchase_review",
-                            subject="HiBob Purchases Pending Review",
-                            template_name="purchase_review_pending.html",
-                            context={"count": purchase_log.pending_review},
-                        )
+                        try:
+                            await notify_staff_email(
+                                db, event="hibob.purchase_review",
+                                subject="HiBob Purchases Pending Review",
+                                template_name="purchase_review_pending.html",
+                                context={"count": purchase_log.pending_review},
+                            )
+                        except Exception:
+                            logger.exception("Failed to send purchase review notification email")
 
             await db.commit()
         except Exception:
@@ -168,12 +174,15 @@ async def _run_purchase_sync(admin_id: UUID, ip: str | None, user_agent: str | N
             )
 
             if purchase_log.pending_review > 0:
-                await notify_staff_email(
-                    db, event="hibob.purchase_review",
-                    subject="HiBob Purchases Pending Review",
-                    template_name="purchase_review_pending.html",
-                    context={"count": purchase_log.pending_review},
-                )
+                try:
+                    await notify_staff_email(
+                        db, event="hibob.purchase_review",
+                        subject="HiBob Purchases Pending Review",
+                        template_name="purchase_review_pending.html",
+                        context={"count": purchase_log.pending_review},
+                    )
+                except Exception:
+                    logger.exception("Failed to send purchase review notification email")
 
             await db.commit()
         except Exception:
