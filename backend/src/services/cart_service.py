@@ -126,12 +126,16 @@ async def add_to_cart(
     if cart_item:
         # Subtract this variant's current qty since it's included in the total
         new_total = existing_total - cart_item.quantity + cart_item.quantity + quantity
+        if product.stock_quantity is not None and (cart_item.quantity + quantity) > product.stock_quantity:
+            raise BadRequestError(f"Insufficient stock. Only {product.stock_quantity} available.")
         if new_total > product.max_quantity_per_user:
             raise BadRequestError(
                 f"Maximum quantity per user is {product.max_quantity_per_user}"
             )
         cart_item.quantity = cart_item.quantity + quantity
     else:
+        if product.stock_quantity is not None and product.stock_quantity < quantity:
+            raise BadRequestError(f"Insufficient stock. Only {product.stock_quantity} available.")
         if existing_total + quantity > product.max_quantity_per_user:
             raise BadRequestError(
                 f"Maximum quantity per user is {product.max_quantity_per_user}"

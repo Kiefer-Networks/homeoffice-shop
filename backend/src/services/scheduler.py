@@ -11,6 +11,7 @@ Schedule:
 
 import asyncio
 import logging
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -21,6 +22,7 @@ from src.services.settings_service import get_setting, get_setting_int, load_set
 logger = logging.getLogger(__name__)
 
 _scheduler_task: asyncio.Task | None = None
+_last_heartbeat: float = 0.0
 
 # ── Dedup keys ───────────────────────────────────────────────────────────────
 
@@ -132,8 +134,27 @@ async def _run_aftership_sync(now: datetime) -> None:
 
     logger.info("AfterShip scheduled sync triggered")
     from src.integrations.aftership.sync import sync_all_active_orders
+    from src.audit.service import write_audit_log
+    from src.repositories import user_repo
+
     result = await sync_all_active_orders()
     logger.info("AfterShip sync result: %s", result)
+
+    # Audit trail for AfterShip sync
+    try:
+        async with async_session_factory() as db:
+            staff = await user_repo.get_active_staff(db)
+            if staff:
+                await write_audit_log(
+                    db,
+                    user_id=staff[0].id,
+                    action="aftership_sync",
+                    resource_type="aftership",
+                    details={"result": result},
+                )
+            await db.commit()
+    except Exception:
+        logger.exception("Failed to write audit log for AfterShip sync")
 
 
 # ── Task: HiBob User Sync (every 24h) ───────────────────────────────────────
@@ -238,10 +259,24 @@ async def _run_cart_cleanup(now: datetime) -> None:
 
     logger.info("Cart stale item cleanup triggered")
     from src.services.cart_service import cleanup_stale_items
+    from src.audit.service import write_audit_log
+    from src.repositories import user_repo
 
     async with async_session_factory() as db:
         try:
             removed = await cleanup_stale_items(db)
+
+            # Audit trail for cart cleanup
+            staff = await user_repo.get_active_staff(db)
+            if staff:
+                await write_audit_log(
+                    db,
+                    user_id=staff[0].id,
+                    action="cart_cleanup",
+                    resource_type="cart",
+                    details={"removed": removed},
+                )
+
             await db.commit()
             logger.info("Cart stale cleanup completed: %d items removed", removed)
         except Exception:
@@ -344,8 +379,10 @@ ALL_TASKS = [
 
 async def _scheduler_loop() -> None:
     """Single event loop — checks every 60s which tasks are due."""
+    global _last_heartbeat
     while True:
         await asyncio.sleep(60)
+        _last_heartbeat = time.monotonic()
         now = datetime.now(timezone.utc)
 
         for task_name, task_fn in ALL_TASKS:
@@ -366,6 +403,25 @@ def start_scheduler() -> None:
             AFTERSHIP_SYNC_HOURS,
             CART_CLEANUP_HOUR, CART_CLEANUP_MINUTE,
         )
+
+
+def get_scheduler_health() -> dict:
+    """Return scheduler health based on heartbeat recency.
+
+    The scheduler loop runs every 60 seconds. A heartbeat older than
+    70 seconds (with 10s grace) indicates the scheduler may be stalled.
+    """
+    if _scheduler_task is None:
+        return {"status": "not_started"}
+    if _scheduler_task.done():
+        return {"status": "stopped"}
+    if _last_heartbeat == 0.0:
+        # Task was created but hasn't completed its first loop yet
+        return {"status": "starting"}
+    elapsed = time.monotonic() - _last_heartbeat
+    if elapsed > 70:
+        return {"status": "stale", "last_heartbeat_secs_ago": round(elapsed)}
+    return {"status": "healthy", "last_heartbeat_secs_ago": round(elapsed)}
 
 
 def stop_scheduler() -> None:

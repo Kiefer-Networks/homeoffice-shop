@@ -59,8 +59,21 @@ async def create_order_from_cart(
     user_id: UUID,
     delivery_note: str | None = None,
     confirm_price_changes: bool = False,
+    idempotency_key: str | None = None,
 ) -> Order:
     """Create order from cart items with budget check and price validation."""
+    # Idempotency: if a key was provided, check for an existing order
+    if idempotency_key:
+        existing_result = await db.execute(
+            select(Order).where(
+                Order.user_id == user_id,
+                Order.idempotency_key == idempotency_key,
+            )
+        )
+        existing_order = existing_result.scalar_one_or_none()
+        if existing_order:
+            return existing_order
+
     result = await db.execute(
         select(CartItem, Product)
         .join(Product, CartItem.product_id == Product.id)
@@ -118,6 +131,7 @@ async def create_order_from_cart(
         status="pending",
         total_cents=total_cents,
         delivery_note=delivery_note,
+        idempotency_key=idempotency_key,
     )
     db.add(order)
 
@@ -266,7 +280,7 @@ async def notify_status_changed(
     if new_status == "ordered":
         await notify_user_email(
             user_email,
-            subject="Your order has been placed",
+            subject="Your order has been placed with the vendor",
             template_name="order_shipped.html",
             context={
                 "order_id_short": str(order.id)[:8],
@@ -412,6 +426,20 @@ async def notify_order_cancelled_by_user(
             "user_email": user.email,
             "order_id": str(order.id),
             "reason": reason,
+            "total_cents": order.total_cents,
+        },
+    )
+
+    # Notify the employee themselves as confirmation
+    await notify_user_email(
+        user.email,
+        subject=f"Order Status Updated: Cancelled",
+        template_name="order_status_changed.html",
+        context={
+            "order_id_short": str(order.id)[:8],
+            "new_status": "cancelled",
+            "admin_note": reason,
+            "items": [],
             "total_cents": order.total_cents,
         },
     )
@@ -641,7 +669,7 @@ async def update_order_item_check(
 ) -> OrderItem | None:
     # Validate order is in a modifiable status
     order_result = await db.execute(
-        select(Order).where(Order.id == order_id)
+        select(Order).where(Order.id == order_id).with_for_update()
     )
     order = order_result.scalar_one_or_none()
     if not order:
