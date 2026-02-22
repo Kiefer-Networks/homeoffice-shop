@@ -4,6 +4,7 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.audit.service import write_audit_log
 from src.models.orm.order import Order, OrderItem
 from src.models.orm.product import Product
 from src.models.orm.user import User
@@ -70,6 +71,18 @@ async def send_delivery_reminders(db: AsyncSession) -> int:
                 # Still mark as sent to avoid retrying every day
                 order.delivery_reminder_sent = True
                 await db.flush()
+                await write_audit_log(
+                    db,
+                    user_id=order.user_id,
+                    action="delivery_reminder.skipped",
+                    resource_type="order",
+                    resource_id=order.id,
+                    details={
+                        "reason": "no_manager_email",
+                        "expected_delivery": order.expected_delivery,
+                        "order_total_cents": order.total_cents,
+                    },
+                )
                 continue
 
             # Mark before sending to prevent infinite daily retries on SMTP failure
@@ -95,10 +108,36 @@ async def send_delivery_reminders(db: AsyncSession) -> int:
                     "Delivery reminder sent for order %s to manager %s",
                     order.id, recipient,
                 )
+                await write_audit_log(
+                    db,
+                    user_id=order.user_id,
+                    action="delivery_reminder.sent",
+                    resource_type="order",
+                    resource_id=order.id,
+                    details={
+                        "recipient": recipient,
+                        "employee_name": user.display_name or user.email,
+                        "expected_delivery": order.expected_delivery,
+                        "order_total_cents": order.total_cents,
+                        "items_count": len(items),
+                    },
+                )
             else:
                 logger.warning(
                     "Delivery reminder email failed for order %s to %s",
                     order.id, recipient,
+                )
+                await write_audit_log(
+                    db,
+                    user_id=order.user_id,
+                    action="delivery_reminder.failed",
+                    resource_type="order",
+                    resource_id=order.id,
+                    details={
+                        "recipient": recipient,
+                        "expected_delivery": order.expected_delivery,
+                        "reason": "email_send_failed",
+                    },
                 )
         except Exception:
             logger.exception("Failed to process delivery reminder for order %s", order.id)

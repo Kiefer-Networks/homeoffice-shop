@@ -7,6 +7,7 @@ from uuid import UUID
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.audit.service import write_audit_log
 from src.integrations.hibob.client import HiBobClientProtocol
 from src.models.orm.budget_adjustment import BudgetAdjustment
 from src.models.orm.hibob_purchase_review import HiBobPurchaseReview
@@ -238,6 +239,23 @@ async def sync_purchases(
                     review.adjustment_id = adjustment.id
                     auto_adjusted_count += 1
                     affected_user_ids.add(user.id)
+
+                    await write_audit_log(
+                        db,
+                        user_id=triggered_by or user.id,
+                        action="purchase_sync.budget_adjusted",
+                        resource_type="budget_adjustment",
+                        resource_id=adjustment.id,
+                        details={
+                            "user_id": str(user.id),
+                            "user_email": user.email,
+                            "amount_cents": -amount_cents,
+                            "description": description,
+                            "hibob_entry_id": entry_id,
+                            "entry_date": str(entry_date),
+                            "currency": currency,
+                        },
+                    )
                 else:
                     # Ambiguous: needs review
                     review.status = "pending"
@@ -261,6 +279,27 @@ async def sync_purchases(
             "Purchase sync completed: %d entries, %d matched, %d adjusted, %d pending",
             entries_found, matched_count, auto_adjusted_count, pending_count,
         )
+
+        audit_user_id = triggered_by
+        if not audit_user_id and users:
+            audit_user_id = users[0].id
+        if audit_user_id:
+            await write_audit_log(
+                db,
+                user_id=audit_user_id,
+                action="purchase_sync.completed",
+                resource_type="system",
+                details={
+                    "sync_log_id": str(log.id),
+                    "users_processed": len(users),
+                    "entries_found": entries_found,
+                    "matched": matched_count,
+                    "auto_adjusted": auto_adjusted_count,
+                    "pending_review": pending_count,
+                    "affected_user_count": len(affected_user_ids),
+                    "trigger": "manual" if triggered_by else "scheduled",
+                },
+            )
 
     except Exception as e:
         log.status = "failed"

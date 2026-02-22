@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.audit.service import write_audit_log
 from src.integrations.hibob.client import HiBobClient, HiBobClientProtocol
 from src.models.orm.order import Order, OrderItem
 from src.models.orm.product import Product
@@ -98,6 +99,23 @@ async def unsync_order_from_hibob(
         item.hibob_synced = False
 
     await db.flush()
+
+    await write_audit_log(
+        db,
+        user_id=admin_id,
+        action="hibob.order.unsynced",
+        resource_type="order",
+        resource_id=order.id,
+        details={
+            "entries_deleted": deleted,
+            "order_user_id": str(order.user_id),
+            "user_email": user.email,
+            "user_hibob_id": user.hibob_id,
+            "order_total_cents": order.total_cents,
+            "expected_descriptions": list(expected_descriptions),
+        },
+    )
+
     return deleted
 
 
@@ -203,5 +221,24 @@ async def sync_order_to_hibob(
     order.hibob_synced_at = datetime.now(timezone.utc)
     order.hibob_synced_by = admin_id
     await db.flush()
+
+    await write_audit_log(
+        db,
+        user_id=admin_id,
+        action="hibob.order.synced",
+        resource_type="order",
+        resource_id=order.id,
+        details={
+            "entries_created": entries_created,
+            "order_user_id": str(order.user_id),
+            "user_email": user.email,
+            "user_hibob_id": user.hibob_id,
+            "order_total_cents": order.total_cents,
+            "items": [
+                {"product": name or "Product", "quantity": item.quantity, "price_cents": item.price_cents}
+                for item, name in items
+            ],
+        },
+    )
 
     return entries_created

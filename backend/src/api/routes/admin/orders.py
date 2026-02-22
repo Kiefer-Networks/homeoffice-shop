@@ -261,10 +261,17 @@ async def upload_invoice(
 async def download_invoice(
     order_id: UUID,
     invoice_id: UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):
     invoice = await order_service.get_invoice(db, order_id, invoice_id)
+
+    await log_admin_action(
+        db, request, admin.id, "admin.order.invoice_downloaded",
+        resource_type="order", resource_id=order_id,
+        details={"invoice_id": str(invoice_id), "filename": invoice.filename},
+    )
 
     safe_name = invoice.filename.encode("ascii", "replace").decode()
     encoded_name = quote(invoice.filename)

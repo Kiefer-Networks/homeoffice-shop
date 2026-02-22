@@ -1,10 +1,42 @@
 import asyncio
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 
 from src.services.settings_service import get_setting
 
 logger = logging.getLogger(__name__)
+
+
+async def _audit_scheduled_backup(filename: str, triggered_by: str) -> None:
+    """Write audit log entry for a scheduled backup (no HTTP request context)."""
+    try:
+        from src.audit.service import write_audit_log
+        from src.core.database import async_session_factory
+        from src.core.config import settings
+        from src.repositories import user_repo
+
+        filepath = Path(settings.backup_dir) / filename
+        size = filepath.stat().st_size if filepath.exists() else 0
+
+        async with async_session_factory() as db:
+            staff = await user_repo.get_active_staff(db)
+            audit_user_id = staff[0].id if staff else None
+            if audit_user_id:
+                await write_audit_log(
+                    db,
+                    user_id=audit_user_id,
+                    action="backup.scheduled.completed",
+                    resource_type="database",
+                    details={
+                        "filename": filename,
+                        "size_bytes": size,
+                        "triggered_by": triggered_by,
+                    },
+                )
+            await db.commit()
+    except Exception:
+        logger.exception("Failed to write audit log for scheduled backup")
 
 _scheduler_task: asyncio.Task | None = None
 
@@ -46,8 +78,9 @@ async def _scheduler_loop() -> None:
             last_run_key = run_key
             logger.info("Scheduled %s backup triggered at %s", frequency, now.isoformat())
             from src.services.backup_service import run_backup
-            await run_backup(triggered_by="scheduler")
+            filename = await run_backup(triggered_by="scheduler")
             logger.info("Scheduled backup completed")
+            await _audit_scheduled_backup(filename, triggered_by="scheduler")
         except Exception:
             logger.exception("Scheduled backup failed")
 

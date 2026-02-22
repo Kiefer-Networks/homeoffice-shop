@@ -62,9 +62,17 @@ async def list_backups(
 @router.get("/download/{filename}")
 async def download_backup(
     filename: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
     filepath = await backup_service.get_backup_path(filename)
+
+    await log_admin_action(
+        db, request, admin.id, "admin.backup.downloaded",
+        resource_type="database",
+        details={"filename": filename, "size_bytes": filepath.stat().st_size},
+    )
 
     return FileResponse(
         path=str(filepath),
