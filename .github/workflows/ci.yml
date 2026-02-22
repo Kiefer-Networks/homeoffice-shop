@@ -31,7 +31,14 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r backend/requirements.txt
-      - run: pip install pytest pytest-asyncio pytest-cov
+      - run: pip install -r backend/requirements-test.txt
+      - name: Lint with ruff
+        working-directory: backend
+        run: pip install ruff && ruff check src/ --select E,F,W --ignore E501
+      - name: Audit dependencies
+        working-directory: backend
+        continue-on-error: true
+        run: pip install pip-audit && pip-audit -r requirements.txt || true
       - name: Run backend tests
         working-directory: backend
         env:
@@ -44,7 +51,7 @@ jobs:
           SECRET_KEY: test-secret-key-for-ci-must-be-at-least-32-chars
           ALLOWED_EMAIL_DOMAINS: example.com
           INITIAL_ADMIN_EMAILS: admin@example.com
-        run: pytest tests/ -v --tb=short
+        run: pytest tests/ -v --tb=short --cov=src --cov-report=term-missing
 
   frontend-checks:
     runs-on: ubuntu-latest
@@ -66,3 +73,7 @@ jobs:
       - name: Tests
         run: npx vitest run
         working-directory: frontend
+      - name: Audit dependencies
+        working-directory: frontend
+        continue-on-error: true
+        run: npm audit --audit-level=high || true
