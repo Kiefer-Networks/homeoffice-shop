@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         try:
             await ensure_audit_partitions(db)
         except Exception:
-            logger.exception("Failed to ensure audit partitions at startup")
+            logger.critical("Failed to ensure audit partitions at startup", exc_info=True)
         try:
             from src.repositories import refresh_token_repo
             cleaned = await refresh_token_repo.cleanup_expired(db)
@@ -64,13 +64,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 logger.info("Cleaned up %d expired refresh tokens", cleaned)
             await db.commit()
         except Exception:
-            logger.exception("Failed to cleanup expired refresh tokens")
+            logger.critical("Failed to cleanup expired refresh tokens", exc_info=True)
         try:
             from src.services.cart_service import cleanup_stale_items
             cleaned = await cleanup_stale_items(db)
             await db.commit()
         except Exception:
-            logger.exception("Failed to cleanup stale cart items")
+            logger.critical("Failed to cleanup stale cart items", exc_info=True)
     start_scheduler()
     yield
     stop_scheduler()
