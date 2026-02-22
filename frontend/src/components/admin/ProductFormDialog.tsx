@@ -247,7 +247,7 @@ export function ProductFormDialog({ open, onClose, onSaved, categories, brands, 
           )}
 
           {/* Common form fields */}
-          <Input placeholder="Product name *" value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />
+          <Input aria-label="Product name" placeholder="Product name *" value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />
           <label htmlFor={`${isEdit ? 'edit' : 'create'}-brand`} className="sr-only">Brand</label>
           <select id={`${isEdit ? 'edit' : 'create'}-brand`} value={form.brand_id} onChange={(e) => setForm(f => ({ ...f, brand_id: e.target.value }))}
             className="w-full rounded-md border px-3 py-2 text-sm">
@@ -260,23 +260,23 @@ export function ProductFormDialog({ open, onClose, onSaved, categories, brands, 
             <option value="">Select category *</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <Input placeholder="Price in EUR (e.g. 1,299.99)" value={form.price_euro} onChange={(e) => setForm(f => ({ ...f, price_euro: e.target.value }))} />
-          <Input placeholder="External URL *" value={form.external_url} onChange={(e) => setForm(f => ({ ...f, external_url: e.target.value }))} />
+          <Input aria-label="Price in EUR" placeholder="Price in EUR (e.g. 1,299.99)" value={form.price_euro} onChange={(e) => setForm(f => ({ ...f, price_euro: e.target.value }))} />
+          <Input aria-label="External URL" placeholder="External URL *" value={form.external_url} onChange={(e) => setForm(f => ({ ...f, external_url: e.target.value }))} />
           <label htmlFor={`${isEdit ? 'edit' : 'create'}-description`} className="sr-only">Description</label>
           <textarea id={`${isEdit ? 'edit' : 'create'}-description`} placeholder="Description" value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
             className="w-full rounded-md border px-3 py-2 text-sm min-h-[80px]" />
 
           {/* Stock / SKU fields */}
-          <Input placeholder="SKU / Article number (optional)" value={form.sku} onChange={(e) => setForm(f => ({ ...f, sku: e.target.value }))} />
+          <Input aria-label="SKU" placeholder="SKU / Article number (optional)" value={form.sku} onChange={(e) => setForm(f => ({ ...f, sku: e.target.value }))} />
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label htmlFor={`${isEdit ? 'edit' : 'create'}-stock-qty`} className="text-xs text-[hsl(var(--muted-foreground))]">Stock quantity (empty = unlimited)</label>
-              <Input id={`${isEdit ? 'edit' : 'create'}-stock-qty`} type="number" min="0" placeholder="Unlimited" value={form.stock_quantity}
+              <Input id={`${isEdit ? 'edit' : 'create'}-stock-qty`} aria-label="Stock quantity" type="number" min="0" placeholder="Unlimited" value={form.stock_quantity}
                 onChange={(e) => setForm(f => ({ ...f, stock_quantity: e.target.value }))} />
             </div>
             <div>
               <label htmlFor={`${isEdit ? 'edit' : 'create'}-stock-warn`} className="text-xs text-[hsl(var(--muted-foreground))]">Low stock warning level</label>
-              <Input id={`${isEdit ? 'edit' : 'create'}-stock-warn`} type="number" min="0" value={form.stock_warning_level}
+              <Input id={`${isEdit ? 'edit' : 'create'}-stock-warn`} aria-label="Stock warning level" type="number" min="0" value={form.stock_warning_level}
                 onChange={(e) => setForm(f => ({ ...f, stock_warning_level: e.target.value }))} />
             </div>
           </div>

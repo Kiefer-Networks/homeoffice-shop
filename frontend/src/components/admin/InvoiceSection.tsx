@@ -22,6 +22,11 @@ export function InvoiceSection({ order, onInvoiceChange }: InvoiceSectionProps) 
   const handleInvoiceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return
     const file = e.target.files[0]
+    if (file.size > 10 * 1024 * 1024) {
+      addToast({ title: 'File too large', description: 'Maximum file size is 10MB', variant: 'destructive' })
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
     setUploading(true)
     try {
       await adminApi.uploadInvoice(order.id, file)
@@ -93,11 +98,11 @@ export function InvoiceSection({ order, onInvoiceChange }: InvoiceSectionProps) 
                 <span className="text-xs text-[hsl(var(--muted-foreground))] shrink-0">{formatDate(inv.uploaded_at)}</span>
               </div>
               <div className="flex gap-1 shrink-0">
-                <Button size="icon" variant="ghost" className="h-7 w-7"
+                <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Download invoice"
                   onClick={() => handleInvoiceDownload(inv.id, inv.filename)}>
                   <Download className="h-3 w-3" />
                 </Button>
-                <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600 hover:text-red-700"
+                <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600 hover:text-red-700" aria-label="Delete invoice"
                   onClick={() => handleInvoiceDelete(inv.id)}>
                   <Trash2 className="h-3 w-3" />
                 </Button>

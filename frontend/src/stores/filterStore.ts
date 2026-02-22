@@ -43,7 +43,7 @@ export const useFilterStore = create<FilterState>((set, get) => ({
     priceMin: params.get('price_min') || '',
     priceMax: params.get('price_max') || '',
     sort: params.get('sort') || 'relevance',
-    page: parseInt(params.get('page') || '1', 10),
+    page: Math.max(1, parseInt(params.get('page') || '1', 10) || 1),
   }),
   toSearchParams: () => {
     const state = get()

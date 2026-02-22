@@ -40,9 +40,9 @@ export function ProductFilters({ facets, categories, idPrefix = '' }: Props) {
     <div className="space-y-6">
       <div>
         <h3 className="font-semibold mb-2 text-sm">Category</h3>
-        <div className="space-y-1">
+        <div className="space-y-1" role="radiogroup" aria-label="Category filter">
           <button
-            role="checkbox"
+            role="radio"
             aria-checked={!category}
             aria-label="Filter by category: All Categories"
             onClick={() => setFilter('category', '')}
@@ -53,7 +53,7 @@ export function ProductFilters({ facets, categories, idPrefix = '' }: Props) {
           {categories.map((cat) => (
             <button
               key={cat.id}
-              role="checkbox"
+              role="radio"
               aria-checked={category === cat.id}
               aria-label={`Filter by category: ${cat.name}`}
               onClick={() => setFilter('category', cat.id)}
@@ -73,9 +73,9 @@ export function ProductFilters({ facets, categories, idPrefix = '' }: Props) {
       {facets?.brands && facets.brands.length > 0 && (
         <div>
           <h3 className="font-semibold mb-2 text-sm">Brand</h3>
-          <div className="space-y-1 max-h-40 overflow-y-auto">
+          <div className="space-y-1 max-h-40 overflow-y-auto" role="radiogroup" aria-label="Brand filter">
             <button
-              role="checkbox"
+              role="radio"
               aria-checked={!brand}
               aria-label="Filter by brand: All Brands"
               onClick={() => setFilter('brand', '')}
@@ -86,7 +86,7 @@ export function ProductFilters({ facets, categories, idPrefix = '' }: Props) {
             {facets.brands.map((b) => (
               <button
                 key={b.value}
-                role="checkbox"
+                role="radio"
                 aria-checked={brand === b.value}
                 aria-label={`Filter by brand: ${b.value}`}
                 onClick={() => setFilter('brand', b.value)}
@@ -102,9 +102,9 @@ export function ProductFilters({ facets, categories, idPrefix = '' }: Props) {
       {facets?.colors && facets.colors.length > 0 && (
         <div>
           <h3 className="font-semibold mb-2 text-sm">Color</h3>
-          <div className="space-y-1 max-h-40 overflow-y-auto">
+          <div className="space-y-1 max-h-40 overflow-y-auto" role="radiogroup" aria-label="Color filter">
             <button
-              role="checkbox"
+              role="radio"
               aria-checked={!color}
               aria-label="Filter by color: All Colors"
               onClick={() => setFilter('color', '')}
@@ -115,7 +115,7 @@ export function ProductFilters({ facets, categories, idPrefix = '' }: Props) {
             {facets.colors.map((c) => (
               <button
                 key={c.value}
-                role="checkbox"
+                role="radio"
                 aria-checked={color === c.value}
                 aria-label={`Filter by color: ${c.value}`}
                 onClick={() => setFilter('color', c.value)}
@@ -131,9 +131,9 @@ export function ProductFilters({ facets, categories, idPrefix = '' }: Props) {
       {facets?.materials && facets.materials.length > 0 && (
         <div>
           <h3 className="font-semibold mb-2 text-sm">Material</h3>
-          <div className="space-y-1 max-h-40 overflow-y-auto">
+          <div className="space-y-1 max-h-40 overflow-y-auto" role="radiogroup" aria-label="Material filter">
             <button
-              role="checkbox"
+              role="radio"
               aria-checked={!material}
               aria-label="Filter by material: All Materials"
               onClick={() => setFilter('material', '')}
@@ -144,7 +144,7 @@ export function ProductFilters({ facets, categories, idPrefix = '' }: Props) {
             {facets.materials.map((m) => (
               <button
                 key={m.value}
-                role="checkbox"
+                role="radio"
                 aria-checked={material === m.value}
                 aria-label={`Filter by material: ${m.value}`}
                 onClick={() => setFilter('material', m.value)}

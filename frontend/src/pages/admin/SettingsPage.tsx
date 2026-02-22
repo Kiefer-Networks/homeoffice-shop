@@ -137,12 +137,18 @@ export function AdminSettingsPage() {
   }
 
   const handleSaveRule = async () => {
+    const initialCents = parseInt(ruleForm.initial_cents)
+    const yearlyCents = parseInt(ruleForm.yearly_increment_cents)
+    if (isNaN(initialCents) || isNaN(yearlyCents)) {
+      addToast({ title: 'Invalid input', description: 'Budget amounts must be valid numbers', variant: 'destructive' })
+      return
+    }
     setSavingRule(true)
     try {
       const data = {
         effective_from: ruleForm.effective_from,
-        initial_cents: parseInt(ruleForm.initial_cents),
-        yearly_increment_cents: parseInt(ruleForm.yearly_increment_cents),
+        initial_cents: initialCents,
+        yearly_increment_cents: yearlyCents,
       }
       if (editingRule) {
         await adminApi.updateBudgetRule(editingRule.id, data)

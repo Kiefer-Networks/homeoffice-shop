@@ -88,18 +88,18 @@ export function ProductTable({
                       </Button>
                     ) : (
                       <>
-                        <Button size="sm" variant="outline" onClick={() => onEdit(p)}>
+                        <Button size="sm" variant="outline" aria-label="Edit product" onClick={() => onEdit(p)}>
                           <Pencil className="h-3 w-3" />
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => p.is_active ? onDeactivate(p) : onActivate(p)}>
+                        <Button size="sm" variant="outline" aria-label={p.is_active ? 'Deactivate product' : 'Activate product'} onClick={() => p.is_active ? onDeactivate(p) : onActivate(p)}>
                           {p.is_active ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                         </Button>
                         {p.amazon_asin && (
-                          <Button size="sm" variant="ghost" onClick={(e) => onRefresh(p, e)}>
+                          <Button size="sm" variant="ghost" aria-label="Refresh price" onClick={(e) => onRefresh(p, e)}>
                             <RefreshCcw className="h-3 w-3" />
                           </Button>
                         )}
-                        <Button size="sm" variant="outline" className="text-orange-600 hover:text-orange-700" onClick={() => onArchive(p)}>
+                        <Button size="sm" variant="outline" aria-label="Archive product" className="text-orange-600 hover:text-orange-700" onClick={() => onArchive(p)}>
                           <Archive className="h-3 w-3" />
                         </Button>
                       </>

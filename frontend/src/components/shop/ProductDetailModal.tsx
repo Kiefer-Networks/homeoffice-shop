@@ -150,12 +150,14 @@ export function ProductDetailModal({ product, open, onClose, onRefreshCart }: Pr
               {allImages.length > 1 && (
                 <>
                   <button
+                    aria-label="Previous image"
                     onClick={() => setCurrentImage(i => (i - 1 + allImages.length) % allImages.length)}
                     className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-1 hover:bg-white shadow"
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
                   <button
+                    aria-label="Next image"
                     onClick={() => setCurrentImage(i => (i + 1) % allImages.length)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-1 hover:bg-white shadow"
                   >
@@ -165,6 +167,7 @@ export function ProductDetailModal({ product, open, onClose, onRefreshCart }: Pr
                     {allImages.map((_, i) => (
                       <button
                         key={i}
+                        aria-label={`Go to image ${i + 1}`}
                         onClick={() => setCurrentImage(i)}
                         className={`w-2 h-2 rounded-full transition-colors ${i === currentImage ? 'bg-[hsl(var(--primary))]' : 'bg-gray-300'}`}
                       />

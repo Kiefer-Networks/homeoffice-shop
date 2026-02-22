@@ -37,13 +37,19 @@ export function BudgetOverrideForm({ userId, override, onSaved, onCancel }: Budg
   }, [override])
 
   const handleSave = async () => {
+    const initialCents = parseInt(form.initial_cents)
+    const yearlyCents = parseInt(form.yearly_increment_cents)
+    if (isNaN(initialCents) || isNaN(yearlyCents)) {
+      addToast({ title: 'Invalid input', description: 'Budget amounts must be valid numbers', variant: 'destructive' })
+      return
+    }
     setSaving(true)
     try {
       const payload = {
         effective_from: form.effective_from,
         effective_until: form.effective_until || null,
-        initial_cents: parseInt(form.initial_cents),
-        yearly_increment_cents: parseInt(form.yearly_increment_cents),
+        initial_cents: initialCents,
+        yearly_increment_cents: yearlyCents,
         reason: form.reason,
       }
       if (override) {
