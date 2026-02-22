@@ -81,7 +81,7 @@ describe('cartStore', () => {
     it('optimistically updates quantity and recalculates totals', async () => {
       const { cartApi } = await import('@/services/cartApi')
       const mocked = vi.mocked(cartApi)
-      mocked.updateItem.mockResolvedValue({ data: null })
+      mocked.updateItem.mockResolvedValue({ data: null } as any)
 
       const useCartStore = await getStore()
       const cart = makeCart()
@@ -103,7 +103,7 @@ describe('cartStore', () => {
     it('removes item when quantity is 0', async () => {
       const { cartApi } = await import('@/services/cartApi')
       const mocked = vi.mocked(cartApi)
-      mocked.removeItem.mockResolvedValue({ data: null })
+      mocked.removeItem.mockResolvedValue({ data: null } as any)
 
       const useCartStore = await getStore()
       const cart = makeCart()
@@ -122,7 +122,7 @@ describe('cartStore', () => {
     it('detects budget exceeded after update', async () => {
       const { cartApi } = await import('@/services/cartApi')
       const mocked = vi.mocked(cartApi)
-      mocked.updateItem.mockResolvedValue({ data: null })
+      mocked.updateItem.mockResolvedValue({ data: null } as any)
 
       const useCartStore = await getStore()
       const cart = makeCart({ available_budget_cents: 15000 })
@@ -138,7 +138,7 @@ describe('cartStore', () => {
     it('calls cartApi.updateItem for positive quantity', async () => {
       const { cartApi } = await import('@/services/cartApi')
       const mocked = vi.mocked(cartApi)
-      mocked.updateItem.mockResolvedValue({ data: null })
+      mocked.updateItem.mockResolvedValue({ data: null } as any)
 
       const useCartStore = await getStore()
       useCartStore.setState({ cart: makeCart() })
@@ -151,7 +151,7 @@ describe('cartStore', () => {
     it('calls cartApi.removeItem when quantity is 0', async () => {
       const { cartApi } = await import('@/services/cartApi')
       const mocked = vi.mocked(cartApi)
-      mocked.removeItem.mockResolvedValue({ data: null })
+      mocked.removeItem.mockResolvedValue({ data: null } as any)
 
       const useCartStore = await getStore()
       useCartStore.setState({ cart: makeCart() })
@@ -183,7 +183,7 @@ describe('cartStore', () => {
     it('optimistically removes item and recalculates totals', async () => {
       const { cartApi } = await import('@/services/cartApi')
       const mocked = vi.mocked(cartApi)
-      mocked.removeItem.mockResolvedValue({ data: null })
+      mocked.removeItem.mockResolvedValue({ data: null } as any)
 
       const useCartStore = await getStore()
       useCartStore.setState({ cart: makeCart() })
@@ -201,7 +201,7 @@ describe('cartStore', () => {
     it('calls cartApi.removeItem', async () => {
       const { cartApi } = await import('@/services/cartApi')
       const mocked = vi.mocked(cartApi)
-      mocked.removeItem.mockResolvedValue({ data: null })
+      mocked.removeItem.mockResolvedValue({ data: null } as any)
 
       const useCartStore = await getStore()
       useCartStore.setState({ cart: makeCart() })
@@ -230,7 +230,7 @@ describe('cartStore', () => {
     it('recalculates budget_exceeded correctly after removal', async () => {
       const { cartApi } = await import('@/services/cartApi')
       const mocked = vi.mocked(cartApi)
-      mocked.removeItem.mockResolvedValue({ data: null })
+      mocked.removeItem.mockResolvedValue({ data: null } as any)
 
       const useCartStore = await getStore()
       // Budget is 10000, current total is 13000 (exceeds), after removing prod-1 => 3000 (ok)

@@ -1,5 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import type { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // We must mock dependencies BEFORE importing api.ts.
 
