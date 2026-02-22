@@ -13,6 +13,7 @@ from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
 from src.audit.service import log_admin_action
 from src.core.tasks import create_background_task
+from src.services.settings_service import get_setting_int
 from src.models.dto.budget import (
     BudgetAdjustmentCreate,
     BudgetAdjustmentListResponse,
@@ -70,9 +71,9 @@ async def export_adjustments_csv(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):
-    MAX_EXPORT_ROWS = 10000
+    max_rows = get_setting_int("max_csv_export_rows", 10000)
     items, _ = await budget_service.list_adjustments(
-        db, q=q, page=1, per_page=MAX_EXPORT_ROWS,
+        db, q=q, page=1, per_page=max_rows,
     )
 
     output = io.StringIO()

@@ -40,6 +40,12 @@ DEFAULT_SETTINGS = {
     "backup_schedule_hour": "2",
     "backup_schedule_minute": "0",
     "budget_warning_threshold_percent": "90",
+    "delivery_reminder_hour": "8",
+    "aftership_sync_hours": "8,12,16,20",
+    "cart_cleanup_hour": "4",
+    "cart_cleanup_minute": "30",
+    "audit_retention_months": "12",
+    "max_csv_export_rows": "10000",
 }
 
 _cache: dict[str, str] = {}
@@ -67,14 +73,16 @@ def get_cached_settings() -> dict[str, str]:
     return dict(_cache)
 
 
-def get_setting(key: str) -> str:
+def get_setting(key: str, default: str | None = None) -> str:
+    fallback = default if default is not None else DEFAULT_SETTINGS.get(key, "")
     if not _is_cache_fresh():
-        return DEFAULT_SETTINGS.get(key, "")
-    return _cache.get(key, DEFAULT_SETTINGS.get(key, ""))
+        return DEFAULT_SETTINGS.get(key, fallback)
+    return _cache.get(key, DEFAULT_SETTINGS.get(key, fallback))
 
 
-def get_setting_int(key: str) -> int:
-    return int(get_setting(key) or "0")
+def get_setting_int(key: str, default: int = 0) -> int:
+    raw = get_setting(key)
+    return int(raw) if raw else default
 
 
 async def update_setting(

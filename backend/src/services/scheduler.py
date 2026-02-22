@@ -95,10 +95,9 @@ async def _run_backup(now: datetime) -> None:
 
 # ── Task: Delivery Reminders ─────────────────────────────────────────────────
 
-DELIVERY_REMINDER_HOUR = 8
-
 async def _run_delivery_reminders(now: datetime) -> None:
-    if now.hour != DELIVERY_REMINDER_HOUR:
+    delivery_hour = get_setting_int("delivery_reminder_hour", 8)
+    if now.hour != delivery_hour:
         return
 
     run_key = now.strftime("%Y-%m-%d")
@@ -118,14 +117,14 @@ async def _run_delivery_reminders(now: datetime) -> None:
 
 # ── Task: AfterShip Tracking ────────────────────────────────────────────────
 
-AFTERSHIP_SYNC_HOURS = (8, 12, 16, 20)
-
 async def _run_aftership_sync(now: datetime) -> None:
     from src.integrations.aftership.client import aftership_client
     if not aftership_client.is_configured:
         return
 
-    if now.hour not in AFTERSHIP_SYNC_HOURS:
+    raw = get_setting("aftership_sync_hours", "8,12,16,20")
+    sync_hours = tuple(int(h.strip()) for h in raw.split(",") if h.strip())
+    if now.hour not in sync_hours:
         return
 
     run_key = f"{now.strftime('%Y-%m-%d')}T{now.hour}"
@@ -246,11 +245,10 @@ async def _run_hibob_user_sync(now: datetime) -> None:
 
 # ── Task: Cart Stale Cleanup ─────────────────────────────────────────────────
 
-CART_CLEANUP_HOUR = 4
-CART_CLEANUP_MINUTE = 30
-
 async def _run_cart_cleanup(now: datetime) -> None:
-    if now.hour != CART_CLEANUP_HOUR or now.minute != CART_CLEANUP_MINUTE:
+    cleanup_hour = get_setting_int("cart_cleanup_hour", 4)
+    cleanup_minute = get_setting_int("cart_cleanup_minute", 30)
+    if now.hour != cleanup_hour or now.minute != cleanup_minute:
         return
 
     run_key = now.strftime("%Y-%m-%d")
@@ -398,10 +396,8 @@ def start_scheduler() -> None:
         _scheduler_task = asyncio.create_task(_scheduler_loop())
         logger.info(
             "Unified scheduler started — backup, delivery reminders, "
-            "AfterShip (%s UTC), HiBob users (configurable), "
-            "cart cleanup (%02d:%02d UTC), HiBob purchases (configurable)",
-            AFTERSHIP_SYNC_HOURS,
-            CART_CLEANUP_HOUR, CART_CLEANUP_MINUTE,
+            "AfterShip (configurable), HiBob users (configurable), "
+            "cart cleanup (configurable), HiBob purchases (configurable)",
         )
 
 

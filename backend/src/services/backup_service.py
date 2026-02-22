@@ -51,7 +51,11 @@ async def run_backup(triggered_by: str = "scheduler") -> str:
         filename = f"homeoffice_shop_{now.strftime('%Y-%m-%d_%H%M%S')}.dump"
         filepath = backup_dir() / filename
 
-        env = {**os.environ, "PGPASSWORD": settings.db_password}
+        env = {
+            "PGPASSWORD": settings.db_password,
+            "PATH": os.environ.get("PATH", "/usr/bin:/usr/local/bin"),
+            "LANG": os.environ.get("LANG", "C.UTF-8"),
+        }
 
         process = await asyncio.create_subprocess_exec(
             "pg_dump",
