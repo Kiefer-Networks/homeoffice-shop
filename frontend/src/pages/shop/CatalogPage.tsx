@@ -33,7 +33,7 @@ export function CatalogPage() {
 
   useEffect(() => {
     filterStore.syncFromUrl(searchParams)
-    productApi.getCategories().then(({ data }) => setCategories(data)).catch(() => {})
+    productApi.getCategories().then(({ data }) => setCategories(data)).catch((err) => console.error('Failed to load categories:', err))
   }, [])
 
   const refreshCart = useCallback(async () => {

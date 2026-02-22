@@ -55,7 +55,7 @@ async def list_departments(
 @router.get("", response_model=UserAdminListResponse)
 async def list_users(
     page: int = Query(1, ge=1),
-    per_page: int = Query(50, ge=1, le=200),
+    per_page: int = Query(50, ge=1, le=100),
     q: str | None = Query(None, max_length=200),
     department: str | None = Query(None),
     role: str | None = Query(None),

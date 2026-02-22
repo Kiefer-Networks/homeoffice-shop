@@ -8,12 +8,12 @@ from src.models.dto.common import PaginatedResponse
 
 class BudgetAdjustmentCreate(BaseModel):
     user_id: UUID
-    amount_cents: int = Field(ge=-10_000_00, le=10_000_00)
+    amount_cents: int = Field(ge=-99_999_99_00, le=99_999_99_00)
     reason: str = Field(min_length=1, max_length=500)
 
 
 class BudgetAdjustmentUpdate(BaseModel):
-    amount_cents: int = Field(ge=-10_000_00, le=10_000_00)
+    amount_cents: int = Field(ge=-99_999_99_00, le=99_999_99_00)
     reason: str = Field(min_length=1, max_length=500)
 
 

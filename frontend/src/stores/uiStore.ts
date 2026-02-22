@@ -22,9 +22,10 @@ export const useUiStore = create<UiState>((set) => ({
   addToast: (toast) => {
     const id = crypto.randomUUID()
     set((state) => ({ toasts: [...state.toasts, { ...toast, id }] }))
+    const duration = toast.variant === 'destructive' ? 8000 : 5000
     setTimeout(() => {
       set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }))
-    }, 5000)
+    }, duration)
   },
   removeToast: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
 }))

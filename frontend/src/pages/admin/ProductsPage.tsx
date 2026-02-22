@@ -37,8 +37,8 @@ export function AdminProductsPage() {
   const { addToast } = useUiStore()
 
   useEffect(() => {
-    productApi.getCategories().then(({ data }) => setCategories(data)).catch(() => {})
-    adminApi.listBrands().then(({ data }) => setBrands(data)).catch(() => {})
+    productApi.getCategories().then(({ data }) => setCategories(data)).catch((err) => console.error('Failed to load categories:', err))
+    adminApi.listBrands().then(({ data }) => setBrands(data)).catch((err) => console.error('Failed to load brands:', err))
   }, [])
 
   const load = useCallback(() => {

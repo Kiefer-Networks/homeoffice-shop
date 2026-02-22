@@ -1,5 +1,6 @@
 import axios, { type AxiosError, type AxiosRequestConfig } from 'axios'
 import { getAccessToken, setAccessToken } from '@/lib/token'
+import { useAuthStore } from '@/stores/authStore'
 
 const MAX_RETRIES = 2
 const RETRY_DELAY_MS = 1000
@@ -60,11 +61,13 @@ api.interceptors.response.use(
           { withCredentials: true }
         )
         setAccessToken(data.access_token)
+        useAuthStore.getState().setAccessToken(data.access_token)
         config.headers = config.headers || {}
         ;(config.headers as Record<string, string>).Authorization = `Bearer ${data.access_token}`
         return api(config)
       } catch {
         setAccessToken(null)
+        useAuthStore.getState().logout()
       }
     }
     return Promise.reject(error)

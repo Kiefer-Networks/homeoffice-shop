@@ -34,7 +34,7 @@ export function AdminSidebar() {
   useEffect(() => {
     adminApi.getPendingReviewCount()
       .then(({ data }) => setPendingCount(data.count))
-      .catch(() => {})
+      .catch((err) => console.error('Failed to load pending review count:', err))
   }, [location.pathname])
 
   const filteredNavItems = navItems.filter(

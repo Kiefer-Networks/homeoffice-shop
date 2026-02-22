@@ -74,6 +74,7 @@ def get_setting_int(key: str) -> int:
 async def update_setting(
     db: AsyncSession, key: str, value: str, updated_by: UUID | None = None
 ) -> None:
+    global _cache_loaded_at
     result = await db.execute(
         select(AppSetting).where(AppSetting.key == key)
     )
@@ -88,6 +89,7 @@ async def update_setting(
 
     async with _cache_lock:
         _cache[key] = value
+        _cache_loaded_at = time.monotonic()
     logger.info("Setting '%s' updated", key)
 
 

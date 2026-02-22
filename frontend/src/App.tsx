@@ -184,9 +184,9 @@ export default function App() {
 
           {/* Shop routes */}
           <Route element={<AuthGuard><ShopLayout /></AuthGuard>}>
-            <Route path="/" element={<CatalogPage />} />
-            <Route path="/orders" element={<OrdersPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/" element={<ErrorBoundary><CatalogPage /></ErrorBoundary>} />
+            <Route path="/orders" element={<ErrorBoundary><OrdersPage /></ErrorBoundary>} />
+            <Route path="/profile" element={<ErrorBoundary><ProfilePage /></ErrorBoundary>} />
           </Route>
 
           {/* Admin routes */}

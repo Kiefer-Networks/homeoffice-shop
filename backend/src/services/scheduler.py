@@ -5,6 +5,7 @@ Schedule:
   - Delivery reminder: daily 08:00 UTC
   - AfterShip sync:   4× daily at 08, 12, 16, 20 UTC
   - HiBob user sync:  daily 03:00 UTC (every 24h)
+  - Cart stale cleanup: daily 04:30 UTC
   - HiBob purchases:  2× daily at 04:00 and 16:00 UTC (every 12h)
 """
 
@@ -223,6 +224,32 @@ async def _run_hibob_user_sync(now: datetime) -> None:
                 logger.exception("Scheduled HiBob user sync failed")
 
 
+# ── Task: Cart Stale Cleanup ─────────────────────────────────────────────────
+
+CART_CLEANUP_HOUR = 4
+CART_CLEANUP_MINUTE = 30
+
+async def _run_cart_cleanup(now: datetime) -> None:
+    if now.hour != CART_CLEANUP_HOUR or now.minute != CART_CLEANUP_MINUTE:
+        return
+
+    run_key = now.strftime("%Y-%m-%d")
+    if not _should_run("cart_cleanup", run_key):
+        return
+
+    logger.info("Cart stale item cleanup triggered")
+    from src.services.cart_service import cleanup_stale_items
+
+    async with async_session_factory() as db:
+        try:
+            removed = await cleanup_stale_items(db)
+            await db.commit()
+            logger.info("Cart stale cleanup completed: %d items removed", removed)
+        except Exception:
+            await db.rollback()
+            logger.exception("Cart stale item cleanup failed")
+
+
 # ── Task: HiBob Purchase Sync (every 12h) ───────────────────────────────────
 
 HIBOB_PURCHASE_SYNC_HOURS = (4, 16)
@@ -311,6 +338,7 @@ ALL_TASKS = [
     ("delivery_reminder", _run_delivery_reminders),
     ("aftership", _run_aftership_sync),
     ("hibob_users", _run_hibob_user_sync),
+    ("cart_cleanup", _run_cart_cleanup),
     ("hibob_purchases", _run_hibob_purchase_sync),
 ]
 
@@ -334,8 +362,10 @@ def start_scheduler() -> None:
         _scheduler_task = asyncio.create_task(_scheduler_loop())
         logger.info(
             "Unified scheduler started — backup, delivery reminders, "
-            "AfterShip (%s UTC), HiBob users (%02d UTC), HiBob purchases (%s UTC)",
+            "AfterShip (%s UTC), HiBob users (%02d UTC), "
+            "cart cleanup (%02d:%02d UTC), HiBob purchases (%s UTC)",
             AFTERSHIP_SYNC_HOURS, HIBOB_USER_SYNC_HOUR,
+            CART_CLEANUP_HOUR, CART_CLEANUP_MINUTE,
             HIBOB_PURCHASE_SYNC_HOURS,
         )
 

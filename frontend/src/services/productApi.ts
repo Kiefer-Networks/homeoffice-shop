@@ -16,7 +16,7 @@ export const productApi = {
     }
     categoriesPromise = api.get<Category[]>('/api/categories')
     categoriesCacheTime = now
-    categoriesPromise.catch(() => { categoriesPromise = null })
+    categoriesPromise.catch(() => { categoriesPromise = null; categoriesCacheTime = 0 })
     return categoriesPromise
   },
 }

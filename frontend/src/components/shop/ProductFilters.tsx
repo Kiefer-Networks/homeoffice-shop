@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useFilterStore } from '@/stores/filterStore'
@@ -10,6 +11,29 @@ interface Props {
 
 export function ProductFilters({ facets, categories }: Props) {
   const { category, brand, color, material, priceMin, priceMax, sort, setFilter, resetFilters } = useFilterStore()
+
+  const [localPriceMin, setLocalPriceMin] = useState(priceMin)
+  const [localPriceMax, setLocalPriceMax] = useState(priceMax)
+
+  // Sync local state when store changes externally (e.g. reset filters)
+  useEffect(() => { setLocalPriceMin(priceMin) }, [priceMin])
+  useEffect(() => { setLocalPriceMax(priceMax) }, [priceMax])
+
+  // Debounce local price min -> store
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localPriceMin !== priceMin) setFilter('priceMin', localPriceMin)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [localPriceMin])
+
+  // Debounce local price max -> store
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localPriceMax !== priceMax) setFilter('priceMax', localPriceMax)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [localPriceMax])
 
   return (
     <div className="space-y-6">
@@ -138,16 +162,16 @@ export function ProductFilters({ facets, categories }: Props) {
           <Input
             type="number"
             placeholder="Min"
-            value={priceMin}
-            onChange={(e) => setFilter('priceMin', e.target.value)}
+            value={localPriceMin}
+            onChange={(e) => setLocalPriceMin(e.target.value)}
             className="w-20"
           />
           <span className="text-gray-400 self-center">-</span>
           <Input
             type="number"
             placeholder="Max"
-            value={priceMax}
-            onChange={(e) => setFilter('priceMax', e.target.value)}
+            value={localPriceMax}
+            onChange={(e) => setLocalPriceMax(e.target.value)}
             className="w-20"
           />
         </div>

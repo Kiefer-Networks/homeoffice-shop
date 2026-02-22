@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { Cart } from '@/types'
 import { cartApi } from '@/services/cartApi'
 import { getErrorMessage } from '@/lib/error'
+import { useUiStore } from '@/stores/uiStore'
 
 interface CartState {
   cart: Cart | null
@@ -68,13 +69,14 @@ export const useCartStore = create<CartState>((set, get) => ({
         await cartApi.updateItem(productId, quantity)
       }
     } catch (err) {
-      // Rollback on error and refetch
-      set({ cart: prevCart, error: getErrorMessage(err) })
+      // Rollback on error — re-fetch true server state instead of restoring stale prevCart
+      set({ error: getErrorMessage(err) })
+      useUiStore.getState().addToast({ title: 'Failed to update cart', description: getErrorMessage(err), variant: 'destructive' })
       try {
         const { data } = await cartApi.get()
         set({ cart: data })
       } catch {
-        // keep prevCart on refetch failure
+        // keep current cart on refetch failure
       }
     }
   },
@@ -87,13 +89,14 @@ export const useCartStore = create<CartState>((set, get) => ({
     try {
       await cartApi.removeItem(productId)
     } catch (err) {
-      // Rollback on error and refetch
-      set({ cart: prevCart, error: getErrorMessage(err) })
+      // Rollback on error — re-fetch true server state instead of restoring stale prevCart
+      set({ error: getErrorMessage(err) })
+      useUiStore.getState().addToast({ title: 'Failed to update cart', description: getErrorMessage(err), variant: 'destructive' })
       try {
         const { data } = await cartApi.get()
         set({ cart: data })
       } catch {
-        // keep prevCart on refetch failure
+        // keep current cart on refetch failure
       }
     }
   },

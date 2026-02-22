@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import FileResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,6 +8,7 @@ from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
 from src.api.dependencies.rate_limit import rate_limit
 from src.audit.service import log_admin_action
+from src.core.config import settings
 from src.core.exceptions import BadRequestError
 from src.models.dto.backup import (
     BackupFileResponse,
@@ -67,6 +70,10 @@ async def download_backup(
     admin: User = Depends(require_admin),
 ):
     filepath = await backup_service.get_backup_path(filename)
+
+    backup_directory = Path(settings.backup_dir).resolve()
+    if filepath.resolve().parent != backup_directory:
+        raise BadRequestError("Invalid backup path")
 
     await log_admin_action(
         db, request, admin.id, "admin.backup.downloaded",

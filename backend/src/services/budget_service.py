@@ -121,7 +121,7 @@ async def get_available_budget_cents(db: AsyncSession, user_id: UUID) -> int:
     user = await db.get(User, user_id)
     if not user:
         return 0
-    return user.total_budget_cents + user.cached_adjustment_cents - user.cached_spent_cents
+    return max(0, user.total_budget_cents + user.cached_adjustment_cents - user.cached_spent_cents)
 
 
 async def get_live_spent_cents(db: AsyncSession, user_id: UUID) -> int:
@@ -150,7 +150,7 @@ async def get_live_available_cents(
     """Calculate available budget from live (non-cached) spent and adjustment values."""
     spent = await get_live_spent_cents(db, user_id)
     adjustments = await get_live_adjustment_cents(db, user_id)
-    return total_budget_cents + adjustments - spent
+    return max(0, total_budget_cents + adjustments - spent)
 
 
 async def refresh_budget_cache(db: AsyncSession, user_id: UUID) -> None:

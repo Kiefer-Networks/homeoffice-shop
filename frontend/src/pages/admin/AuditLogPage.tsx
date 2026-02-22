@@ -86,7 +86,7 @@ export function AdminAuditLogPage() {
   useEffect(() => {
     adminApi.getAuditFilters()
       .then(({ data }) => setAvailableFilters(data))
-      .catch(() => {})
+      .catch((err) => console.error('Failed to load audit filters:', err))
   }, [])
 
   useEffect(() => { setPage(1) }, [debouncedSearch, resourceTypeFilter, actionFilter, dateFrom, dateTo])

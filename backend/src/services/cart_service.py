@@ -87,6 +87,9 @@ async def add_to_cart(
     db: AsyncSession, user_id: UUID, product_id: UUID, quantity: int = 1,
     variant_asin: str | None = None,
 ) -> CartItem:
+    if quantity <= 0:
+        raise BadRequestError("Quantity must be greater than zero")
+
     product = await db.get(Product, product_id)
     if not product or not product.is_active or product.archived_at is not None:
         raise BadRequestError("Product not available")
@@ -150,6 +153,9 @@ async def add_to_cart(
 async def update_cart_item(
     db: AsyncSession, user_id: UUID, product_id: UUID, quantity: int
 ) -> CartItem | None:
+    if quantity <= 0:
+        raise BadRequestError("Quantity must be greater than zero")
+
     result = await db.execute(
         select(CartItem).where(
             CartItem.user_id == user_id,
@@ -158,10 +164,6 @@ async def update_cart_item(
     )
     cart_item = result.scalar_one_or_none()
     if not cart_item:
-        return None
-
-    if quantity <= 0:
-        await db.delete(cart_item)
         return None
 
     product = await db.get(Product, product_id)
