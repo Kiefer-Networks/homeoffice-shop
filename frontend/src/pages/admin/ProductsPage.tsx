@@ -128,6 +128,7 @@ export function AdminProductsPage() {
       <div className="flex flex-wrap gap-4 mb-4 items-center">
         {/* Category filter */}
         <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
+          aria-label="Filter by category"
           className="h-9 rounded-md border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm">
           <option value="">All Categories</option>
           {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}

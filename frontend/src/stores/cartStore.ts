@@ -28,22 +28,37 @@ export const useCartStore = create<CartState>((set) => ({
     }
   },
   addItem: async (productId, quantity = 1, variantAsin) => {
-    await cartApi.addItem(productId, quantity, variantAsin)
-    const { data } = await cartApi.get()
-    set({ cart: data })
+    set({ isLoading: true })
+    try {
+      await cartApi.addItem(productId, quantity, variantAsin)
+      const { data } = await cartApi.get()
+      set({ cart: data })
+    } finally {
+      set({ isLoading: false })
+    }
   },
   updateItem: async (productId, quantity) => {
-    if (quantity <= 0) {
-      await cartApi.removeItem(productId)
-    } else {
-      await cartApi.updateItem(productId, quantity)
+    set({ isLoading: true })
+    try {
+      if (quantity <= 0) {
+        await cartApi.removeItem(productId)
+      } else {
+        await cartApi.updateItem(productId, quantity)
+      }
+      const { data } = await cartApi.get()
+      set({ cart: data })
+    } finally {
+      set({ isLoading: false })
     }
-    const { data } = await cartApi.get()
-    set({ cart: data })
   },
   removeItem: async (productId) => {
-    await cartApi.removeItem(productId)
-    const { data } = await cartApi.get()
-    set({ cart: data })
+    set({ isLoading: true })
+    try {
+      await cartApi.removeItem(productId)
+      const { data } = await cartApi.get()
+      set({ cart: data })
+    } finally {
+      set({ isLoading: false })
+    }
   },
 }))
