@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { Save, Send, Plus, Pencil, Trash2 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { formatCents } from '@/lib/utils'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import type { BudgetRule } from '@/types'
 
 const generalSettings: Record<string, { label: string; description: string }> = {
@@ -51,6 +52,7 @@ export function AdminSettingsPage() {
   const [showRuleForm, setShowRuleForm] = useState(false)
   const [ruleForm, setRuleForm] = useState({ effective_from: '', initial_cents: '', yearly_increment_cents: '' })
   const [savingRule, setSavingRule] = useState(false)
+  const [deleteRuleTarget, setDeleteRuleTarget] = useState<string | null>(null)
   useEffect(() => {
     if (isAdmin) {
       adminApi.getSettings()
@@ -145,14 +147,16 @@ export function AdminSettingsPage() {
     }
   }
 
-  const handleDeleteRule = async (id: string) => {
-    if (!confirm('Delete this budget rule?')) return
+  const confirmDeleteRule = async () => {
+    if (!deleteRuleTarget) return
     try {
-      await adminApi.deleteBudgetRule(id)
+      await adminApi.deleteBudgetRule(deleteRuleTarget)
       addToast({ title: 'Rule deleted' })
       loadRules()
     } catch (err: unknown) {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+    } finally {
+      setDeleteRuleTarget(null)
     }
   }
 
@@ -378,7 +382,7 @@ export function AdminSettingsPage() {
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
                               {isAdmin && rules.length > 1 && (
-                                <Button size="sm" variant="ghost" onClick={() => handleDeleteRule(rule.id)}>
+                                <Button size="sm" variant="ghost" onClick={() => setDeleteRuleTarget(rule.id)}>
                                   <Trash2 className="h-3.5 w-3.5 text-red-500" />
                                 </Button>
                               )}
@@ -394,6 +398,14 @@ export function AdminSettingsPage() {
           </Card>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteRuleTarget}
+        onClose={() => setDeleteRuleTarget(null)}
+        onConfirm={confirmDeleteRule}
+        title="Delete Budget Rule"
+        description="Are you sure you want to delete this budget rule? This action cannot be undone."
+      />
     </div>
   )
 }

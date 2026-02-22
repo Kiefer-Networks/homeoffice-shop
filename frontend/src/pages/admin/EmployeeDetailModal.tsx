@@ -11,6 +11,7 @@ import { getErrorMessage } from '@/lib/error'
 import { ORDER_STATUS_VARIANT, PURCHASE_STATUS_VARIANT } from '@/lib/constants'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { BudgetOverrideForm } from '@/components/admin/BudgetOverrideForm'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import type { UserDetailResponse, UserBudgetOverride, UserPurchaseReview } from '@/types'
 
 interface EmployeeDetailModalProps {
@@ -25,6 +26,7 @@ export function EmployeeDetailModal({ userId, onClose }: EmployeeDetailModalProp
 
   const [showOverrideForm, setShowOverrideForm] = useState(false)
   const [editingOverride, setEditingOverride] = useState<UserBudgetOverride | undefined>(undefined)
+  const [deleteOverrideTarget, setDeleteOverrideTarget] = useState<string | null>(null)
 
   useEffect(() => {
     if (!userId) {
@@ -47,14 +49,16 @@ export function EmployeeDetailModal({ userId, onClose }: EmployeeDetailModalProp
     setShowOverrideForm(true)
   }
 
-  const handleDeleteOverride = async (overrideId: string) => {
-    if (!userId || !confirm('Delete this budget override?')) return
+  const confirmDeleteOverride = async () => {
+    if (!userId || !deleteOverrideTarget) return
     try {
-      await adminApi.deleteUserBudgetOverride(userId, overrideId)
+      await adminApi.deleteUserBudgetOverride(userId, deleteOverrideTarget)
       addToast({ title: 'Override deleted' })
       reload()
     } catch (err: unknown) {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+    } finally {
+      setDeleteOverrideTarget(null)
     }
   }
 
@@ -195,7 +199,7 @@ export function EmployeeDetailModal({ userId, onClose }: EmployeeDetailModalProp
                                   <Button size="sm" variant="ghost" onClick={() => openOverrideForm(ov)}>
                                     <Pencil className="h-3.5 w-3.5" />
                                   </Button>
-                                  <Button size="sm" variant="ghost" onClick={() => handleDeleteOverride(ov.id)}>
+                                  <Button size="sm" variant="ghost" onClick={() => setDeleteOverrideTarget(ov.id)}>
                                     <Trash2 className="h-3.5 w-3.5 text-red-500" />
                                   </Button>
                                 </div>
@@ -320,6 +324,14 @@ export function EmployeeDetailModal({ userId, onClose }: EmployeeDetailModalProp
             </div>
           </>
         ) : null}
+
+        <ConfirmDialog
+          open={!!deleteOverrideTarget}
+          onClose={() => setDeleteOverrideTarget(null)}
+          onConfirm={confirmDeleteOverride}
+          title="Delete Budget Override"
+          description="Are you sure you want to delete this budget override? This action cannot be undone."
+        />
       </DialogContent>
     </Dialog>
   )

@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/Pagination'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate, parseEuroToCents, centsToEuroInput } from '@/lib/utils'
@@ -376,27 +377,24 @@ export function AdminBudgetAdjustmentsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Delete Adjustment</DialogTitle></DialogHeader>
-          {deleteTarget && (
-            <div className="space-y-2">
-              <p className="text-sm">Are you sure you want to delete this adjustment?</p>
-              <div className="p-3 rounded-md bg-[hsl(var(--muted)/0.5)] text-sm space-y-1">
-                <div><strong>Employee:</strong> {deleteTarget.user_display_name || '—'}</div>
-                <div><strong>Amount:</strong> {formatCents(deleteTarget.amount_cents)}</div>
-                <div><strong>Reason:</strong> {deleteTarget.reason}</div>
-              </div>
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">This will recalculate the affected user's budget.</p>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Delete Adjustment"
+        description="Are you sure you want to delete this adjustment?"
+      >
+        {deleteTarget && (
+          <div className="space-y-2">
+            <div className="p-3 rounded-md bg-[hsl(var(--muted)/0.5)] text-sm space-y-1">
+              <div><strong>Employee:</strong> {deleteTarget.user_display_name || '—'}</div>
+              <div><strong>Amount:</strong> {formatCents(deleteTarget.amount_cents)}</div>
+              <div><strong>Reason:</strong> {deleteTarget.reason}</div>
             </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">This will recalculate the affected user's budget.</p>
+          </div>
+        )}
+      </ConfirmDialog>
 
       {selectedUserId && (
         <EmployeeDetailModal
