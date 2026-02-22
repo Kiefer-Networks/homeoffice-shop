@@ -193,6 +193,14 @@ export interface OrderInvoice {
   uploaded_at: string
 }
 
+export interface OrderTrackingUpdate {
+  id: string
+  comment: string
+  created_by: string
+  created_by_name: string | null
+  created_at: string
+}
+
 export interface Order {
   id: string
   user_id: string
@@ -204,6 +212,9 @@ export interface Order {
   admin_note: string | null
   expected_delivery: string | null
   purchase_url: string | null
+  tracking_number: string | null
+  tracking_url: string | null
+  tracking_updates: OrderTrackingUpdate[]
   reviewed_by: string | null
   reviewed_at: string | null
   cancellation_reason: string | null

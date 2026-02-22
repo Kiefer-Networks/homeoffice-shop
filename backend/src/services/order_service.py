@@ -19,11 +19,11 @@ from src.core.exceptions import (
 from src.core.file_validation import ALLOWED_INVOICE_EXTENSIONS, ALLOWED_INVOICE_TYPES, MAX_INVOICE_SIZE, validate_file_magic
 from src.core.search import ilike_escape
 from src.models.orm.cart_item import CartItem
-from src.models.orm.order import Order, OrderInvoice, OrderItem
+from src.models.orm.order import Order, OrderInvoice, OrderItem, OrderTrackingUpdate
 from src.models.orm.product import Product
 from src.models.orm.user import User
 from src.notifications.service import notify_staff_email, notify_user_email
-from src.mappers.order import order_item_to_dict, invoice_to_dict, order_to_dict
+from src.mappers.order import order_item_to_dict, invoice_to_dict, order_to_dict, tracking_update_to_dict
 from src.services.budget_service import check_budget_for_order, refresh_budget_cache
 
 logger = logging.getLogger(__name__)
@@ -128,6 +128,8 @@ async def transition_order(
     admin_note: str | None = None,
     expected_delivery: str | None = None,
     purchase_url: str | None = None,
+    tracking_number: str | None = None,
+    tracking_url: str | None = None,
 ) -> Order:
     result = await db.execute(
         select(Order).where(Order.id == order_id).with_for_update()
@@ -155,6 +157,10 @@ async def transition_order(
         order.expected_delivery = expected_delivery
     if purchase_url is not None:
         order.purchase_url = purchase_url
+    if tracking_number is not None:
+        order.tracking_number = tracking_number
+    if tracking_url is not None:
+        order.tracking_url = tracking_url
 
     order.reviewed_at = datetime.now(timezone.utc)
 
@@ -264,7 +270,11 @@ async def cancel_order_by_user(
 
 
 async def get_order_with_items(
-    db: AsyncSession, order_id: UUID, *, include_invoices: bool = False
+    db: AsyncSession,
+    order_id: UUID,
+    *,
+    include_invoices: bool = False,
+    include_tracking_updates: bool = False,
 ) -> dict | None:
     result = await db.execute(
         select(Order).where(Order.id == order_id)
@@ -295,7 +305,28 @@ async def get_order_with_items(
         )
         invoices = [invoice_to_dict(inv) for inv in inv_result.scalars().all()]
 
-    return order_to_dict(order, user, items, invoices)
+    tracking_updates: list[dict] = []
+    if include_tracking_updates:
+        tu_result = await db.execute(
+            select(OrderTrackingUpdate)
+            .where(OrderTrackingUpdate.order_id == order_id)
+            .order_by(OrderTrackingUpdate.created_at.desc())
+        )
+        updates = tu_result.scalars().all()
+        # Batch-fetch creator names
+        creator_ids = {u.created_by for u in updates}
+        creators_map: dict[UUID, str] = {}
+        if creator_ids:
+            creators_result = await db.execute(
+                select(User.id, User.display_name).where(User.id.in_(creator_ids))
+            )
+            creators_map = {uid: name for uid, name in creators_result.all()}
+        tracking_updates = [
+            tracking_update_to_dict(u, creators_map.get(u.created_by))
+            for u in updates
+        ]
+
+    return order_to_dict(order, user, items, invoices, tracking_updates)
 
 
 async def get_orders(
@@ -435,6 +466,64 @@ async def update_purchase_url(
     order.purchase_url = purchase_url
     await db.flush()
     return order
+
+
+async def update_tracking_info(
+    db: AsyncSession,
+    order_id: UUID,
+    admin_id: UUID,
+    tracking_number: str | None = None,
+    tracking_url: str | None = None,
+    comment: str | None = None,
+) -> Order:
+    result = await db.execute(
+        select(Order).where(Order.id == order_id).with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise NotFoundError("Order not found")
+
+    if order.status not in ("ordered", "delivered"):
+        raise BadRequestError("Tracking info can only be updated for ordered or delivered orders")
+
+    if tracking_number is not None:
+        order.tracking_number = tracking_number
+    if tracking_url is not None:
+        order.tracking_url = tracking_url
+
+    if comment:
+        update = OrderTrackingUpdate(
+            order_id=order_id,
+            comment=comment,
+            created_by=admin_id,
+        )
+        db.add(update)
+
+    await db.flush()
+    return order
+
+
+async def notify_tracking_update(
+    db: AsyncSession,
+    order: Order,
+    order_data: dict | None,
+    comment: str | None = None,
+) -> None:
+    """Send email notification for a tracking update."""
+    if order_data and order_data.get("user_email"):
+        await notify_user_email(
+            order_data["user_email"],
+            subject=f"Tracking Update for Order #{str(order.id)[:8]}",
+            template_name="order_tracking_update.html",
+            context={
+                "order_id_short": str(order.id)[:8],
+                "tracking_number": order.tracking_number,
+                "tracking_url": order.tracking_url,
+                "comment": comment,
+                "items": order_data.get("items", []),
+                "total_cents": order.total_cents,
+            },
+        )
 
 
 async def add_invoice(

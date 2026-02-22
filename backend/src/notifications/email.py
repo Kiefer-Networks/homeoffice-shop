@@ -20,6 +20,7 @@ ALLOWED_TEMPLATES = {
     "order_status_changed.html",
     "order_created.html",
     "order_cancelled.html",
+    "order_tracking_update.html",
     "hibob_sync_complete.html",
     "hibob_sync_error.html",
     "role_changed.html",

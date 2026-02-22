@@ -21,6 +21,7 @@ from src.models.dto.order import (
     OrderPurchaseUrlUpdate,
     OrderResponse,
     OrderStatusUpdate,
+    OrderTrackingInfoUpdate,
 )
 from src.models.orm.user import User
 from src.services import order_service
@@ -54,7 +55,9 @@ async def get_order(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):
-    data = await order_service.get_order_with_items(db, order_id, include_invoices=True)
+    data = await order_service.get_order_with_items(
+        db, order_id, include_invoices=True, include_tracking_updates=True
+    )
     if not data:
         raise NotFoundError("Order not found")
     return data
@@ -75,6 +78,8 @@ async def update_order_status(
         db, order_id, body.status, admin.id, body.admin_note,
         expected_delivery=body.expected_delivery,
         purchase_url=body.purchase_url,
+        tracking_number=body.tracking_number,
+        tracking_url=body.tracking_url,
     )
 
     await log_admin_action(
@@ -86,13 +91,17 @@ async def update_order_status(
             "admin_note": body.admin_note,
             "expected_delivery": body.expected_delivery,
             "purchase_url": body.purchase_url,
+            "tracking_number": body.tracking_number,
+            "tracking_url": body.tracking_url,
             "order_user_id": str(order.user_id),
             "order_user_email": pre_data.get("user_email") if pre_data else None,
             "order_total_cents": order.total_cents,
         },
     )
 
-    order_data = await order_service.get_order_with_items(db, order_id, include_invoices=True)
+    order_data = await order_service.get_order_with_items(
+        db, order_id, include_invoices=True, include_tracking_updates=True
+    )
 
     try:
         await order_service.notify_status_changed(
@@ -121,6 +130,46 @@ async def update_purchase_url(
     )
 
     order_data = await order_service.get_order_with_items(db, order_id, include_invoices=True)
+    return order_data
+
+
+@router.put("/{order_id}/tracking", response_model=OrderResponse)
+async def update_order_tracking(
+    order_id: UUID,
+    body: OrderTrackingInfoUpdate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_staff),
+):
+    order = await order_service.update_tracking_info(
+        db, order_id, admin.id,
+        tracking_number=body.tracking_number,
+        tracking_url=body.tracking_url,
+        comment=body.comment,
+    )
+
+    await log_admin_action(
+        db, request, admin.id, "admin.order.tracking_updated",
+        resource_type="order", resource_id=order.id,
+        details={
+            "tracking_number": body.tracking_number,
+            "tracking_url": body.tracking_url,
+            "comment": body.comment,
+            "order_user_id": str(order.user_id),
+        },
+    )
+
+    order_data = await order_service.get_order_with_items(
+        db, order_id, include_invoices=True, include_tracking_updates=True
+    )
+
+    try:
+        await order_service.notify_tracking_update(
+            db, order, order_data, body.comment,
+        )
+    except Exception:
+        logger.exception("Failed to send tracking notification for order %s", order_id)
+
     return order_data
 
 

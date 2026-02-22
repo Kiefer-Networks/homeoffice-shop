@@ -1,0 +1,29 @@
+{% extends "base_layout.html" %}
+{% block content %}
+    <h2 style="margin: 0 0 16px; font-size: 18px; color: #333;">Tracking Update</h2>
+    <p style="color: #555;">Your order <strong>#{{ order_id_short }}</strong> has a tracking update.</p>
+    {% if tracking_number %}
+    <p style="color: #555;">Tracking number: <strong>{{ tracking_number }}</strong></p>
+    {% endif %}
+    {% if tracking_url %}
+    <p style="color: #555;">Track your shipment: <a href="{{ tracking_url }}" style="color: #2563eb;">{{ tracking_url }}</a></p>
+    {% endif %}
+    {% if comment %}
+    <p style="color: #555;"><strong>Update:</strong> {{ comment }}</p>
+    {% endif %}
+    <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+        <tr style="background: #f5f5f5;">
+            <th style="padding: 8px; text-align: left;">Item</th>
+            <th style="padding: 8px; text-align: right;">Qty</th>
+            <th style="padding: 8px; text-align: right;">Price</th>
+        </tr>
+        {% for item in items %}
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">{{ item.product_name }}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">{{ item.quantity }}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">&euro;{{ "%.2f"|format(item.price_cents / 100) }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <p style="color: #555;">Total: <strong>&euro;{{ "%.2f"|format(total_cents / 100) }}</strong></p>
+{% endblock %}

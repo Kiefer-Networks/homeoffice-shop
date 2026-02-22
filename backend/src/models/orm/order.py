@@ -56,12 +56,17 @@ class Order(Base):
     delivery_reminder_sent: Mapped[bool] = mapped_column(
         default=False, nullable=False
     )
+    tracking_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    tracking_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     items: Mapped[list["OrderItem"]] = relationship(
         "OrderItem", back_populates="order", cascade="all, delete-orphan"
     )
     invoices: Mapped[list["OrderInvoice"]] = relationship(
         "OrderInvoice", back_populates="order", cascade="all, delete-orphan"
+    )
+    tracking_updates: Mapped[list["OrderTrackingUpdate"]] = relationship(
+        "OrderTrackingUpdate", back_populates="order", cascade="all, delete-orphan"
     )
 
 
@@ -107,3 +112,23 @@ class OrderInvoice(Base):
     )
 
     order: Mapped["Order"] = relationship("Order", back_populates="invoices")
+
+
+class OrderTrackingUpdate(Base):
+    __tablename__ = "order_tracking_updates"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
+    )
+    comment: Mapped[str] = mapped_column(Text, nullable=False)
+    created_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    order: Mapped["Order"] = relationship("Order", back_populates="tracking_updates")

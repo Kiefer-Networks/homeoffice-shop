@@ -36,7 +36,9 @@ async def get_my_order(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    order_data = await order_service.get_order_with_items(db, order_id)
+    order_data = await order_service.get_order_with_items(
+        db, order_id, include_tracking_updates=True
+    )
     if not order_data or order_data["user_id"] != user.id:
         raise NotFoundError("Order not found")
     return order_data

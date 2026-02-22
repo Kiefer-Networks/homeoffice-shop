@@ -44,7 +44,8 @@ export const adminApi = {
     api.get<PaginatedResponse<Order>>('/api/admin/orders', { params }),
   getOrder: (id: string) => api.get<Order>(`/api/admin/orders/${id}`),
   updateOrderStatus: (id: string, data: {
-    status: string; admin_note?: string; expected_delivery?: string; purchase_url?: string
+    status: string; admin_note?: string; expected_delivery?: string; purchase_url?: string;
+    tracking_number?: string; tracking_url?: string
   }) => api.put(`/api/admin/orders/${id}/status`, data),
   updatePurchaseUrl: (orderId: string, purchase_url: string | null) =>
     api.put(`/api/admin/orders/${orderId}/purchase-url`, { purchase_url }),
@@ -57,6 +58,9 @@ export const adminApi = {
     `/api/admin/orders/${orderId}/invoices/${invoiceId}/download`,
   deleteInvoice: (orderId: string, invoiceId: string) =>
     api.delete(`/api/admin/orders/${orderId}/invoices/${invoiceId}`),
+  updateOrderTracking: (orderId: string, data: {
+    tracking_number?: string | null; tracking_url?: string | null; comment?: string | null
+  }) => api.put<Order>(`/api/admin/orders/${orderId}/tracking`, data),
   checkOrderItem: (orderId: string, itemId: string, vendor_ordered: boolean) =>
     api.put(`/api/admin/orders/${orderId}/items/${itemId}/check`, { vendor_ordered }),
   syncOrderToHiBob: (orderId: string) =>

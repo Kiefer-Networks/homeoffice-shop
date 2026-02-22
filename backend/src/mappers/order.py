@@ -1,4 +1,4 @@
-from src.models.orm.order import Order, OrderInvoice, OrderItem
+from src.models.orm.order import Order, OrderInvoice, OrderItem, OrderTrackingUpdate
 from src.models.orm.user import User
 
 
@@ -25,11 +25,22 @@ def invoice_to_dict(invoice: OrderInvoice) -> dict:
     }
 
 
+def tracking_update_to_dict(update: OrderTrackingUpdate, creator_name: str | None = None) -> dict:
+    return {
+        "id": update.id,
+        "comment": update.comment,
+        "created_by": update.created_by,
+        "created_by_name": creator_name,
+        "created_at": update.created_at,
+    }
+
+
 def order_to_dict(
     order: Order,
     user: User | None,
     items: list[dict],
     invoices: list[dict] | None = None,
+    tracking_updates: list[dict] | None = None,
 ) -> dict:
     return {
         "id": order.id,
@@ -42,6 +53,9 @@ def order_to_dict(
         "admin_note": order.admin_note,
         "expected_delivery": order.expected_delivery,
         "purchase_url": order.purchase_url,
+        "tracking_number": order.tracking_number,
+        "tracking_url": order.tracking_url,
+        "tracking_updates": tracking_updates or [],
         "reviewed_by": order.reviewed_by,
         "reviewed_at": order.reviewed_at,
         "cancellation_reason": order.cancellation_reason,

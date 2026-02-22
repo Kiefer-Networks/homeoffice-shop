@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { orderApi } from '@/services/orderApi'
 import { formatCents, formatDate } from '@/lib/utils'
-import { ChevronRight, Package, AlertTriangle, CheckCircle2, XCircle, Clock } from 'lucide-react'
+import { ChevronRight, Package, AlertTriangle, CheckCircle2, XCircle, Clock, Truck, ExternalLink, MessageSquare } from 'lucide-react'
 import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
 import { getErrorMessage } from '@/lib/error'
@@ -34,6 +34,14 @@ export function OrdersPage() {
   }
 
   useEffect(() => { loadOrders() }, [])
+
+  const openOrderDetail = async (order: Order) => {
+    setSelectedOrder(order)
+    try {
+      const { data } = await orderApi.get(order.id)
+      setSelectedOrder(data)
+    } catch { /* keep list data as fallback */ }
+  }
 
   const filteredOrders = filter ? orders.filter(o => o.status === filter) : orders
 
@@ -88,7 +96,7 @@ export function OrdersPage() {
             const cfg = statusConfig[order.status] || statusConfig.pending
             const StatusIcon = cfg.icon
             return (
-              <Card key={order.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedOrder(order)}>
+              <Card key={order.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => openOrderDetail(order)}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -108,6 +116,12 @@ export function OrdersPage() {
                       <ChevronRight className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
                     </div>
                   </div>
+                  {order.tracking_number && (order.status === 'ordered' || order.status === 'delivered') && (
+                    <div className="mt-3 flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))]">
+                      <Truck className="h-4 w-4" />
+                      <span>Tracking: {order.tracking_number}</span>
+                    </div>
+                  )}
                   {order.status === 'rejected' && order.admin_note && (
                     <div className="mt-3 p-2 rounded bg-red-50 border border-red-200 text-sm text-red-800">
                       <strong>Rejection reason:</strong> {order.admin_note}
@@ -196,6 +210,46 @@ export function OrdersPage() {
                 {selectedOrder.delivery_note && (
                   <div className="p-3 rounded-lg bg-[hsl(var(--muted))] text-sm">
                     <strong>Delivery note:</strong> {selectedOrder.delivery_note}
+                  </div>
+                )}
+
+                {(selectedOrder.status === 'ordered' || selectedOrder.status === 'delivered') &&
+                  (selectedOrder.tracking_number || selectedOrder.tracking_url) && (
+                  <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm space-y-1">
+                    <div className="flex items-center gap-2 font-medium text-blue-900">
+                      <Truck className="h-4 w-4" /> Tracking Info
+                    </div>
+                    {selectedOrder.tracking_number && (
+                      <div className="text-blue-800">Number: <strong>{selectedOrder.tracking_number}</strong></div>
+                    )}
+                    {selectedOrder.tracking_url && (
+                      <a
+                        href={selectedOrder.tracking_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 underline"
+                      >
+                        Track Shipment <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {selectedOrder.tracking_updates && selectedOrder.tracking_updates.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-2 flex items-center gap-1">
+                      <MessageSquare className="h-3 w-3" /> Tracking Updates
+                    </h4>
+                    <div className="space-y-2">
+                      {selectedOrder.tracking_updates.map((update) => (
+                        <div key={update.id} className="text-sm p-2 rounded bg-[hsl(var(--muted)/0.5)] border">
+                          <div className="text-[hsl(var(--muted-foreground))] text-xs mb-1">
+                            {formatDate(update.created_at)}
+                          </div>
+                          <div>{update.comment}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 

@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { adminApi } from '@/services/adminApi'
 import { formatCents, formatDate } from '@/lib/utils'
 import { useUiStore } from '@/stores/uiStore'
-import { ExternalLink, Loader2, Link2 } from 'lucide-react'
+import { ExternalLink, Loader2, Link2, Truck, MessageSquare } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { ORDER_STATUS_VARIANT } from '@/lib/constants'
 import { InvoiceSection } from '@/components/admin/InvoiceSection'
@@ -30,11 +30,19 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
   const [purchaseUrl, setPurchaseUrl] = useState('')
   const [purchaseUrlSaving, setPurchaseUrlSaving] = useState(false)
 
+  const [trackingNumber, setTrackingNumber] = useState('')
+  const [trackingUrl, setTrackingUrl] = useState('')
+  const [trackingComment, setTrackingComment] = useState('')
+  const [trackingSaving, setTrackingSaving] = useState(false)
+
   const { addToast } = useUiStore()
 
   useEffect(() => {
     if (order) {
       setPurchaseUrl(order.purchase_url || '')
+      setTrackingNumber(order.tracking_number || '')
+      setTrackingUrl(order.tracking_url || '')
+      setTrackingComment('')
       setPendingAction(null)
       setAdminNote('')
       setExpectedDelivery('')
@@ -96,6 +104,25 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     } finally {
       setPurchaseUrlSaving(false)
+    }
+  }
+
+  const handleSaveTracking = async () => {
+    if (!order) return
+    setTrackingSaving(true)
+    try {
+      await adminApi.updateOrderTracking(order.id, {
+        tracking_number: trackingNumber || null,
+        tracking_url: trackingUrl || null,
+        comment: trackingComment || null,
+      })
+      setTrackingComment('')
+      await refreshOrder(order.id)
+      addToast({ title: 'Tracking updated & employee notified' })
+    } catch (err: unknown) {
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+    } finally {
+      setTrackingSaving(false)
     }
   }
 
@@ -248,6 +275,82 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
                     {purchaseUrlSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
                   </Button>
                 </div>
+              </div>
+            )}
+
+            {/* Tracking */}
+            {(order.status === 'ordered' || order.status === 'delivered') && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Truck className="h-4 w-4" />
+                  <h3 className="font-medium">Tracking</h3>
+                </div>
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-sm font-medium block mb-1">Tracking Number</label>
+                    <Input
+                      value={trackingNumber}
+                      onChange={(e) => setTrackingNumber(e.target.value)}
+                      placeholder="e.g. 1Z999AA10123456784"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-1">Tracking URL</label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={trackingUrl}
+                        onChange={(e) => setTrackingUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="flex-1"
+                      />
+                      {trackingUrl && (
+                        <Button size="icon" variant="outline" asChild>
+                          <a href={trackingUrl} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-1">Comment (optional)</label>
+                    <Input
+                      value={trackingComment}
+                      onChange={(e) => setTrackingComment(e.target.value)}
+                      placeholder="Status update for the employee..."
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveTracking}
+                    disabled={trackingSaving || (
+                      trackingNumber === (order.tracking_number || '') &&
+                      trackingUrl === (order.tracking_url || '') &&
+                      !trackingComment
+                    )}
+                  >
+                    {trackingSaving ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Saving...</> : 'Save & Notify Employee'}
+                  </Button>
+                </div>
+
+                {/* Timeline */}
+                {order.tracking_updates && order.tracking_updates.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
+                      <MessageSquare className="h-3 w-3" /> Updates
+                    </h4>
+                    <div className="space-y-2">
+                      {order.tracking_updates.map((update) => (
+                        <div key={update.id} className="text-sm p-2 rounded bg-[hsl(var(--muted)/0.5)] border">
+                          <div className="text-[hsl(var(--muted-foreground))] text-xs mb-1">
+                            {update.created_by_name || 'Admin'} — {formatDate(update.created_at)}
+                          </div>
+                          <div>{update.comment}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
