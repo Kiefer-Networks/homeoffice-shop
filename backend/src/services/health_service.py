@@ -71,10 +71,13 @@ async def get_basic_health(db: AsyncSession) -> tuple[dict, int]:
 
 async def get_detailed_health(db: AsyncSession) -> dict:
     """Run all health checks and return detailed status."""
+    from src.services.scheduler import get_scheduler_health
+
     checks = {
         "database": await check_database(db),
         "smtp": await check_smtp(),
         "disk": await check_disk(),
+        "scheduler": get_scheduler_health(),
     }
 
     overall = "healthy" if checks["database"]["status"] == "up" else "unhealthy"

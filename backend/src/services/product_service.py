@@ -22,6 +22,8 @@ from src.services.image_service import download_and_store_product_images
 
 logger = logging.getLogger(__name__)
 
+_price_refresh_lock = asyncio.Lock()
+
 REFRESHABLE_FIELDS = {
     "name": "Name",
     "description": "Description",
@@ -370,47 +372,51 @@ async def refresh_all_prices(
     db: AsyncSession, amazon_client: AmazonClient | None = None,
 ) -> dict:
     """Refresh prices for all products with amazon_asin."""
-    if amazon_client is None:
-        amazon_client = AmazonClient()
+    if _price_refresh_lock.locked():
+        return {"error": "Price refresh already in progress", "updated": 0, "failed": 0, "skipped": 0}
 
-    result = await db.execute(
-        select(Product).where(Product.amazon_asin.isnot(None))
-    )
-    products = list(result.scalars().all())
+    async with _price_refresh_lock:
+        if amazon_client is None:
+            amazon_client = AmazonClient()
 
-    updated = 0
-    errors = 0
-    sem = asyncio.Semaphore(5)
+        result = await db.execute(
+            select(Product).where(Product.amazon_asin.isnot(None))
+        )
+        products = list(result.scalars().all())
 
-    # Step 1: Gather all price lookups concurrently (API calls only, no ORM mutations)
-    async def _fetch_price(product_id: UUID, asin: str) -> tuple[UUID, int | None]:
-        async with sem:
-            try:
-                new_price = await amazon_client.get_current_price(asin)
-                return (product_id, new_price)
-            except Exception:
-                logger.exception("Failed to refresh price for product %s", product_id)
-                raise
+        updated = 0
+        errors = 0
+        sem = asyncio.Semaphore(5)
 
-    price_results = await asyncio.gather(
-        *[_fetch_price(p.id, p.amazon_asin) for p in products],
-        return_exceptions=True,
-    )
+        # Step 1: Gather all price lookups concurrently (API calls only, no ORM mutations)
+        async def _fetch_price(product_id: UUID, asin: str) -> tuple[UUID, int | None]:
+            async with sem:
+                try:
+                    new_price = await amazon_client.get_current_price(asin)
+                    return (product_id, new_price)
+                except Exception:
+                    logger.exception("Failed to refresh price for product %s", product_id)
+                    raise
 
-    # Step 2: Apply ORM mutations sequentially on the session
-    products_by_id = {p.id: p for p in products}
-    for r in price_results:
-        if isinstance(r, Exception):
-            errors += 1
-        else:
-            product_id, new_price = r
-            product = products_by_id[product_id]
-            if new_price and new_price != product.price_cents:
-                product.price_cents = new_price
-                updated += 1
+        price_results = await asyncio.gather(
+            *[_fetch_price(p.id, p.amazon_asin) for p in products],
+            return_exceptions=True,
+        )
 
-    await db.flush()
-    return {"total": len(products), "updated": updated, "errors": errors}
+        # Step 2: Apply ORM mutations sequentially on the session
+        products_by_id = {p.id: p for p in products}
+        for r in price_results:
+            if isinstance(r, Exception):
+                errors += 1
+            else:
+                product_id, new_price = r
+                product = products_by_id[product_id]
+                if new_price and new_price != product.price_cents:
+                    product.price_cents = new_price
+                    updated += 1
+
+        await db.flush()
+        return {"total": len(products), "updated": updated, "errors": errors}
 
 
 # ── Product CRUD ─────────────────────────────────────────────────────────────

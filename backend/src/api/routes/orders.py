@@ -3,7 +3,7 @@ from uuid import UUID
 
 from src.services.order_service import _retry_notification
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Header, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -54,12 +54,14 @@ async def create_order(
     request: Request,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
+    x_idempotency_key: str | None = Header(default=None, alias="X-Idempotency-Key"),
 ):
     order = await order_service.create_order_from_cart(
         db,
         user.id,
         delivery_note=body.delivery_note,
         confirm_price_changes=body.confirm_price_changes,
+        idempotency_key=x_idempotency_key,
     )
 
     await log_admin_action(
