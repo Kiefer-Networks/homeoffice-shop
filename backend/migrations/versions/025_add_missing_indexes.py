@@ -18,14 +18,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_index("idx_order_items_order_id", "order_items", ["order_id"])
-    op.create_index("idx_order_items_product_id", "order_items", ["product_id"])
-    op.create_index("idx_refresh_tokens_user_id", "refresh_tokens", ["user_id"])
-    op.create_index("idx_refresh_tokens_token_family", "refresh_tokens", ["token_family"])
-    op.create_index("idx_order_invoices_order_id", "order_invoices", ["order_id"])
-    op.create_index("idx_order_tracking_order_id", "order_tracking_updates", ["order_id"])
-    op.create_index("idx_user_budget_overrides_user_id", "user_budget_overrides", ["user_id"])
-    op.create_index("idx_hibob_purchase_review_user_id", "hibob_purchase_reviews", ["user_id"])
+    op.create_index("idx_order_items_order_id", "order_items", ["order_id"], if_not_exists=True)
+    op.create_index("idx_order_items_product_id", "order_items", ["product_id"], if_not_exists=True)
+    op.create_index("idx_refresh_tokens_user_id", "refresh_tokens", ["user_id"], if_not_exists=True)
+    op.create_index("idx_refresh_tokens_token_family", "refresh_tokens", ["token_family"], if_not_exists=True)
+    op.create_index("idx_order_invoices_order_id", "order_invoices", ["order_id"], if_not_exists=True)
+    op.create_index("idx_order_tracking_order_id", "order_tracking_updates", ["order_id"], if_not_exists=True)
+    op.create_index("idx_user_budget_overrides_user_id", "user_budget_overrides", ["user_id"], if_not_exists=True)
+    op.create_index("idx_hibob_purchase_review_user_id", "hibob_purchase_reviews", ["user_id"], if_not_exists=True)
 
 
 def downgrade() -> None:

@@ -20,16 +20,19 @@ def upgrade() -> None:
         "idx_audit_log_user_id",
         "audit_log",
         ["user_id"],
+        if_not_exists=True,
     )
     op.create_index(
         "idx_audit_log_action",
         "audit_log",
         ["action"],
+        if_not_exists=True,
     )
     op.create_index(
         "idx_audit_log_created_at",
         "audit_log",
         [sa.text("created_at DESC")],
+        if_not_exists=True,
     )
 
 

@@ -23,7 +23,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.execute(
         """
-        CREATE INDEX idx_products_name_desc_fts
+        CREATE INDEX IF NOT EXISTS idx_products_name_desc_fts
         ON products
         USING GIN (to_tsvector('english', name || ' ' || coalesce(description, '')))
         """
