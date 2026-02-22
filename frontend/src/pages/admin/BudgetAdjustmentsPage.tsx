@@ -4,13 +4,14 @@ import { usePurchaseSyncStatus } from '@/hooks/usePurchaseSyncStatus'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Pagination } from '@/components/ui/Pagination'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate, parseEuroToCents, centsToEuroInput } from '@/lib/utils'
-import { Plus, X, Pencil, Trash2, ArrowUpDown, Search, Loader2, Download } from 'lucide-react'
+import { Plus, X, Pencil, Trash2, ArrowUpDown, Loader2, Download } from 'lucide-react'
 import { DEFAULT_PAGE_SIZE, SEARCH_DEBOUNCE_MS } from '@/lib/constants'
 import { getErrorMessage } from '@/lib/error'
 import { useAuthStore } from '@/stores/authStore'
@@ -251,14 +252,8 @@ export function AdminBudgetAdjustmentsPage() {
       </div>
 
       {/* Search bar */}
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-        <Input
-          placeholder="Search by employee or reason..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      <div className="mb-4">
+        <SearchInput value={search} onChange={setSearch} placeholder="Search by employee or reason..." className="max-w-sm" />
       </div>
 
       {/* Table — same style as BrandsPage */}

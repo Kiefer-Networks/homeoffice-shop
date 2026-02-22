@@ -5,6 +5,7 @@ import { formatDate } from '@/lib/utils'
 import { useUiStore } from '@/stores/uiStore'
 import { Upload, Download, Trash2, Loader2, FileText } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
+import { downloadBlob } from '@/lib/download'
 import { getAccessToken } from '@/lib/token'
 import type { Order, OrderInvoice } from '@/types'
 
@@ -49,12 +50,7 @@ export function InvoiceSection({ order, onInvoiceChange }: InvoiceSectionProps) 
       })
       if (!response.ok) throw new Error('Download failed')
       const blob = await response.blob()
-      const blobUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = blobUrl
-      a.download = filename
-      a.click()
-      URL.revokeObjectURL(blobUrl)
+      downloadBlob(blob, filename)
     } catch (err: unknown) {
       addToast({ title: 'Download failed', description: getErrorMessage(err), variant: 'destructive' })
     }

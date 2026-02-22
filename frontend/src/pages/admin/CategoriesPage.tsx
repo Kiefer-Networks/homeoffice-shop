@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
-import { Plus, Pencil, Trash2, GripVertical, Search } from 'lucide-react'
+import { Plus, Pencil, Trash2, GripVertical } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { invalidateCategoryCache } from '@/services/productApi'
 import type { Category } from '@/types'
@@ -168,10 +169,7 @@ export function AdminCategoriesPage() {
 
       {/* Search */}
       <div className="mb-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input placeholder="Search categories..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 max-w-sm" />
-        </div>
+        <SearchInput value={search} onChange={setSearch} placeholder="Search categories..." className="max-w-sm" />
       </div>
 
       {loading ? (

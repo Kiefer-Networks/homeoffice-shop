@@ -3,13 +3,15 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Pagination } from '@/components/ui/Pagination'
 import { adminApi } from '@/services/adminApi'
 import { getErrorMessage } from '@/lib/error'
+import { downloadBlob } from '@/lib/download'
 import { SEARCH_DEBOUNCE_MS } from '@/lib/constants'
 import { useUiStore } from '@/stores/uiStore'
 import {
-  Download, ChevronRight, Search, X,
+  Download, ChevronRight, X,
   Monitor, Smartphone, Tablet, Globe,
 } from 'lucide-react'
 import { formatTimestamp, actionDotColor, parseUserAgent, flattenDetails } from '@/lib/auditLog'
@@ -86,7 +88,7 @@ export function AdminAuditLogPage() {
   useEffect(() => {
     adminApi.getAuditFilters()
       .then(({ data }) => setAvailableFilters(data))
-      .catch((err) => console.error('Failed to load audit filters:', err))
+      .catch((err: unknown) => addToast({ title: 'Failed to load audit filters', description: getErrorMessage(err), variant: 'destructive' }))
   }, [])
 
   useEffect(() => { setPage(1) }, [debouncedSearch, resourceTypeFilter, actionFilter, dateFrom, dateTo])
@@ -127,9 +129,7 @@ export function AdminAuditLogPage() {
     if (dateTo) params.date_to = dateTo
     try {
       const { data } = await adminApi.exportAuditCsv(params)
-      const url = window.URL.createObjectURL(new Blob([data]))
-      const a = document.createElement('a'); a.href = url; a.download = 'audit_log.csv'; a.click()
-      window.URL.revokeObjectURL(url)
+      downloadBlob(new Blob([data]), 'audit_log.csv')
     } catch (err: unknown) {
       addToast({ title: 'Export failed', description: getErrorMessage(err), variant: 'destructive' })
     }
@@ -149,15 +149,7 @@ export function AdminAuditLogPage() {
       <Card className="mb-4">
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-3">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-              <Input
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
+            <SearchInput value={search} onChange={setSearch} placeholder="Search..." className="flex-1 min-w-[200px]" />
             <select
               value={resourceTypeFilter}
               onChange={(e) => setResourceTypeFilter(e.target.value)}

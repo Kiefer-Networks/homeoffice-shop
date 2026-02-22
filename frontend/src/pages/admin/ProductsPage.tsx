@@ -2,13 +2,13 @@ import { useEffect, useState, useCallback } from 'react'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Pagination } from '@/components/ui/Pagination'
 import { useUiStore } from '@/stores/uiStore'
 import { adminApi } from '@/services/adminApi'
 import { productApi } from '@/services/productApi'
 import { formatCents } from '@/lib/utils'
-import { Plus, Search } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { DEFAULT_PAGE_SIZE, SEARCH_DEBOUNCE_MS } from '@/lib/constants'
 import { getErrorMessage } from '@/lib/error'
 import { ProductRefreshModal } from '@/components/admin/ProductRefreshModal'
@@ -37,8 +37,8 @@ export function AdminProductsPage() {
   const { addToast } = useUiStore()
 
   useEffect(() => {
-    productApi.getCategories().then(({ data }) => setCategories(data)).catch((err) => console.error('Failed to load categories:', err))
-    adminApi.listBrands().then(({ data }) => setBrands(data)).catch((err) => console.error('Failed to load brands:', err))
+    productApi.getCategories().then(({ data }) => setCategories(data)).catch((err: unknown) => addToast({ title: 'Failed to load categories', description: getErrorMessage(err), variant: 'destructive' }))
+    adminApi.listBrands().then(({ data }) => setBrands(data)).catch((err: unknown) => addToast({ title: 'Failed to load brands', description: getErrorMessage(err), variant: 'destructive' }))
   }, [])
 
   const load = useCallback(() => {
@@ -118,10 +118,7 @@ export function AdminProductsPage() {
 
       {/* Search */}
       <div className="mb-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input placeholder="Search by name, brand..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 max-w-sm" />
-        </div>
+        <SearchInput value={search} onChange={setSearch} placeholder="Search by name, brand..." className="max-w-sm" />
       </div>
 
       {/* Filters */}

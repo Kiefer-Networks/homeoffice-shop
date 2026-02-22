@@ -9,6 +9,7 @@ import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { Download, Trash2, Plus, Clock, Save, Database, HardDrive, Calendar, Shield, Repeat } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
+import { downloadBlob } from '@/lib/download'
 import type { BackupFile, BackupSchedule } from '@/types'
 
 function formatBytes(bytes: number): string {
@@ -77,12 +78,7 @@ export function AdminBackupPage() {
     setExporting(true)
     try {
       const { data } = await adminApi.exportBackup()
-      const url = window.URL.createObjectURL(data as Blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `homeoffice_shop_${new Date().toISOString().slice(0, 10)}.dump`
-      a.click()
-      window.URL.revokeObjectURL(url)
+      downloadBlob(data as Blob, `homeoffice_shop_${new Date().toISOString().slice(0, 10)}.dump`)
       addToast({ title: 'Backup exported successfully' })
       loadBackups()
     } catch (err: unknown) {
@@ -95,12 +91,7 @@ export function AdminBackupPage() {
   const handleDownload = async (filename: string) => {
     try {
       const { data } = await adminApi.downloadBackup(filename)
-      const url = window.URL.createObjectURL(data as Blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      a.click()
-      window.URL.revokeObjectURL(url)
+      downloadBlob(data as Blob, filename)
     } catch (err: unknown) {
       addToast({ title: 'Download failed', description: getErrorMessage(err), variant: 'destructive' })
     }

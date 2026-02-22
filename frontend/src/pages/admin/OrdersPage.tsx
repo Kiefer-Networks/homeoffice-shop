@@ -3,7 +3,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Pagination } from '@/components/ui/Pagination'
 import { DataTable } from '@/components/ui/data-table'
 import type { Column } from '@/components/ui/data-table'
@@ -11,7 +11,7 @@ import { adminApi } from '@/services/adminApi'
 import { formatCents, formatDate } from '@/lib/utils'
 import { ORDER_STATUS_VARIANT, DEFAULT_PAGE_SIZE, SEARCH_DEBOUNCE_MS } from '@/lib/constants'
 import { useUiStore } from '@/stores/uiStore'
-import { Search, FileText, Link2, Download } from 'lucide-react'
+import { FileText, Link2, Download } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { SortHeader } from '@/components/ui/SortHeader'
 import { OrderDetailDialog } from '@/components/admin/OrderDetailDialog'
@@ -123,10 +123,7 @@ export function AdminOrdersPage() {
 
       {/* Search */}
       <div className="mb-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input placeholder="Search by name, email, order ID..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 max-w-sm" />
-        </div>
+        <SearchInput value={search} onChange={setSearch} placeholder="Search by name, email, order ID..." className="max-w-sm" />
       </div>
 
       {/* Status filter */}
