@@ -14,7 +14,7 @@ function shouldRetry(error: AxiosError): boolean {
 
 const RETRYABLE_METHODS = new Set(['get', 'put', 'delete'])
 
-let refreshPromise: Promise<any> | null = null
+let refreshPromise: Promise<string> | null = null
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '',

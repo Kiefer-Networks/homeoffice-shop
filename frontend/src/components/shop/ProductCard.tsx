@@ -8,7 +8,7 @@ import { useCartStore } from '@/stores/cartStore'
 import { useUiStore } from '@/stores/uiStore'
 import { cartApi } from '@/services/cartApi'
 import { getErrorMessage } from '@/lib/error'
-import { formatGroupLabel } from '@/components/shop/ProductDetailModal'
+import { formatGroupLabel } from '@/lib/product-utils'
 import type { Product } from '@/types'
 
 interface Props {

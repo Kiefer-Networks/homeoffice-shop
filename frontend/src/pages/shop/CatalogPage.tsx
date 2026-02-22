@@ -65,12 +65,16 @@ export function CatalogPage() {
     const params = toSearchParams()
     setSearchParams(params, { replace: true })
 
+    let cancelled = false
     setLoading(true)
     productApi.search(params).then(({ data }) => {
+      if (cancelled) return
       setProducts(data.items)
       setTotal(data.total)
       setFacets(data.facets)
-    }).finally(() => setLoading(false))
+    }).finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, category, brand, color, material, priceMin, priceMax, sort, page])
 
   const handleCheckout = async () => {

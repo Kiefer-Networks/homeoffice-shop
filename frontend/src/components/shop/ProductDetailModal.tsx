@@ -7,18 +7,8 @@ import { useCartStore } from '@/stores/cartStore'
 import { useUiStore } from '@/stores/uiStore'
 import { cartApi } from '@/services/cartApi'
 import { getErrorMessage } from '@/lib/error'
+import { formatGroupLabel } from '@/lib/product-utils'
 import type { Product, ProductVariant } from '@/types'
-
-const GROUP_LABELS: Record<string, string> = {
-  colour_name: 'Color',
-  color_name: 'Color',
-  style_name: 'Style',
-  size_name: 'Size',
-}
-
-export function formatGroupLabel(group: string): string {
-  return GROUP_LABELS[group.toLowerCase()] || group.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-}
 
 function formatVariantValue(value: string): string {
   return value.replace(/\.+$/, '').trim().replace(/\b\w/g, c => c.toUpperCase())

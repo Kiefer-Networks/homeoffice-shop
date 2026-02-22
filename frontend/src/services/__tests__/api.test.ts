@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // We must mock dependencies BEFORE importing api.ts.
@@ -59,11 +60,7 @@ describe('api service', () => {
             // Run through response error interceptor
             for (const interceptor of responseInterceptors) {
               if (interceptor.rejected) {
-                try {
-                  return await interceptor.rejected(error)
-                } catch (e) {
-                  throw e
-                }
+                return await interceptor.rejected(error)
               }
             }
             throw error
