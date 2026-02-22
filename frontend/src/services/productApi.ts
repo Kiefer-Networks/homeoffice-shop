@@ -6,6 +6,11 @@ let categoriesPromise: Promise<AxiosResponse<Category[]>> | null = null
 let categoriesCacheTime = 0
 const CACHE_TTL = 60_000 // 1 minute
 
+export function invalidateCategoryCache() {
+  categoriesPromise = null
+  categoriesCacheTime = 0
+}
+
 export const productApi = {
   search: (params: URLSearchParams) =>
     api.get<ProductSearchResult>('/api/products', { params }),

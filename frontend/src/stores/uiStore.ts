@@ -15,7 +15,9 @@ interface UiState {
   removeToast: (id: string) => void
 }
 
-export const useUiStore = create<UiState>((set) => ({
+const toastTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+export const useUiStore = create<UiState>((set, get) => ({
   sidebarOpen: false,
   toasts: [],
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
@@ -23,9 +25,15 @@ export const useUiStore = create<UiState>((set) => ({
     const id = crypto.randomUUID()
     set((state) => ({ toasts: [...state.toasts, { ...toast, id }] }))
     const duration = toast.variant === 'destructive' ? 8000 : 5000
-    setTimeout(() => {
-      set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }))
+    const timer = setTimeout(() => {
+      get().removeToast(id)
+      toastTimers.delete(id)
     }, duration)
+    toastTimers.set(id, timer)
   },
-  removeToast: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
+  removeToast: (id) => {
+    const timer = toastTimers.get(id)
+    if (timer) { clearTimeout(timer); toastTimers.delete(id) }
+    set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }))
+  },
 }))

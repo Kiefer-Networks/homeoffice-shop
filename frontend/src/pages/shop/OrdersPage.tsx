@@ -36,7 +36,14 @@ export function OrdersPage() {
     orderApi.list({ per_page: 100 }).then(({ data }) => setOrders(data.items)).finally(() => setLoading(false))
   }
 
-  useEffect(() => { loadOrders() }, [])
+  useEffect(() => {
+    let cancelled = false
+    orderApi.list({ per_page: 100 })
+      .then(({ data }) => { if (!cancelled) setOrders(data.items) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
 
   const openOrderDetail = async (order: Order) => {
     setSelectedOrder(order)

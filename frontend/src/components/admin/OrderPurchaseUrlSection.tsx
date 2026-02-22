@@ -5,6 +5,7 @@ import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { Loader2, Link2 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
+import { useRefreshOrder } from '@/hooks/useRefreshOrder'
 import type { Order } from '@/types'
 
 interface OrderPurchaseUrlSectionProps {
@@ -22,12 +23,7 @@ export function OrderPurchaseUrlSection({ order, onUpdate }: OrderPurchaseUrlSec
     setPurchaseUrl(order.purchase_url || '')
   }, [order])
 
-  const refreshOrder = async () => {
-    try {
-      const { data } = await adminApi.getOrder(order.id)
-      onUpdate(data)
-    } catch { /* ignore */ }
-  }
+  const refreshOrder = useRefreshOrder(order.id, onUpdate)
 
   const handleSavePurchaseUrl = async () => {
     setPurchaseUrlSaving(true)

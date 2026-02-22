@@ -31,11 +31,13 @@ export function ProfilePage() {
 
   useEffect(() => {
     if (!isStaff) return
+    let cancelled = false
     setLoading(true)
     adminApi.getNotificationPrefs()
-      .then(({ data }) => setPrefs(data))
-      .catch(() => addToast({ title: 'Failed to load notification preferences', variant: 'destructive' }))
-      .finally(() => setLoading(false))
+      .then(({ data }) => { if (!cancelled) setPrefs(data) })
+      .catch(() => { if (!cancelled) addToast({ title: 'Failed to load notification preferences', variant: 'destructive' }) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [isStaff])
 
   const handleToggle = (enabled: boolean) => {

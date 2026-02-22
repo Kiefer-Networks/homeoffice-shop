@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { adminApi } from '@/services/adminApi'
 import { formatCents, formatDate } from '@/lib/utils'
 import { useUiStore } from '@/stores/uiStore'
 import { ExternalLink, Loader2 } from 'lucide-react'
@@ -12,6 +11,8 @@ import { InvoiceSection } from '@/components/admin/InvoiceSection'
 import { OrderTrackingSection } from '@/components/admin/OrderTrackingSection'
 import { OrderPurchaseUrlSection } from '@/components/admin/OrderPurchaseUrlSection'
 import { OrderStatusSection } from '@/components/admin/OrderStatusSection'
+import { useRefreshOrder } from '@/hooks/useRefreshOrder'
+import { adminApi } from '@/services/adminApi'
 import type { Order } from '@/types'
 
 interface OrderDetailDialogProps {
@@ -24,11 +25,12 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
   const { addToast } = useUiStore()
   const [refreshing, setRefreshing] = useState(false)
 
-  const refreshOrder = async (orderId: string) => {
+  const refreshOrderBase = useRefreshOrder(order?.id ?? '', onOrderUpdated)
+
+  const refreshOrder = async () => {
     setRefreshing(true)
     try {
-      const { data } = await adminApi.getOrder(orderId)
-      onOrderUpdated(data)
+      await refreshOrderBase()
     } catch { /* ignore */ }
     finally { setRefreshing(false) }
   }
@@ -36,7 +38,7 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
   const handleItemCheck = async (orderId: string, itemId: string, checked: boolean) => {
     try {
       await adminApi.checkOrderItem(orderId, itemId, checked)
-      await refreshOrder(orderId)
+      await refreshOrder()
     } catch (err: unknown) {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     }
@@ -171,7 +173,7 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
 
             {/* Invoices */}
             {order.status !== 'rejected' && order.status !== 'cancelled' && (
-              <InvoiceSection order={order} onInvoiceChange={() => refreshOrder(order.id)} />
+              <InvoiceSection order={order} onInvoiceChange={() => refreshOrder()} />
             )}
 
             {/* Actions bar */}

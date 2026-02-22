@@ -21,10 +21,12 @@ export function DashboardPage() {
   const { addToast } = useUiStore()
 
   useEffect(() => {
+    let cancelled = false
     Promise.all([
       adminApi.getDashboardStats(),
       adminApi.listOrders({ per_page: 5, sort: 'newest' }),
     ]).then(([statsRes, recent]) => {
+      if (cancelled) return
       const d: DashboardStats = statsRes.data
       setStats({
         orders: d.total_orders,
@@ -36,8 +38,10 @@ export function DashboardPage() {
       })
       setRecentOrders(recent.data.items)
     }).catch((err: unknown) => {
+      if (cancelled) return
       addToast({ title: 'Failed to load dashboard stats', description: getErrorMessage(err), variant: 'destructive' })
-    }).finally(() => setLoading(false))
+    }).finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [])
 
   const cards = [

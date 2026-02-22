@@ -6,6 +6,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { Loader2 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { HiBobSyncSection } from '@/components/admin/HiBobSyncSection'
+import { useRefreshOrder } from '@/hooks/useRefreshOrder'
 import type { Order } from '@/types'
 
 type PendingAction = 'ordered' | 'rejected' | 'delivered' | 'cancelled' | 'returned' | null
@@ -38,12 +39,7 @@ export function OrderStatusSection({ order, onUpdate }: OrderStatusSectionProps)
 
   const { addToast } = useUiStore()
 
-  const refreshOrder = async () => {
-    try {
-      const { data } = await adminApi.getOrder(order.id)
-      onUpdate(data)
-    } catch { /* ignore */ }
-  }
+  const refreshOrder = useRefreshOrder(order.id, onUpdate)
 
   const startAction = (action: PendingAction) => {
     setPendingAction(action)

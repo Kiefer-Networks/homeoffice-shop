@@ -6,6 +6,7 @@ import { detectCarrier, isAmazonAuthUrl, formatDate } from '@/lib/utils'
 import { useUiStore } from '@/stores/uiStore'
 import { ExternalLink, Loader2, Truck, MessageSquare, AlertTriangle, RefreshCw } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
+import { useRefreshOrder } from '@/hooks/useRefreshOrder'
 import type { Order } from '@/types'
 
 interface OrderTrackingSectionProps {
@@ -28,12 +29,7 @@ export function OrderTrackingSection({ order, onUpdate }: OrderTrackingSectionPr
     setTrackingComment('')
   }, [order])
 
-  const refreshOrder = async () => {
-    try {
-      const { data } = await adminApi.getOrder(order.id)
-      onUpdate(data)
-    } catch { /* ignore */ }
-  }
+  const refreshOrder = useRefreshOrder(order.id, onUpdate)
 
   const handleSaveTracking = async () => {
     setTrackingSaving(true)

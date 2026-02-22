@@ -6,16 +6,24 @@ interface BrandingState {
   fetchBranding: () => Promise<void>
 }
 
+let fetchPromise: Promise<void> | null = null
+
 export const useBrandingStore = create<BrandingState>((set) => ({
   companyName: 'Home Office Shop',
   fetchBranding: async () => {
-    try {
-      const { data } = await api.get<{ company_name: string }>('/api/branding')
-      const name = data.company_name || 'Home Office Shop'
-      document.title = name
-      set({ companyName: name })
-    } catch {
-      // Branding fetch failed, keep default
-    }
+    if (fetchPromise) return fetchPromise
+    fetchPromise = (async () => {
+      try {
+        const { data } = await api.get<{ company_name: string }>('/api/branding')
+        const name = data.company_name || 'Home Office Shop'
+        document.title = name
+        set({ companyName: name })
+      } catch {
+        // Branding fetch failed, keep default
+      } finally {
+        fetchPromise = null
+      }
+    })()
+    return fetchPromise
   },
 }))
