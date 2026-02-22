@@ -39,6 +39,7 @@ DEFAULT_SETTINGS = {
     "backup_schedule_enabled": "false",
     "backup_schedule_hour": "2",
     "backup_schedule_minute": "0",
+    "budget_warning_threshold_percent": "90",
 }
 
 _cache: dict[str, str] = {}

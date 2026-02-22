@@ -1,0 +1,35 @@
+{% extends "base_layout.html" %}
+{% block content %}
+    <h2 style="margin: 0 0 16px; font-size: 18px; color: #333;">Budget Warning &mdash; {{ threshold_percent }}% Used</h2>
+    <p style="color: #555; margin-bottom: 16px;">
+        Your budget usage has reached <strong style="color: #dc2626;">{{ percent_used }}%</strong> of your total budget.
+    </p>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+        <tr>
+            <td style="padding: 8px 0; color: #555;">Budget Used</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #dc2626;">
+                {{ "%.2f"|format(spent_cents / 100) }} &euro;
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 8px 0; color: #555;">Remaining</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #333;">
+                {{ "%.2f"|format(remaining_cents / 100) }} &euro;
+            </td>
+        </tr>
+        <tr style="border-top: 1px solid #e0e0e0;">
+            <td style="padding: 8px 0; color: #555;">Total Budget</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #333;">
+                {{ "%.2f"|format(total_budget_cents / 100) }} &euro;
+            </td>
+        </tr>
+    </table>
+    <p style="color: #555; font-size: 14px;">
+        Please plan your remaining purchases carefully.
+    </p>
+    {% if frontend_url %}
+    <p>
+        <a href="{{ frontend_url }}" style="color: #1a1a2e; text-decoration: underline;">View your budget in the shop</a>
+    </p>
+    {% endif %}
+{% endblock %}

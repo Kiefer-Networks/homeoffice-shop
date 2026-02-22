@@ -82,6 +82,11 @@ async def create_order(
         str(order.id),
     )
 
+    await _retry_notification(
+        lambda: order_service.check_and_notify_budget_warning(db, user),
+        str(order.id),
+    )
+
     return order_data
 
 

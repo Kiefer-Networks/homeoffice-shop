@@ -17,6 +17,7 @@ const generalSettings: Record<string, { label: string; description: string }> = 
   price_refresh_rate_limit_per_minute: { label: 'Price Refresh Rate Limit', description: 'Max Amazon price lookups per minute' },
   company_name: { label: 'Company Name', description: 'Displayed in emails and UI' },
   cart_stale_days: { label: 'Cart Stale Days', description: 'Auto-cleanup cart items older than this' },
+  budget_warning_threshold_percent: { label: 'Budget Warning Threshold (%)', description: 'Notify employees when budget usage exceeds this percentage' },
 }
 
 const smtpSettings: Record<string, { label: string; description: string; row: number; type?: string }> = {

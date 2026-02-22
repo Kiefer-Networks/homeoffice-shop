@@ -24,7 +24,8 @@ from src.models.orm.product import Product
 from src.models.orm.user import User
 from src.notifications.service import notify_staff_email, notify_user_email
 from src.mappers.order import order_item_to_dict, invoice_to_dict, order_to_dict, tracking_update_to_dict
-from src.services.budget_service import check_budget_for_order, refresh_budget_cache
+from src.services.budget_service import check_budget_for_order, get_live_spent_cents, get_live_adjustment_cents, refresh_budget_cache
+from src.services.settings_service import get_setting_int
 
 logger = logging.getLogger(__name__)
 
@@ -228,6 +229,43 @@ async def notify_order_created(
             "admin_url": f"{_settings.frontend_url}/admin/orders/{order.id}",
         },
     )
+
+
+async def check_and_notify_budget_warning(
+    db: AsyncSession,
+    user: User,
+) -> None:
+    """Send a budget warning email if the user's budget usage exceeds the threshold."""
+    threshold = get_setting_int("budget_warning_threshold_percent")
+    if threshold <= 0 or threshold > 100:
+        return
+
+    total_budget = user.total_budget_cents
+    if total_budget <= 0:
+        return
+
+    spent = await get_live_spent_cents(db, user.id)
+    adjustments = await get_live_adjustment_cents(db, user.id)
+    effective_total = total_budget + adjustments
+    if effective_total <= 0:
+        return
+
+    remaining = max(0, effective_total - spent)
+    percent_used = round((spent / effective_total) * 100)
+
+    if percent_used >= threshold:
+        await notify_user_email(
+            user.email,
+            subject=f"Budget Warning \u2014 {threshold}% Used",
+            template_name="budget_warning.html",
+            context={
+                "threshold_percent": threshold,
+                "percent_used": percent_used,
+                "spent_cents": spent,
+                "remaining_cents": remaining,
+                "total_budget_cents": effective_total,
+            },
+        )
 
 
 async def notify_order_cancelled_by_user(

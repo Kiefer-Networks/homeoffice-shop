@@ -28,6 +28,7 @@ ALLOWED_TEMPLATES = {
     "delivery_reminder.html",
     "welcome.html",
     "budget_adjusted.html",
+    "budget_warning.html",
 }
 
 _RETRY_DELAYS = (1, 2, 4)
