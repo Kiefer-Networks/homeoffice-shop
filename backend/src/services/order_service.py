@@ -8,7 +8,7 @@ from uuid import UUID
 import sqlalchemy as sa
 from sqlalchemy import and_, delete, or_, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import selectinload
 
 from src.core.exceptions import (
     BadRequestError,
@@ -423,7 +423,7 @@ async def notify_order_cancelled_by_user(
     # Notify the employee themselves as confirmation
     await notify_user_email(
         user.email,
-        subject=f"Order Status Updated: Cancelled",
+        subject="Order Status Updated: Cancelled",
         template_name="order_status_changed.html",
         context={
             "order_id_short": str(order.id)[:8],
@@ -731,7 +731,6 @@ async def update_tracking_info(
 async def _register_aftership_tracking(db: AsyncSession, order: Order) -> None:
     """Register a tracking number with AfterShip for automated status updates."""
     from src.integrations.aftership.client import (
-        CARRIER_SLUG_MAP,
         aftership_client,
     )
 

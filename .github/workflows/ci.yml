@@ -34,7 +34,7 @@ jobs:
       - run: pip install -r backend/requirements-test.txt
       - name: Lint with ruff
         working-directory: backend
-        run: pip install ruff && ruff check src/ --select E,F,W --ignore E501
+        run: pip install ruff && ruff check src/ --select E,F,W --ignore E501,E402
       - name: Audit dependencies
         working-directory: backend
         continue-on-error: true

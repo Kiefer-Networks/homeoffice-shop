@@ -1,5 +1,5 @@
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -174,7 +174,7 @@ async def send_delivery_reminders(db: AsyncSession) -> int:
             try:
                 employee_success = await notify_user_email(
                     to=user.email,
-                    subject=f"Delivery Update \u2014 Your order may be delayed",
+                    subject="Delivery Update \u2014 Your order may be delayed",
                     template_name="delivery_delayed_employee.html",
                     context={
                         "order_id_short": str(order.id)[:8],
