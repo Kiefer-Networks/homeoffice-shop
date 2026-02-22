@@ -151,7 +151,8 @@ async def add_to_cart(
 
 
 async def update_cart_item(
-    db: AsyncSession, user_id: UUID, product_id: UUID, quantity: int
+    db: AsyncSession, user_id: UUID, product_id: UUID, quantity: int,
+    variant_asin: str | None = None,
 ) -> CartItem | None:
     if quantity <= 0:
         raise BadRequestError("Quantity must be greater than zero")
@@ -160,6 +161,7 @@ async def update_cart_item(
         select(CartItem).where(
             CartItem.user_id == user_id,
             CartItem.product_id == product_id,
+            CartItem.variant_asin == variant_asin,
         ).with_for_update()
     )
     cart_item = result.scalar_one_or_none()
@@ -188,12 +190,14 @@ async def update_cart_item(
 
 
 async def remove_from_cart(
-    db: AsyncSession, user_id: UUID, product_id: UUID
+    db: AsyncSession, user_id: UUID, product_id: UUID,
+    variant_asin: str | None = None,
 ) -> bool:
     result = await db.execute(
         delete(CartItem).where(
             CartItem.user_id == user_id,
             CartItem.product_id == product_id,
+            CartItem.variant_asin == variant_asin,
         )
     )
     return result.rowcount > 0

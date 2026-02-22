@@ -1,11 +1,12 @@
 import time
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.exceptions import NotFoundError
 from src.models.orm.category import Category
+from src.models.orm.product import Product
 
 _cache: list | None = None
 _cache_time: float = 0
@@ -79,6 +80,18 @@ async def delete(db: AsyncSession, category_id: UUID) -> str:
     category = await db.get(Category, category_id)
     if not category:
         raise NotFoundError("Category not found")
+
+    # Check if any products reference this category
+    product_count_result = await db.execute(
+        select(func.count()).select_from(Product).where(Product.category_id == category_id)
+    )
+    product_count = product_count_result.scalar() or 0
+    if product_count > 0:
+        raise ValueError(
+            "Cannot delete category with existing products. "
+            "Reassign or remove products first."
+        )
+
     name = category.name
     await db.delete(category)
     invalidate_cache()

@@ -11,6 +11,7 @@ class CartItemAdd(BaseModel):
 
 class CartItemUpdate(BaseModel):
     quantity: int = Field(ge=1, le=100)
+    variant_asin: str | None = Field(default=None, max_length=20, pattern=r"^[A-Z0-9]{10,20}$")
 
 
 class CartItemResponse(BaseModel):

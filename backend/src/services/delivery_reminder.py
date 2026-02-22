@@ -39,27 +39,39 @@ async def send_delivery_reminders(db: AsyncSession) -> int:
     if not orders:
         return 0
 
+    # Batch-load all users referenced by orders
+    user_ids = list({order.user_id for order in orders})
+    users_result = await db.execute(
+        select(User).where(User.id.in_(user_ids))
+    )
+    users_map = {u.id: u for u in users_result.scalars().all()}
+
+    # Batch-load all order items with product names
+    order_ids = [order.id for order in orders]
+    items_result = await db.execute(
+        select(OrderItem, Product.name)
+        .join(Product, OrderItem.product_id == Product.id, isouter=True)
+        .where(OrderItem.order_id.in_(order_ids))
+    )
+    all_items_rows = items_result.all()
+
+    # Group items by order_id
+    items_by_order: dict = {}
+    for item, product_name in all_items_rows:
+        items_by_order.setdefault(item.order_id, []).append({
+            "product_name": product_name or "Product",
+            "quantity": item.quantity,
+            "price_cents": item.price_cents * item.quantity,
+        })
+
     sent = 0
     for order in orders:
         try:
-            user = await db.get(User, order.user_id)
+            user = users_map.get(order.user_id)
             if not user:
                 continue
 
-            # Load items with product names
-            items_result = await db.execute(
-                select(OrderItem, Product.name)
-                .join(Product, OrderItem.product_id == Product.id, isouter=True)
-                .where(OrderItem.order_id == order.id)
-            )
-            items = [
-                {
-                    "product_name": product_name or "Product",
-                    "quantity": item.quantity,
-                    "price_cents": item.price_cents * item.quantity,
-                }
-                for item, product_name in items_result.all()
-            ]
+            items = items_by_order.get(order.id, [])
 
             # Determine recipient: manager_email if available, otherwise skip manager notification
             recipient = user.manager_email

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import get_current_user
@@ -49,11 +49,15 @@ async def update_cart_item(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    await cart_service.update_cart_item(db, user.id, product_id, body.quantity)
+    await cart_service.update_cart_item(
+        db, user.id, product_id, body.quantity,
+        variant_asin=body.variant_asin,
+    )
     await log_admin_action(
         db, request, user.id, "cart.item_quantity_changed",
         resource_type="cart_item",
-        details={"product_id": str(product_id), "quantity": body.quantity},
+        details={"product_id": str(product_id), "quantity": body.quantity,
+                 "variant_asin": body.variant_asin},
     )
     return {"detail": "Cart item updated"}
 
@@ -62,15 +66,18 @@ async def update_cart_item(
 async def remove_from_cart(
     product_id: UUID,
     request: Request,
+    variant_asin: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    removed = await cart_service.remove_from_cart(db, user.id, product_id)
+    removed = await cart_service.remove_from_cart(
+        db, user.id, product_id, variant_asin=variant_asin,
+    )
     if removed:
         await log_admin_action(
             db, request, user.id, "cart.item_removed",
             resource_type="cart_item",
-            details={"product_id": str(product_id)},
+            details={"product_id": str(product_id), "variant_asin": variant_asin},
         )
     return Response(status_code=204)
 

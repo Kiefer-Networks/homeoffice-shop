@@ -382,26 +382,32 @@ async def refresh_all_prices(
     errors = 0
     sem = asyncio.Semaphore(5)
 
-    async def _refresh_one(product: Product) -> bool:
+    # Step 1: Gather all price lookups concurrently (API calls only, no ORM mutations)
+    async def _fetch_price(product_id: UUID, asin: str) -> tuple[UUID, int | None]:
         async with sem:
             try:
-                new_price = await amazon_client.get_current_price(product.amazon_asin)
-                if new_price and new_price != product.price_cents:
-                    product.price_cents = new_price
-                    return True
+                new_price = await amazon_client.get_current_price(asin)
+                return (product_id, new_price)
             except Exception:
-                logger.exception("Failed to refresh price for product %s", product.id)
+                logger.exception("Failed to refresh price for product %s", product_id)
                 raise
-            return False
 
-    results = await asyncio.gather(
-        *[_refresh_one(p) for p in products], return_exceptions=True,
+    price_results = await asyncio.gather(
+        *[_fetch_price(p.id, p.amazon_asin) for p in products],
+        return_exceptions=True,
     )
-    for r in results:
+
+    # Step 2: Apply ORM mutations sequentially on the session
+    products_by_id = {p.id: p for p in products}
+    for r in price_results:
         if isinstance(r, Exception):
             errors += 1
-        elif r:
-            updated += 1
+        else:
+            product_id, new_price = r
+            product = products_by_id[product_id]
+            if new_price and new_price != product.price_cents:
+                product.price_cents = new_price
+                updated += 1
 
     await db.flush()
     return {"total": len(products), "updated": updated, "errors": errors}
