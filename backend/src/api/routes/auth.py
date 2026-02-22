@@ -1,6 +1,7 @@
 import logging
 import uuid
 
+import jwt
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
@@ -145,7 +146,7 @@ async def refresh_token(
     payload = {}
     try:
         payload = decode_token(tokens.access_token)
-    except Exception:
+    except (jwt.PyJWTError, ValueError, KeyError):
         pass
 
     if payload.get("sub"):

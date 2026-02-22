@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
+from src.api.dependencies.rate_limit import rate_limit
 from src.audit.service import log_admin_action
 from src.core.exceptions import BadRequestError
 from src.models.dto import DetailResponse
@@ -67,7 +68,11 @@ async def update_setting(
     return {"key": key, "value": value}
 
 
-@router.post("/test-email", response_model=DetailResponse)
+@router.post(
+    "/test-email",
+    response_model=DetailResponse,
+    dependencies=[rate_limit(limit=3, window_seconds=3600, key_prefix="test-email")],
+)
 async def test_email(
     body: TestEmailRequest,
     request: Request,
