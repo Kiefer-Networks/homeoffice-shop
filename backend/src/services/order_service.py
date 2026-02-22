@@ -225,6 +225,23 @@ async def transition_order(
                 if product and product.stock_quantity is not None:
                     product.stock_quantity = product.stock_quantity + item.quantity
 
+    # Handle cancelled/rejected: restore stock
+    if new_status in ("cancelled", "rejected"):
+        items_result = await db.execute(
+            select(OrderItem).where(OrderItem.order_id == order.id)
+        )
+        order_items = items_result.scalars().all()
+        product_ids = {item.product_id for item in order_items}
+        if product_ids:
+            prod_result = await db.execute(
+                select(Product).where(Product.id.in_(product_ids)).with_for_update()
+            )
+            products_map = {p.id: p for p in prod_result.scalars().all()}
+            for item in order_items:
+                product = products_map.get(item.product_id)
+                if product and product.stock_quantity is not None:
+                    product.stock_quantity = product.stock_quantity + item.quantity
+
     await db.flush()
     await refresh_budget_cache(db, order.user_id)
 
@@ -313,6 +330,9 @@ async def check_and_notify_budget_warning(
     user: User,
 ) -> None:
     """Send a budget warning email if the user's budget usage exceeds the threshold."""
+    from src.audit.models import AuditLog
+    from src.audit.service import write_audit_log
+
     threshold = get_setting_int("budget_warning_threshold_percent")
     if threshold <= 0 or threshold > 100:
         return
@@ -331,6 +351,23 @@ async def check_and_notify_budget_warning(
     percent_used = round((spent / effective_total) * 100)
 
     if percent_used >= threshold:
+        # Dedup: check if a budget_warning_sent audit entry exists for this user
+        # in the current month. If so, skip sending.
+        now = datetime.now(timezone.utc)
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        dedup_result = await db.execute(
+            select(func.count())
+            .select_from(AuditLog)
+            .where(
+                AuditLog.user_id == user.id,
+                AuditLog.action == "budget_warning_sent",
+                AuditLog.created_at >= month_start,
+            )
+        )
+        already_sent = (dedup_result.scalar() or 0) > 0
+        if already_sent:
+            return
+
         await notify_user_email(
             user.email,
             subject=f"Budget Warning \u2014 {threshold}% Used",
@@ -340,6 +377,20 @@ async def check_and_notify_budget_warning(
                 "percent_used": percent_used,
                 "spent_cents": spent,
                 "remaining_cents": remaining,
+                "total_budget_cents": effective_total,
+            },
+        )
+
+        # Record that we sent the warning so it won't be sent again this month
+        await write_audit_log(
+            db,
+            user_id=user.id,
+            action="budget_warning_sent",
+            resource_type="budget",
+            details={
+                "threshold_percent": threshold,
+                "percent_used": percent_used,
+                "spent_cents": spent,
                 "total_budget_cents": effective_total,
             },
         )
@@ -392,7 +443,23 @@ async def cancel_order_by_user(
     order.cancelled_by = user_id
     order.cancelled_at = datetime.now(timezone.utc)
 
-    await db.flush()  # single atomic flush: status change
+    # Restore stock for products that track stock
+    items_result = await db.execute(
+        select(OrderItem).where(OrderItem.order_id == order.id)
+    )
+    order_items = items_result.scalars().all()
+    product_ids = {item.product_id for item in order_items}
+    if product_ids:
+        prod_result = await db.execute(
+            select(Product).where(Product.id.in_(product_ids)).with_for_update()
+        )
+        products_map = {p.id: p for p in prod_result.scalars().all()}
+        for item in order_items:
+            product = products_map.get(item.product_id)
+            if product and product.stock_quantity is not None:
+                product.stock_quantity = product.stock_quantity + item.quantity
+
+    await db.flush()  # single atomic flush: status change + stock restore
     await refresh_budget_cache(db, order.user_id)
 
     return order
@@ -474,12 +541,18 @@ async def get_orders(
     page: int = 1,
     per_page: int = 20,
     include_invoices: bool = False,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
 ) -> tuple[list[dict], int]:
     conditions = []
     if user_id:
         conditions.append(Order.user_id == user_id)
     if status:
         conditions.append(Order.status == status)
+    if date_from:
+        conditions.append(Order.created_at >= date_from)
+    if date_to:
+        conditions.append(Order.created_at <= date_to)
 
     # Text search: filter by user name, email, or order ID prefix
     if q:
