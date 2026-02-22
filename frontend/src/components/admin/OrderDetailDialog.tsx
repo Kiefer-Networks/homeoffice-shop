@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { adminApi } from '@/services/adminApi'
-import { formatCents, formatDate } from '@/lib/utils'
+import { formatCents, formatDate, detectCarrier, isAmazonAuthUrl } from '@/lib/utils'
 import { useUiStore } from '@/stores/uiStore'
-import { ExternalLink, Loader2, Link2, Truck, MessageSquare } from 'lucide-react'
+import { ExternalLink, Loader2, Link2, Truck, MessageSquare, AlertTriangle } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { ORDER_STATUS_VARIANT } from '@/lib/constants'
 import { InvoiceSection } from '@/components/admin/InvoiceSection'
@@ -279,7 +279,10 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
             )}
 
             {/* Tracking */}
-            {(order.status === 'ordered' || order.status === 'delivered') && (
+            {(order.status === 'ordered' || order.status === 'delivered') && (() => {
+              const detected = detectCarrier(trackingNumber)
+              const amazonAuthWarning = isAmazonAuthUrl(trackingUrl)
+              return (
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <Truck className="h-4 w-4" />
@@ -290,9 +293,22 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
                     <label className="text-sm font-medium block mb-1">Tracking Number</label>
                     <Input
                       value={trackingNumber}
-                      onChange={(e) => setTrackingNumber(e.target.value)}
-                      placeholder="e.g. 1Z999AA10123456784"
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setTrackingNumber(val)
+                        // Auto-fill tracking URL when carrier is detected and URL is empty or was auto-filled
+                        const carrier = detectCarrier(val.trim())
+                        if (carrier && (!trackingUrl || detectCarrier(order.tracking_number || '')?.trackingUrl === trackingUrl)) {
+                          setTrackingUrl(carrier.trackingUrl)
+                        }
+                      }}
+                      placeholder="e.g. DE5240663797, 1Z999AA1..."
                     />
+                    {detected && (
+                      <div className="text-xs text-green-600 mt-1">
+                        Erkannt: <strong>{detected.name}</strong>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="text-sm font-medium block mb-1">Tracking URL</label>
@@ -311,6 +327,15 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
                         </Button>
                       )}
                     </div>
+                    {amazonAuthWarning && (
+                      <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mt-1 flex items-start gap-1.5">
+                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                        <span>
+                          Diese Amazon-URL erfordert Login und funktioniert nicht für Mitarbeiter.
+                          Bitte stattdessen die Carrier-Tracking-URL verwenden (z.B. DHL, Swiship).
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="text-sm font-medium block mb-1">Comment (optional)</label>
@@ -352,7 +377,8 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
                   </div>
                 )}
               </div>
-            )}
+              )
+            })()}
 
             {/* Invoices */}
             {order.status !== 'rejected' && order.status !== 'cancelled' && (
