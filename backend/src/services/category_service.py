@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.exceptions import NotFoundError
+from src.core.exceptions import BadRequestError, NotFoundError
 from src.models.orm.category import Category
 from src.models.orm.product import Product
 
@@ -90,7 +90,7 @@ async def delete(db: AsyncSession, category_id: UUID) -> str:
     )
     product_count = product_count_result.scalar() or 0
     if product_count > 0:
-        raise ValueError(
+        raise BadRequestError(
             "Cannot delete category with existing products. "
             "Reassign or remove products first."
         )

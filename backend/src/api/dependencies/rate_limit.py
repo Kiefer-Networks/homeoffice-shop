@@ -1,6 +1,7 @@
 from fastapi import Depends, Request
 
-from src.api.middleware.rate_limit import _is_trusted_proxy, _limiter
+from src.api.middleware.rate_limit import _limiter
+from src.core.network import is_trusted_proxy
 from src.core.exceptions import RateLimitError
 
 
@@ -14,7 +15,7 @@ def rate_limit(limit: int = 60, window_seconds: int = 60, key_prefix: str = "end
         else:
             direct_ip = request.client.host if request.client else "unknown"
             forwarded = request.headers.get("x-forwarded-for")
-            if forwarded and _is_trusted_proxy(direct_ip):
+            if forwarded and is_trusted_proxy(direct_ip):
                 client_ip = forwarded.split(",")[0].strip()
             else:
                 client_ip = direct_ip

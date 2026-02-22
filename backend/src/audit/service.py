@@ -1,6 +1,5 @@
 import csv
 import io
-import ipaddress
 import json
 import logging
 import re
@@ -13,24 +12,10 @@ from sqlalchemy import String, text, func, select, and_, or_, cast
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.audit.models import AuditLog
+from src.core.network import is_trusted_proxy
 from src.core.search import ilike_escape
 from src.models.orm.user import User
-
-_TRUSTED_PROXIES = {
-    ipaddress.ip_network("127.0.0.0/8"),
-    ipaddress.ip_network("10.0.0.0/8"),
-    ipaddress.ip_network("172.16.0.0/12"),
-    ipaddress.ip_network("192.168.0.0/16"),
-    ipaddress.ip_network("::1/128"),
-}
-
-
-def _is_trusted_proxy(ip: str) -> bool:
-    try:
-        addr = ipaddress.ip_address(ip)
-        return any(addr in net for net in _TRUSTED_PROXIES)
-    except ValueError:
-        return False
+from src.services.settings_service import get_setting_int
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +27,7 @@ def audit_context(request: Request) -> tuple[str | None, str | None]:
     """
     direct_ip = request.client.host if request.client else None
     forwarded_for = request.headers.get("x-forwarded-for")
-    if forwarded_for and direct_ip and _is_trusted_proxy(direct_ip):
+    if forwarded_for and direct_ip and is_trusted_proxy(direct_ip):
         ip = forwarded_for.split(",")[0].strip()
     else:
         ip = direct_ip
@@ -178,7 +163,7 @@ async def export_audit_csv(
     date_to: datetime | None = None,
     q: str | None = None,
 ) -> str:
-    MAX_EXPORT_ROWS = 10000
+    max_rows = get_setting_int("max_csv_export_rows", 10000)
     items, _ = await query_audit_logs(
         db,
         user_id=user_id,
@@ -188,7 +173,7 @@ async def export_audit_csv(
         date_to=date_to,
         q=q,
         page=1,
-        per_page=MAX_EXPORT_ROWS,
+        per_page=max_rows,
     )
 
     output = io.StringIO()
@@ -208,13 +193,11 @@ async def export_audit_csv(
     return output.getvalue()
 
 
-AUDIT_RETENTION_MONTHS = 12
-
-
 async def ensure_audit_partitions(db: AsyncSession) -> None:
     """Create partitions for current month + next 2 months.
-    Drop partitions older than AUDIT_RETENTION_MONTHS.
+    Drop partitions older than the configured retention period.
     """
+    retention_months = get_setting_int("audit_retention_months", 12)
     now = datetime.now(timezone.utc)
 
     for i in range(3):
@@ -244,7 +227,7 @@ async def ensure_audit_partitions(db: AsyncSession) -> None:
             await db.execute(create_sql)
             logger.info("Created audit partition: %s", partition_name)
 
-    for month_offset in range(AUDIT_RETENTION_MONTHS + 1, AUDIT_RETENTION_MONTHS + 13):
+    for month_offset in range(retention_months + 1, retention_months + 13):
         old_month = now - relativedelta(months=month_offset)
         partition_name = f"audit_log_{old_month.year}_{old_month.month:02d}"
 

@@ -1,25 +1,10 @@
-import ipaddress
 import time
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-_TRUSTED_PROXIES = {
-    ipaddress.ip_network("127.0.0.0/8"),
-    ipaddress.ip_network("10.0.0.0/8"),
-    ipaddress.ip_network("172.16.0.0/12"),
-    ipaddress.ip_network("192.168.0.0/16"),
-    ipaddress.ip_network("::1/128"),
-}
-
-
-def _is_trusted_proxy(ip: str) -> bool:
-    try:
-        addr = ipaddress.ip_address(ip)
-        return any(addr in net for net in _TRUSTED_PROXIES)
-    except ValueError:
-        return False
+from src.core.network import is_trusted_proxy
 
 
 class SlidingWindowCounter:
@@ -58,7 +43,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         direct_ip = request.client.host if request.client else "unknown"
         forwarded = request.headers.get("x-forwarded-for")
-        if forwarded and _is_trusted_proxy(direct_ip):
+        if forwarded and is_trusted_proxy(direct_ip):
             client_ip = forwarded.split(",")[0].strip()
         else:
             client_ip = direct_ip

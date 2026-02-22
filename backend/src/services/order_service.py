@@ -31,7 +31,23 @@ from src.services.settings_service import get_setting_int
 logger = logging.getLogger(__name__)
 
 
-async def _retry_notification(coro_factory, order_id: str, max_attempts: int = 3):
+async def _restore_order_stock(db: AsyncSession, order_id: UUID) -> None:
+    """Restore stock quantities for all items in an order."""
+    items_result = await db.execute(select(OrderItem).where(OrderItem.order_id == order_id))
+    order_items = items_result.scalars().all()
+    product_ids = {item.product_id for item in order_items}
+    if product_ids:
+        prod_result = await db.execute(
+            select(Product).where(Product.id.in_(product_ids)).with_for_update()
+        )
+        products_map = {p.id: p for p in prod_result.scalars().all()}
+        for item in order_items:
+            product = products_map.get(item.product_id)
+            if product and product.stock_quantity is not None:
+                product.stock_quantity = product.stock_quantity + item.quantity
+
+
+async def retry_notification(coro_factory, order_id: str, max_attempts: int = 3):
     """Retry a notification coroutine with exponential backoff."""
     for attempt in range(max_attempts):
         try:
@@ -224,37 +240,11 @@ async def transition_order(
         db.add(refund)
 
         # Restore stock for products that track stock
-        items_result = await db.execute(
-            select(OrderItem).where(OrderItem.order_id == order.id)
-        )
-        order_items = items_result.scalars().all()
-        product_ids = {item.product_id for item in order_items}
-        if product_ids:
-            prod_result = await db.execute(
-                select(Product).where(Product.id.in_(product_ids)).with_for_update()
-            )
-            products_map = {p.id: p for p in prod_result.scalars().all()}
-            for item in order_items:
-                product = products_map.get(item.product_id)
-                if product and product.stock_quantity is not None:
-                    product.stock_quantity = product.stock_quantity + item.quantity
+        await _restore_order_stock(db, order.id)
 
     # Handle cancelled/rejected: restore stock
     if new_status in ("cancelled", "rejected"):
-        items_result = await db.execute(
-            select(OrderItem).where(OrderItem.order_id == order.id)
-        )
-        order_items = items_result.scalars().all()
-        product_ids = {item.product_id for item in order_items}
-        if product_ids:
-            prod_result = await db.execute(
-                select(Product).where(Product.id.in_(product_ids)).with_for_update()
-            )
-            products_map = {p.id: p for p in prod_result.scalars().all()}
-            for item in order_items:
-                product = products_map.get(item.product_id)
-                if product and product.stock_quantity is not None:
-                    product.stock_quantity = product.stock_quantity + item.quantity
+        await _restore_order_stock(db, order.id)
 
     await db.flush()
     await refresh_budget_cache(db, order.user_id)
@@ -472,20 +462,7 @@ async def cancel_order_by_user(
     order.cancelled_at = datetime.now(timezone.utc)
 
     # Restore stock for products that track stock
-    items_result = await db.execute(
-        select(OrderItem).where(OrderItem.order_id == order.id)
-    )
-    order_items = items_result.scalars().all()
-    product_ids = {item.product_id for item in order_items}
-    if product_ids:
-        prod_result = await db.execute(
-            select(Product).where(Product.id.in_(product_ids)).with_for_update()
-        )
-        products_map = {p.id: p for p in prod_result.scalars().all()}
-        for item in order_items:
-            product = products_map.get(item.product_id)
-            if product and product.stock_quantity is not None:
-                product.stock_quantity = product.stock_quantity + item.quantity
+    await _restore_order_stock(db, order.id)
 
     await db.flush()  # single atomic flush: status change + stock restore
     await refresh_budget_cache(db, order.user_id)
@@ -795,10 +772,10 @@ def _detect_aftership_slug(tracking_number: str) -> str | None:
         (r"^TB[ACM]\d{12}$", "amazon"),
         (r"^1Z[A-Z0-9]{16}$", "ups"),
         (r"^JJD\d{18,20}$", "dhl"),
-        (r"^\d{12,20}$", "dhl-germany"),
         (r"^\d{14,15}$", "dpd-de"),
         (r"^\d{16}$", "hermes-de"),
         (r"^[A-Z0-9]{11,12}$", "gls"),
+        (r"^\d{12,20}$", "dhl-germany"),
     ]
     for pattern, slug in patterns:
         if re.match(pattern, tn, re.IGNORECASE):

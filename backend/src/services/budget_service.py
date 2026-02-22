@@ -374,7 +374,7 @@ async def update_adjustment(
     *,
     amount_cents: int,
     reason: str,
-) -> tuple[BudgetAdjustment, dict]:
+) -> tuple[BudgetAdjustment, dict, dict]:
     adjustment = await db.get(BudgetAdjustment, adjustment_id)
     if not adjustment:
         raise NotFoundError("Adjustment not found")

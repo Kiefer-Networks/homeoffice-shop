@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from src.services.order_service import _retry_notification
+from src.services.order_service import retry_notification
 
 from fastapi import APIRouter, Depends, Header, Query, Request
 from sqlalchemy import select
@@ -81,12 +81,12 @@ async def create_order(
 
     order_data = await order_service.get_order_with_items(db, order.id)
 
-    await _retry_notification(
+    await retry_notification(
         lambda: order_service.notify_order_created(db, order, user, order_data),
         str(order.id),
     )
 
-    await _retry_notification(
+    await retry_notification(
         lambda: order_service.check_and_notify_budget_warning(db, user),
         str(order.id),
     )
@@ -150,7 +150,7 @@ async def cancel_my_order(
         details={"reason": body.reason, "total_cents": order.total_cents},
     )
 
-    await _retry_notification(
+    await retry_notification(
         lambda: order_service.notify_order_cancelled_by_user(db, order, user, body.reason),
         str(order.id),
     )

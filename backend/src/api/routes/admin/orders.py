@@ -6,7 +6,7 @@ from typing import Literal
 from urllib.parse import quote
 from uuid import UUID
 
-from src.services.order_service import _retry_notification
+from src.services.order_service import retry_notification
 
 from fastapi import APIRouter, Depends, Query, Request, Response, UploadFile, File
 from fastapi.responses import FileResponse, StreamingResponse
@@ -18,6 +18,7 @@ from src.api.dependencies.database import get_db
 from src.api.dependencies.rate_limit import rate_limit
 from src.audit.service import log_admin_action
 from src.core.exceptions import BadRequestError, NotFoundError
+from src.services.settings_service import get_setting_int
 from src.models.dto.order import (
     OrderHiBobSyncResponse,
     OrderHiBobUnsyncResponse,
@@ -52,7 +53,7 @@ async def list_all_orders(
 ):
     items, total = await order_service.get_orders(
         db, status=status, q=q, sort=sort, page=page, per_page=per_page,
-        include_invoices=True,
+        include_invoices=False,
     )
     return {"items": items, "total": total, "page": page, "per_page": per_page}
 
@@ -67,9 +68,9 @@ async def export_orders_csv(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_staff),
 ):
-    MAX_EXPORT_ROWS = 10000
+    max_rows = get_setting_int("max_csv_export_rows", 10000)
     items, _ = await order_service.get_orders(
-        db, status=status, q=q, page=1, per_page=MAX_EXPORT_ROWS,
+        db, status=status, q=q, page=1, per_page=max_rows,
         date_from=date_from, date_to=date_to,
     )
 
@@ -157,7 +158,7 @@ async def update_order_status(
         db, order_id, include_invoices=True, include_tracking_updates=True
     )
 
-    await _retry_notification(
+    await retry_notification(
         lambda: order_service.notify_status_changed(
             db, order, order_data, body.status, body.admin_note,
         ),
@@ -217,7 +218,7 @@ async def update_order_tracking(
         db, order_id, include_invoices=True, include_tracking_updates=True
     )
 
-    await _retry_notification(
+    await retry_notification(
         lambda: order_service.notify_tracking_update(
             db, order, order_data, body.comment,
         ),
