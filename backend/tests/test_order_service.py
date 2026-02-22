@@ -41,8 +41,8 @@ class TestValidTransitions:
     def test_rejected_is_terminal(self):
         assert len(VALID_TRANSITIONS["rejected"]) == 0
 
-    def test_delivered_is_terminal(self):
-        assert len(VALID_TRANSITIONS["delivered"]) == 0
+    def test_delivered_allows_return_requested(self):
+        assert VALID_TRANSITIONS["delivered"] == {"return_requested"}
 
     def test_cancelled_is_terminal(self):
         assert len(VALID_TRANSITIONS["cancelled"]) == 0

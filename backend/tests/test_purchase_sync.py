@@ -62,43 +62,43 @@ class TestFindMatchingOrders:
 
     def test_exact_match(self):
         order = self._make_order(75000)
-        matches = _find_matching_orders([order], 75000, date(2024, 6, 15))
+        matches = _find_matching_orders([order], 75000, date(2024, 6, 15), amount_tolerance=500, date_tolerance=30)
         assert len(matches) == 1
 
     def test_within_amount_tolerance(self):
         order = self._make_order(75050)
-        matches = _find_matching_orders([order], 75000, date(2024, 6, 15))
+        matches = _find_matching_orders([order], 75000, date(2024, 6, 15), amount_tolerance=500, date_tolerance=30)
         assert len(matches) == 1
 
     def test_outside_amount_tolerance(self):
         order = self._make_order(76000)
-        matches = _find_matching_orders([order], 75000, date(2024, 6, 15))
+        matches = _find_matching_orders([order], 75000, date(2024, 6, 15), amount_tolerance=500, date_tolerance=30)
         assert len(matches) == 0
 
     def test_within_date_tolerance(self):
         order = self._make_order(75000, days_ago=5)
-        matches = _find_matching_orders([order], 75000, date(2024, 6, 15))
+        matches = _find_matching_orders([order], 75000, date(2024, 6, 15), amount_tolerance=500, date_tolerance=30)
         assert len(matches) == 1
 
     def test_outside_date_tolerance(self):
         order = self._make_order(75000)
-        matches = _find_matching_orders([order], 75000, date(2024, 5, 1))
+        matches = _find_matching_orders([order], 75000, date(2024, 5, 1), amount_tolerance=500, date_tolerance=30)
         assert len(matches) == 0
 
     def test_skips_cancelled_orders(self):
         order = self._make_order(75000, status="cancelled")
-        matches = _find_matching_orders([order], 75000, date(2024, 6, 15))
+        matches = _find_matching_orders([order], 75000, date(2024, 6, 15), amount_tolerance=500, date_tolerance=30)
         assert len(matches) == 0
 
     def test_skips_rejected_orders(self):
         order = self._make_order(75000, status="rejected")
-        matches = _find_matching_orders([order], 75000, date(2024, 6, 15))
+        matches = _find_matching_orders([order], 75000, date(2024, 6, 15), amount_tolerance=500, date_tolerance=30)
         assert len(matches) == 0
 
     def test_multiple_matches(self):
         o1 = self._make_order(75000)
         o2 = self._make_order(75050)
-        matches = _find_matching_orders([o1, o2], 75000, date(2024, 6, 15))
+        matches = _find_matching_orders([o1, o2], 75000, date(2024, 6, 15), amount_tolerance=500, date_tolerance=30)
         assert len(matches) == 2
 
 
@@ -118,11 +118,14 @@ class TestSyncPurchases:
         assert "not configured" in log.error_message
 
     @pytest.mark.asyncio
+    @patch("src.services.purchase_sync.write_audit_log", new_callable=AsyncMock)
+    @patch("src.services.purchase_sync.asyncio.sleep", new_callable=AsyncMock)
     @patch("src.services.purchase_sync.load_settings", new_callable=AsyncMock)
     @patch("src.services.purchase_sync.get_setting")
-    @patch("src.services.purchase_sync.refresh_budget_cache")
+    @patch("src.services.purchase_sync.get_setting_int")
+    @patch("src.services.purchase_sync.refresh_budget_cache", new_callable=AsyncMock)
     async def test_no_users_with_hibob_id(
-        self, mock_refresh, mock_get_setting, mock_load, mock_db,
+        self, mock_refresh, mock_get_setting_int, mock_get_setting, mock_load, mock_sleep, mock_audit, mock_db,
     ):
         def setting_side_effect(key):
             return {
@@ -134,10 +137,12 @@ class TestSyncPurchases:
             }.get(key, "")
 
         mock_get_setting.side_effect = setting_side_effect
+        mock_get_setting_int.return_value = 500
 
-        # Mock execute to return empty user list
+        # Mock execute to return empty results for all calls
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []
+        mock_result.all.return_value = []
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         client = FakeHiBobClient()
@@ -146,12 +151,16 @@ class TestSyncPurchases:
         assert log.entries_found == 0
 
     @pytest.mark.asyncio
+    @patch("src.services.purchase_sync.write_audit_log", new_callable=AsyncMock)
+    @patch("src.services.purchase_sync.asyncio.sleep", new_callable=AsyncMock)
     @patch("src.services.purchase_sync.load_settings", new_callable=AsyncMock)
     @patch("src.services.purchase_sync.get_setting")
-    @patch("src.services.purchase_sync.refresh_budget_cache")
-    async def test_skips_already_processed_entries(
-        self, mock_refresh, mock_get_setting, mock_load, mock_db,
+    @patch("src.services.purchase_sync.get_setting_int")
+    @patch("src.services.purchase_sync.refresh_budget_cache", new_callable=AsyncMock)
+    async def test_reprocesses_all_entries_on_resync(
+        self, mock_refresh, mock_get_setting_int, mock_get_setting, mock_load, mock_sleep, mock_audit, mock_db,
     ):
+        """Current logic wipes previous reviews and reprocesses all entries."""
         def setting_side_effect(key):
             return {
                 "hibob_purchase_table_id": "purchases",
@@ -162,26 +171,28 @@ class TestSyncPurchases:
             }.get(key, "")
 
         mock_get_setting.side_effect = setting_side_effect
+        mock_get_setting_int.return_value = 500
 
         user = make_user(hibob_id="emp-1")
         user.hibob_id = "emp-1"
 
-        # First execute returns users, second returns orders, third returns existing review
-        call_count = 0
+        users_found = False
 
         async def execute_side_effect(stmt):
-            nonlocal call_count
-            call_count += 1
+            nonlocal users_found
             mock_result = MagicMock()
-            if call_count == 1:
-                # Users query
+            stmt_str = str(stmt)
+            # The users query contains User and is_active
+            if not users_found and "is_active" in stmt_str:
                 mock_result.scalars.return_value.all.return_value = [user]
-            elif call_count == 2:
+                users_found = True
+            elif "status" in stmt_str:
                 # Orders query
                 mock_result.scalars.return_value.all.return_value = []
             else:
-                # Check for existing review - return a UUID to simulate existing
-                mock_result.scalar_one_or_none.return_value = uuid.uuid4()
+                mock_result.scalars.return_value.all.return_value = []
+                mock_result.all.return_value = []
+                mock_result.scalar_one_or_none.return_value = None
             return mock_result
 
         mock_db.execute = AsyncMock(side_effect=execute_side_effect)
@@ -196,14 +207,17 @@ class TestSyncPurchases:
 
         log = await sync_purchases(mock_db, client)
         assert log.status == "completed"
-        assert log.entries_found == 0  # Skipped because already exists
+        assert log.entries_found == 1
 
     @pytest.mark.asyncio
+    @patch("src.services.purchase_sync.write_audit_log", new_callable=AsyncMock)
+    @patch("src.services.purchase_sync.asyncio.sleep", new_callable=AsyncMock)
     @patch("src.services.purchase_sync.load_settings", new_callable=AsyncMock)
     @patch("src.services.purchase_sync.get_setting")
-    @patch("src.services.purchase_sync.refresh_budget_cache")
+    @patch("src.services.purchase_sync.get_setting_int")
+    @patch("src.services.purchase_sync.refresh_budget_cache", new_callable=AsyncMock)
     async def test_auto_adjust_no_matching_order(
-        self, mock_refresh, mock_get_setting, mock_load, mock_db,
+        self, mock_refresh, mock_get_setting_int, mock_get_setting, mock_load, mock_sleep, mock_audit, mock_db,
     ):
         def setting_side_effect(key):
             return {
@@ -215,24 +229,25 @@ class TestSyncPurchases:
             }.get(key, "")
 
         mock_get_setting.side_effect = setting_side_effect
+        mock_get_setting_int.return_value = 500
 
         user = make_user(hibob_id="emp-1")
         user.hibob_id = "emp-1"
 
-        call_count = 0
+        users_found = False
 
         async def execute_side_effect(stmt):
-            nonlocal call_count
-            call_count += 1
+            nonlocal users_found
             mock_result = MagicMock()
-            if call_count == 1:
-                # Users
+            stmt_str = str(stmt)
+            if not users_found and "is_active" in stmt_str:
                 mock_result.scalars.return_value.all.return_value = [user]
-            elif call_count == 2:
-                # Orders
+                users_found = True
+            elif "status" in stmt_str:
                 mock_result.scalars.return_value.all.return_value = []
             else:
-                # Check existing review / flush
+                mock_result.scalars.return_value.all.return_value = []
+                mock_result.all.return_value = []
                 mock_result.scalar_one_or_none.return_value = None
             return mock_result
 

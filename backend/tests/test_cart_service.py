@@ -200,18 +200,12 @@ class TestUpdateCartItem:
         assert item is None
 
     @pytest.mark.asyncio
-    async def test_zero_quantity_deletes(self, mock_db):
+    async def test_zero_quantity_raises(self, mock_db):
         user_id = uuid.uuid4()
         product_id = uuid.uuid4()
-        existing = make_cart_item(user_id=user_id, product_id=product_id, quantity=1)
 
-        result = MagicMock()
-        result.scalar_one_or_none.return_value = existing
-        mock_db.execute.return_value = result
-
-        item = await update_cart_item(mock_db, user_id, product_id, 0)
-        assert item is None
-        mock_db.delete.assert_called_once_with(existing)
+        with pytest.raises(BadRequestError, match="Quantity must be greater than zero"):
+            await update_cart_item(mock_db, user_id, product_id, 0)
 
     @pytest.mark.asyncio
     async def test_exceeds_max_quantity_raises(self, mock_db):

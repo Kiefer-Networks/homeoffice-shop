@@ -55,6 +55,7 @@ class TestSyncEmployees:
         mock_user_repo.get_by_hibob_id = AsyncMock(return_value=None)
         mock_user_repo.get_by_email = AsyncMock(return_value=None)
         mock_user_repo.get_all_with_hibob_id = AsyncMock(return_value=[])
+        mock_user_repo.get_active_staff = AsyncMock(return_value=[])
 
         employees = [
             HiBobEmployee(
@@ -81,6 +82,7 @@ class TestSyncEmployees:
         existing_user = make_user(email="existing@example.com", display_name="Old Name")
         mock_user_repo.get_by_hibob_id = AsyncMock(return_value=existing_user)
         mock_user_repo.get_all_with_hibob_id = AsyncMock(return_value=[existing_user])
+        mock_user_repo.get_active_staff = AsyncMock(return_value=[])
 
         employees = [
             HiBobEmployee(
@@ -106,6 +108,7 @@ class TestSyncEmployees:
     ):
         mock_settings.return_value = {}
         mock_budget.return_value = 75000
+        mock_user_repo.get_active_staff = AsyncMock(return_value=[])
 
         employees = [
             HiBobEmployee(id="ext-1", email="external@other-company.com", display_name="External"),
@@ -126,6 +129,7 @@ class TestSyncEmployees:
     ):
         mock_settings.return_value = {}
         mock_budget.return_value = 75000
+        mock_user_repo.get_active_staff = AsyncMock(return_value=[])
 
         employees = [
             HiBobEmployee(id="no-email", email="", display_name="No Email"),
@@ -147,6 +151,7 @@ class TestSyncEmployees:
         mock_user_repo.get_by_hibob_id = AsyncMock(return_value=None)
         mock_user_repo.get_by_email = AsyncMock(return_value=None)
         mock_user_repo.get_all_with_hibob_id = AsyncMock(return_value=[])
+        mock_user_repo.get_active_staff = AsyncMock(return_value=[])
 
         employees = [
             HiBobEmployee(
@@ -199,6 +204,7 @@ class TestSyncEmployees:
         mock_user_repo.get_by_hibob_id = AsyncMock(return_value=None)
         mock_user_repo.get_by_email = AsyncMock(return_value=existing)
         mock_user_repo.get_all_with_hibob_id = AsyncMock(return_value=[])
+        mock_user_repo.get_active_staff = AsyncMock(return_value=[])
 
         employees = [
             HiBobEmployee(id="new-hibob-id", email="match@example.com", display_name="Matched"),

@@ -46,9 +46,9 @@ class TestRefreshPreview:
             await refresh_preview(product.id, _make_request(), mock_db, admin)
 
     @pytest.mark.asyncio
-    @patch("src.api.routes.admin.products.write_audit_log", new_callable=AsyncMock)
-    @patch("src.api.routes.admin.products.download_and_store_product_images", new_callable=AsyncMock)
-    @patch("src.api.routes.admin.products.AmazonClient")
+    @patch("src.audit.service.write_audit_log", new_callable=AsyncMock)
+    @patch("src.services.product_service.download_and_store_product_images", new_callable=AsyncMock)
+    @patch("src.services.product_service.AmazonClient")
     async def test_returns_diffs(self, MockClient, mock_download, mock_audit, mock_db):
         from src.api.routes.admin.products import refresh_preview
 
@@ -88,9 +88,9 @@ class TestRefreshPreview:
         assert "color" in diff_fields
 
     @pytest.mark.asyncio
-    @patch("src.api.routes.admin.products.write_audit_log", new_callable=AsyncMock)
-    @patch("src.api.routes.admin.products.download_and_store_product_images", new_callable=AsyncMock)
-    @patch("src.api.routes.admin.products.AmazonClient")
+    @patch("src.audit.service.write_audit_log", new_callable=AsyncMock)
+    @patch("src.services.product_service.download_and_store_product_images", new_callable=AsyncMock)
+    @patch("src.services.product_service.AmazonClient")
     async def test_no_diffs_when_same(self, MockClient, mock_download, mock_audit, mock_db):
         from src.api.routes.admin.products import refresh_preview
 
@@ -126,9 +126,9 @@ class TestRefreshPreview:
         assert len(result.diffs) == 0
 
     @pytest.mark.asyncio
-    @patch("src.api.routes.admin.products.write_audit_log", new_callable=AsyncMock)
-    @patch("src.api.routes.admin.products.download_and_store_product_images", new_callable=AsyncMock)
-    @patch("src.api.routes.admin.products.AmazonClient")
+    @patch("src.audit.service.write_audit_log", new_callable=AsyncMock)
+    @patch("src.services.product_service.download_and_store_product_images", new_callable=AsyncMock)
+    @patch("src.services.product_service.AmazonClient")
     async def test_skips_none_new_values(self, MockClient, mock_download, mock_audit, mock_db):
         from src.api.routes.admin.products import refresh_preview
 
@@ -191,7 +191,7 @@ class TestRefreshApply:
             await refresh_apply(product.id, body, _make_request(), mock_db, admin)
 
     @pytest.mark.asyncio
-    @patch("src.api.routes.admin.products.write_audit_log", new_callable=AsyncMock)
+    @patch("src.audit.service.write_audit_log", new_callable=AsyncMock)
     async def test_applies_selected_fields(self, mock_audit, mock_db):
         from src.api.routes.admin.products import refresh_apply
 
@@ -214,7 +214,7 @@ class TestRefreshApply:
         assert product.price_cents == 10000
 
     @pytest.mark.asyncio
-    @patch("src.api.routes.admin.products.write_audit_log", new_callable=AsyncMock)
+    @patch("src.audit.service.write_audit_log", new_callable=AsyncMock)
     async def test_brand_resolution_creates_new(self, mock_audit, mock_db):
         from src.api.routes.admin.products import refresh_apply
 
@@ -243,7 +243,7 @@ class TestRefreshApply:
         assert added.slug == "newbrand"
 
     @pytest.mark.asyncio
-    @patch("src.api.routes.admin.products.write_audit_log", new_callable=AsyncMock)
+    @patch("src.audit.service.write_audit_log", new_callable=AsyncMock)
     async def test_brand_resolution_existing(self, mock_audit, mock_db):
         from src.api.routes.admin.products import refresh_apply
 
