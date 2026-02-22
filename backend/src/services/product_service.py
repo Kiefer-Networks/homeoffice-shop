@@ -154,39 +154,46 @@ async def search_products(
         try:
             search_conditions: list = []
 
-            # Strategy 1: websearch_to_tsquery — supports AND, OR, -exclude, "phrases"
-            ws_query = func.websearch_to_tsquery("english", q)
-            search_conditions.append(Product.search_vector.op("@@")(ws_query))
+            # For very short queries (1-2 chars), tsvector is ineffective;
+            # fall back to simple ILIKE prefix matching for fast results.
+            if len(q.strip()) <= 2:
+                pattern = ilike_escape(q)
+                search_conditions.append(Product.name.ilike(pattern))
+                search_conditions.append(Product.brand.ilike(pattern))
+            else:
+                # Strategy 1: websearch_to_tsquery — supports AND, OR, -exclude, "phrases"
+                ws_query = func.websearch_to_tsquery("english", q)
+                search_conditions.append(Product.search_vector.op("@@")(ws_query))
 
-            # Strategy 2: Prefix query for partial typing / autocomplete
-            prefix_expr = _build_prefix_tsquery(q)
-            if prefix_expr:
-                prefix_query = func.to_tsquery("english", prefix_expr)
-                search_conditions.append(
-                    Product.search_vector.op("@@")(prefix_query)
-                )
-
-            # Strategy 3: Synonym expansion
-            expanded = _expand_with_synonyms(q)
-            if expanded.lower() != q.lower().strip():
-                syn_query = func.plainto_tsquery("english", expanded)
-                search_conditions.append(
-                    Product.search_vector.op("@@")(syn_query)
-                )
-
-            # Strategy 4: Category name subquery (ILIKE + similarity)
-            search_conditions.append(Product.category_id.in_(
-                select(Category.id).where(
-                    or_(
-                        Category.name.ilike(ilike_escape(q)),
-                        func.similarity(Category.name, q) > 0.3,
+                # Strategy 2: Prefix query for partial typing / autocomplete
+                prefix_expr = _build_prefix_tsquery(q)
+                if prefix_expr:
+                    prefix_query = func.to_tsquery("english", prefix_expr)
+                    search_conditions.append(
+                        Product.search_vector.op("@@")(prefix_query)
                     )
-                )
-            ))
 
-            # Strategy 5: Trigram similarity (threshold 0.3)
-            search_conditions.append(func.similarity(Product.name, q) > 0.3)
-            search_conditions.append(func.similarity(Product.brand, q) > 0.3)
+                # Strategy 3: Synonym expansion
+                expanded = _expand_with_synonyms(q)
+                if expanded.lower() != q.lower().strip():
+                    syn_query = func.plainto_tsquery("english", expanded)
+                    search_conditions.append(
+                        Product.search_vector.op("@@")(syn_query)
+                    )
+
+                # Strategy 4: Category name subquery (ILIKE + similarity)
+                search_conditions.append(Product.category_id.in_(
+                    select(Category.id).where(
+                        or_(
+                            Category.name.ilike(ilike_escape(q)),
+                            func.similarity(Category.name, q) > 0.3,
+                        )
+                    )
+                ))
+
+                # Strategy 5: Trigram similarity (threshold 0.3)
+                search_conditions.append(func.similarity(Product.name, q) > 0.3)
+                search_conditions.append(func.similarity(Product.brand, q) > 0.3)
 
             conditions.append(or_(*search_conditions))
         except DataError:
@@ -216,21 +223,26 @@ async def search_products(
     elif sort == "newest":
         query = query.order_by(Product.created_at.desc())
     elif q and sort == "relevance":
-        # Blended score: ts_rank * 2 + max(name_sim, brand_sim) + prefix_rank
-        ws_query = func.websearch_to_tsquery("english", q)
-        ts_rank = func.ts_rank(Product.search_vector, ws_query)
-        name_sim = func.coalesce(func.similarity(Product.name, q), 0)
-        brand_sim = func.coalesce(func.similarity(Product.brand, q), 0)
-        best_sim = func.greatest(name_sim, brand_sim)
+        if len(q.strip()) <= 2:
+            # For very short queries, rank by name similarity only
+            name_sim = func.coalesce(func.similarity(Product.name, q), 0)
+            query = query.order_by(name_sim.desc())
+        else:
+            # Blended score: ts_rank * 2 + max(name_sim, brand_sim) + prefix_rank
+            ws_query = func.websearch_to_tsquery("english", q)
+            ts_rank = func.ts_rank(Product.search_vector, ws_query)
+            name_sim = func.coalesce(func.similarity(Product.name, q), 0)
+            brand_sim = func.coalesce(func.similarity(Product.brand, q), 0)
+            best_sim = func.greatest(name_sim, brand_sim)
 
-        prefix_rank = literal_column("0")
-        prefix_expr = _build_prefix_tsquery(q)
-        if prefix_expr:
-            prefix_tsq = func.to_tsquery("english", prefix_expr)
-            prefix_rank = func.ts_rank(Product.search_vector, prefix_tsq)
+            prefix_rank = literal_column("0")
+            prefix_expr = _build_prefix_tsquery(q)
+            if prefix_expr:
+                prefix_tsq = func.to_tsquery("english", prefix_expr)
+                prefix_rank = func.ts_rank(Product.search_vector, prefix_tsq)
 
-        blended = ts_rank * 2 + best_sim + prefix_rank
-        query = query.order_by(blended.desc())
+            blended = ts_rank * 2 + best_sim + prefix_rank
+            query = query.order_by(blended.desc())
     else:
         query = query.order_by(Product.created_at.desc())
 
@@ -319,6 +331,39 @@ async def search_products(
             "price_range": price_range,
         },
     }
+
+
+async def get_suggestions(
+    db: AsyncSession,
+    q: str,
+    limit: int = 5,
+) -> list[dict]:
+    """Return lightweight product suggestions for autocomplete.
+
+    Uses ILIKE for fast prefix/substring matching. Returns id, name,
+    and image_url for the top matching products.
+    """
+    pattern = ilike_escape(q)
+    query = (
+        select(Product.id, Product.name, Product.image_url)
+        .where(
+            and_(
+                Product.is_active.is_(True),
+                Product.archived_at.is_(None),
+                or_(
+                    Product.name.ilike(pattern),
+                    Product.brand.ilike(pattern),
+                ),
+            )
+        )
+        .order_by(Product.name)
+        .limit(limit)
+    )
+    result = await db.execute(query)
+    return [
+        {"id": str(row.id), "name": row.name, "image_url": row.image_url}
+        for row in result.all()
+    ]
 
 
 async def refresh_all_prices(

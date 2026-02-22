@@ -1,6 +1,6 @@
 import type { AxiosResponse } from 'axios'
 import api from './api'
-import type { ProductSearchResult, Category } from '@/types'
+import type { ProductSearchResult, Category, SearchSuggestion } from '@/types'
 
 let categoriesPromise: Promise<AxiosResponse<Category[]>> | null = null
 let categoriesCacheTime = 0
@@ -9,6 +9,8 @@ const CACHE_TTL = 60_000 // 1 minute
 export const productApi = {
   search: (params: URLSearchParams) =>
     api.get<ProductSearchResult>('/api/products', { params }),
+  getSearchSuggestions: (q: string) =>
+    api.get<SearchSuggestion[]>('/api/products/suggestions', { params: { q } }),
   getCategories: () => {
     const now = Date.now()
     if (categoriesPromise && (now - categoriesCacheTime) < CACHE_TTL) {

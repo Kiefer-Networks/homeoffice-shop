@@ -51,6 +51,17 @@ async def list_products(
     return result
 
 
+@router.get("/suggestions")
+async def search_suggestions(
+    q: str = Query("", min_length=2, max_length=200),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Lightweight autocomplete endpoint returning top 5 matching products."""
+    results = await product_service.get_suggestions(db, q, limit=5)
+    return results
+
+
 @router.get("/{product_id}", response_model=ProductResponse)
 async def get_product(
     product_id: UUID,
