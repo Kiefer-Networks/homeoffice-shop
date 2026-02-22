@@ -1,5 +1,6 @@
 import re
 import time
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import select, func
@@ -33,7 +34,9 @@ async def list_all(db: AsyncSession) -> list[Brand]:
     now = time.monotonic()
     if _cache is not None and (now - _cache_time) < _CACHE_TTL:
         return _cache
-    result = await db.execute(select(Brand).order_by(Brand.name.asc()))
+    result = await db.execute(
+        select(Brand).where(Brand.deleted_at.is_(None)).order_by(Brand.name.asc())
+    )
     items = list(result.scalars().all())
     _cache = items
     _cache_time = now
@@ -41,12 +44,16 @@ async def list_all(db: AsyncSession) -> list[Brand]:
 
 
 async def create(db: AsyncSession, *, name: str) -> Brand:
-    existing = await db.execute(select(Brand).where(Brand.name == name))
+    existing = await db.execute(
+        select(Brand).where(Brand.name == name, Brand.deleted_at.is_(None))
+    )
     if existing.scalar_one_or_none():
         raise ConflictError(f"Brand '{name}' already exists")
 
     slug = slugify(name)
-    existing_slug = await db.execute(select(Brand).where(Brand.slug == slug))
+    existing_slug = await db.execute(
+        select(Brand).where(Brand.slug == slug, Brand.deleted_at.is_(None))
+    )
     if existing_slug.scalar_one_or_none():
         raise ConflictError(f"A brand with a similar name already exists (slug '{slug}')")
 
@@ -72,13 +79,13 @@ async def update(
     changes: dict = {}
     if name is not None and name != brand.name:
         existing = await db.execute(
-            select(Brand).where(Brand.name == name, Brand.id != brand_id)
+            select(Brand).where(Brand.name == name, Brand.id != brand_id, Brand.deleted_at.is_(None))
         )
         if existing.scalar_one_or_none():
             raise ConflictError(f"Brand '{name}' already exists")
         new_slug = slugify(name)
         existing_slug = await db.execute(
-            select(Brand).where(Brand.slug == new_slug, Brand.id != brand_id)
+            select(Brand).where(Brand.slug == new_slug, Brand.id != brand_id, Brand.deleted_at.is_(None))
         )
         if existing_slug.scalar_one_or_none():
             raise ConflictError(f"A brand with a similar name already exists (slug '{new_slug}')")
@@ -112,7 +119,7 @@ async def delete(db: AsyncSession, brand_id: UUID) -> str:
         )
 
     name = brand.name
-    await db.delete(brand)
+    brand.deleted_at = datetime.now(timezone.utc)
     await db.flush()
     invalidate_cache()
     return name

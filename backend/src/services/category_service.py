@@ -1,4 +1,5 @@
 import time
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import select, func
@@ -25,7 +26,9 @@ async def list_all(db: AsyncSession) -> list[Category]:
     if _cache is not None and (now - _cache_time) < _CACHE_TTL:
         return _cache
     result = await db.execute(
-        select(Category).order_by(Category.sort_order, Category.name)
+        select(Category)
+        .where(Category.deleted_at.is_(None))
+        .order_by(Category.sort_order, Category.name)
     )
     items = list(result.scalars().all())
     _cache = items
@@ -93,7 +96,8 @@ async def delete(db: AsyncSession, category_id: UUID) -> str:
         )
 
     name = category.name
-    await db.delete(category)
+    category.deleted_at = datetime.now(timezone.utc)
+    await db.flush()
     invalidate_cache()
     return name
 
@@ -103,7 +107,9 @@ async def reorder(
     items: list[tuple[UUID, int]],
 ) -> int:
     ids = [item_id for item_id, _ in items]
-    result = await db.execute(select(Category).where(Category.id.in_(ids)))
+    result = await db.execute(
+        select(Category).where(Category.id.in_(ids), Category.deleted_at.is_(None))
+    )
     categories_map = {c.id: c for c in result.scalars().all()}
 
     for item_id, sort_order in items:
