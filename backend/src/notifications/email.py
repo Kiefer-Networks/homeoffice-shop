@@ -87,6 +87,8 @@ async def _send_with_retry(message: MIMEMultipart, smtp: dict) -> None:
     raise last_exc  # type: ignore[misc]
 
 
+_SMTP_TIMEOUT_SECONDS = 30
+
 def _get_smtp_config() -> dict:
     host = get_setting("smtp_host")
     port = int(get_setting("smtp_port") or "587")
@@ -98,6 +100,7 @@ def _get_smtp_config() -> dict:
         "password": get_setting("smtp_password") or None,
         "start_tls": use_tls and port != 465,
         "use_tls": port == 465,
+        "timeout": _SMTP_TIMEOUT_SECONDS,
     }
 
 
