@@ -18,6 +18,7 @@ export function AdminBrandsPage() {
   const [editing, setEditing] = useState<Brand | null>(null)
   const [name, setName] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Brand | null>(null)
+  const [saving, setSaving] = useState(false)
   const { addToast } = useUiStore()
 
   const load = () => adminApi.listBrands().then(({ data }) => setBrands(data))
@@ -36,6 +37,7 @@ export function AdminBrandsPage() {
   }
 
   const handleSave = async () => {
+    setSaving(true)
     try {
       if (editing) {
         await adminApi.updateBrand(editing.id, { name })
@@ -47,6 +49,8 @@ export function AdminBrandsPage() {
       addToast({ title: editing ? 'Brand updated' : 'Brand created' })
     } catch (err: unknown) {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -136,7 +140,9 @@ export function AdminBrandsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={!name.trim()}>Save</Button>
+            <Button onClick={handleSave} disabled={saving || !name.trim()}>
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

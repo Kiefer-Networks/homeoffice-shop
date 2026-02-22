@@ -8,6 +8,8 @@ import { adminApi } from '@/services/adminApi'
 import { productApi } from '@/services/productApi'
 import { formatCents, formatDate } from '@/lib/utils'
 import { ORDER_STATUS_VARIANT } from '@/lib/constants'
+import { useUiStore } from '@/stores/uiStore'
+import { getErrorMessage } from '@/lib/error'
 import type { Order } from '@/types'
 
 export function DashboardPage() {
@@ -17,6 +19,7 @@ export function DashboardPage() {
   const [recentOrders, setRecentOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+  const { addToast } = useUiStore()
 
   useEffect(() => {
     Promise.all([
@@ -37,8 +40,8 @@ export function DashboardPage() {
         products: products.data.total,
       })
       setRecentOrders(recent.data.items)
-    }).catch(() => {
-      // Stats may fail to load if APIs are temporarily unavailable
+    }).catch((err: unknown) => {
+      addToast({ title: 'Failed to load dashboard stats', description: getErrorMessage(err), variant: 'destructive' })
     }).finally(() => setLoading(false))
   }, [])
 

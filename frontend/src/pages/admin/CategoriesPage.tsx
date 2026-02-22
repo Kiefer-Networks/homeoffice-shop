@@ -74,6 +74,7 @@ export function AdminCategoriesPage() {
   const [editing, setEditing] = useState<Category | null>(null)
   const [form, setForm] = useState({ name: '', slug: '', description: '', icon: '', sort_order: 0 })
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
   const { addToast } = useUiStore()
 
   const sensors = useSensors(
@@ -106,6 +107,7 @@ export function AdminCategoriesPage() {
   }
 
   const handleSave = async () => {
+    setSaving(true)
     try {
       if (editing) {
         await adminApi.updateCategory(editing.id, form)
@@ -115,6 +117,7 @@ export function AdminCategoriesPage() {
       setShowDialog(false); load()
       addToast({ title: editing ? 'Category updated' : 'Category created' })
     } catch (err: unknown) { addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' }) }
+    finally { setSaving(false) }
   }
 
   const handleDelete = async (id: string) => {
@@ -194,7 +197,9 @@ export function AdminCategoriesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={!form.name || !form.slug}>Save</Button>
+            <Button onClick={handleSave} disabled={saving || !form.name || !form.slug}>
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

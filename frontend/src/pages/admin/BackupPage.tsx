@@ -50,7 +50,7 @@ export function AdminBackupPage() {
   const loadBackups = () => {
     adminApi.listBackups()
       .then(({ data }) => setBackups(data.items))
-      .catch(() => addToast({ title: 'Failed to load backups', variant: 'destructive' }))
+      .catch((err: unknown) => addToast({ title: 'Failed to load backups', description: getErrorMessage(err), variant: 'destructive' }))
       .finally(() => setLoading(false))
   }
 
@@ -60,7 +60,7 @@ export function AdminBackupPage() {
         setSchedule(data)
         setScheduleForm(data)
       })
-      .catch(() => addToast({ title: 'Failed to load schedule', variant: 'destructive' }))
+      .catch((err: unknown) => addToast({ title: 'Failed to load schedule', description: getErrorMessage(err), variant: 'destructive' }))
   }
 
   useEffect(() => {

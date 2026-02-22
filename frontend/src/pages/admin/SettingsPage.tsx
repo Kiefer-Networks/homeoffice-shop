@@ -34,6 +34,7 @@ export function AdminSettingsPage() {
   const [generalDirty, setGeneralDirty] = useState<Set<string>>(new Set())
   const [smtpDirty, setSmtpDirty] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [testEmail, setTestEmail] = useState('')
   const [sendingTest, setSendingTest] = useState(false)
   const [savingGeneral, setSavingGeneral] = useState(false)
@@ -54,22 +55,32 @@ export function AdminSettingsPage() {
   const [ruleForm, setRuleForm] = useState({ effective_from: '', initial_cents: '', yearly_increment_cents: '' })
   const [savingRule, setSavingRule] = useState(false)
   const [deleteRuleTarget, setDeleteRuleTarget] = useState<string | null>(null)
-  useEffect(() => {
+
+  const loadSettings = () => {
+    setLoading(true)
+    setLoadError(false)
     if (isAdmin) {
       adminApi.getSettings()
         .then(({ data }) => setSettings(data.settings))
-        .catch(() => addToast({ title: 'Failed to load settings', variant: 'destructive' }))
+        .catch((err: unknown) => {
+          addToast({ title: 'Failed to load settings', description: getErrorMessage(err), variant: 'destructive' })
+          setLoadError(true)
+        })
         .finally(() => setLoading(false))
     } else {
       setLoading(false)
     }
+  }
+
+  useEffect(() => {
+    loadSettings()
     loadRules()
   }, [])
 
   const loadRules = () => {
     adminApi.listBudgetRules()
       .then(({ data }) => setRules(data))
-      .catch(() => addToast({ title: 'Failed to load budget rules', variant: 'destructive' }))
+      .catch((err: unknown) => addToast({ title: 'Failed to load budget rules', description: getErrorMessage(err), variant: 'destructive' }))
       .finally(() => setRulesLoading(false))
   }
 
@@ -169,6 +180,13 @@ export function AdminSettingsPage() {
         <Card>
           <CardContent className="space-y-4 pt-6">
             {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded animate-pulse" />)}
+          </CardContent>
+        </Card>
+      ) : loadError ? (
+        <Card>
+          <CardContent className="py-12 text-center space-y-4">
+            <p className="text-[hsl(var(--muted-foreground))]">Failed to load settings. Please try again.</p>
+            <Button variant="outline" onClick={loadSettings}>Retry</Button>
           </CardContent>
         </Card>
       ) : (

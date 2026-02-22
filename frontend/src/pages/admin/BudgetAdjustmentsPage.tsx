@@ -34,6 +34,7 @@ export function AdminBudgetAdjustmentsPage() {
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([])
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false)
   const [selectedEmployeeName, setSelectedEmployeeName] = useState('')
+  const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
@@ -75,10 +76,14 @@ export function AdminBudgetAdjustmentsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Creating state for double-submit protection
+  const [creating, setCreating] = useState(false)
+
   // Server-side employee search with debounce
   const handleEmployeeSearch = (value: string) => {
     setEmployeeSearch(value)
     setShowEmployeeDropdown(true)
+    setHighlightedIndex(-1)
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
 
@@ -91,10 +96,42 @@ export function AdminBudgetAdjustmentsPage() {
       try {
         const { data } = await adminApi.searchUsers(value)
         setSearchResults(data)
+        setHighlightedIndex(-1)
       } catch {
         setSearchResults([])
       }
     }, SEARCH_DEBOUNCE_MS)
+  }
+
+  // Keyboard navigation for employee search dropdown
+  const handleEmployeeKeyDown = (e: React.KeyboardEvent) => {
+    if (!showEmployeeDropdown || searchResults.length === 0) {
+      if (e.key === 'Escape') {
+        setShowEmployeeDropdown(false)
+      }
+      return
+    }
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setHighlightedIndex(i => (i + 1) % searchResults.length)
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setHighlightedIndex(i => (i <= 0 ? searchResults.length - 1 : i - 1))
+        break
+      case 'Enter':
+        e.preventDefault()
+        if (highlightedIndex >= 0 && highlightedIndex < searchResults.length) {
+          selectEmployee(searchResults[highlightedIndex])
+        }
+        break
+      case 'Escape':
+        e.preventDefault()
+        setShowEmployeeDropdown(false)
+        setHighlightedIndex(-1)
+        break
+    }
   }
 
   const selectEmployee = (user: UserSearchResult) => {
@@ -122,6 +159,7 @@ export function AdminBudgetAdjustmentsPage() {
       addToast({ title: 'Please enter an amount', variant: 'destructive' })
       return
     }
+    setCreating(true)
     try {
       await adminApi.createAdjustment({ user_id: createForm.user_id, amount_cents: amountCents, reason: createForm.reason })
       setShowCreateDialog(false)
@@ -133,6 +171,8 @@ export function AdminBudgetAdjustmentsPage() {
       addToast({ title: 'Adjustment created' })
     } catch (err: unknown) {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -308,6 +348,7 @@ export function AdminBudgetAdjustmentsPage() {
                   value={employeeSearch}
                   onChange={(e) => handleEmployeeSearch(e.target.value)}
                   onFocus={() => { if (employeeSearch.trim()) setShowEmployeeDropdown(true) }}
+                  onKeyDown={handleEmployeeKeyDown}
                 />
               )}
               {showEmployeeDropdown && !selectedEmployeeName && employeeSearch.trim() && (
@@ -317,11 +358,12 @@ export function AdminBudgetAdjustmentsPage() {
                       {employeeSearch.length < 2 ? 'Type to search...' : 'No employees found'}
                     </div>
                   ) : (
-                    searchResults.map(u => (
+                    searchResults.map((u, idx) => (
                       <button
                         key={u.id}
                         onClick={() => selectEmployee(u)}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-[hsl(var(--muted))] border-b last:border-b-0"
+                        onMouseEnter={() => setHighlightedIndex(idx)}
+                        className={`w-full text-left px-3 py-2 text-sm border-b last:border-b-0 ${idx === highlightedIndex ? 'bg-[hsl(var(--muted))]' : 'hover:bg-[hsl(var(--muted))]'}`}
                       >
                         <div className="font-medium">{u.display_name}</div>
                         <div className="text-xs text-[hsl(var(--muted-foreground))]">{u.email}{u.department && ` · ${u.department}`}</div>
@@ -344,7 +386,9 @@ export function AdminBudgetAdjustmentsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={!createForm.user_id || !createForm.reason || !createForm.amount_euro}>Create</Button>
+            <Button onClick={handleCreate} disabled={creating || !createForm.user_id || !createForm.reason || !createForm.amount_euro}>
+              {creating ? 'Creating...' : 'Create'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
