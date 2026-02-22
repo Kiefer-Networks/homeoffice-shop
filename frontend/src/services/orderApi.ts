@@ -9,4 +9,6 @@ export const orderApi = {
     api.post<Order>('/api/orders', data),
   cancel: (id: string, reason: string) =>
     api.post<Order>(`/api/orders/${id}/cancel`, { reason }),
+  requestReturn: (id: string) =>
+    api.post<Order>(`/api/orders/${id}/request-return`),
 }

@@ -41,7 +41,7 @@ router = APIRouter(prefix="/orders", tags=["admin-orders"])
 
 @router.get("", response_model=OrderListResponse)
 async def list_all_orders(
-    status: Literal["pending", "ordered", "delivered", "rejected", "cancelled"] | None = None,
+    status: Literal["pending", "ordered", "delivered", "rejected", "cancelled", "return_requested", "returned"] | None = None,
     q: str | None = Query(None, max_length=200),
     sort: Literal["newest", "oldest", "total_asc", "total_desc"] | None = None,
     page: int = Query(1, ge=1),
@@ -59,7 +59,7 @@ async def list_all_orders(
 @router.get("/export")
 async def export_orders_csv(
     request: Request,
-    status: Literal["pending", "ordered", "delivered", "rejected", "cancelled"] | None = None,
+    status: Literal["pending", "ordered", "delivered", "rejected", "cancelled", "return_requested", "returned"] | None = None,
     q: str | None = Query(None, max_length=200),
     date_from: datetime | None = None,
     date_to: datetime | None = None,

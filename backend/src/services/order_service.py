@@ -18,6 +18,7 @@ from src.core.exceptions import (
 )
 from src.core.file_validation import ALLOWED_INVOICE_EXTENSIONS, ALLOWED_INVOICE_TYPES, MAX_INVOICE_SIZE, validate_file_magic
 from src.core.search import ilike_escape
+from src.models.orm.budget_adjustment import BudgetAdjustment
 from src.models.orm.cart_item import CartItem
 from src.models.orm.order import Order, OrderInvoice, OrderItem, OrderTrackingUpdate
 from src.models.orm.product import Product
@@ -47,8 +48,10 @@ VALID_TRANSITIONS: dict[str, set[str]] = {
     "pending": {"ordered", "rejected", "cancelled"},
     "ordered": {"delivered", "cancelled"},
     "rejected": set(),
-    "delivered": set(),
+    "delivered": {"return_requested"},
     "cancelled": set(),
+    "return_requested": {"returned", "delivered"},
+    "returned": set(),
 }
 
 async def create_order_from_cart(
@@ -95,6 +98,15 @@ async def create_order_from_cart(
             "Please confirm the updated prices."
         )
 
+    # Stock validation: check if any product has insufficient stock
+    for cart_item, product in rows:
+        if product.stock_quantity is not None:
+            if cart_item.quantity > product.stock_quantity:
+                raise BadRequestError(
+                    f"Insufficient stock for {product.name}. "
+                    f"Available: {product.stock_quantity}, requested: {cart_item.quantity}"
+                )
+
     total_cents = sum(_current_price(ci, p) * ci.quantity for ci, p in rows)
 
     has_budget = await check_budget_for_order(db, user_id, total_cents)
@@ -126,6 +138,11 @@ async def create_order_from_cart(
             variant_value=cart_item.variant_value,
         )
         db.add(order_item)
+
+    # Decrement stock for products that track stock
+    for cart_item, product in rows:
+        if product.stock_quantity is not None:
+            product.stock_quantity = product.stock_quantity - cart_item.quantity
 
     await db.execute(delete(CartItem).where(CartItem.user_id == user_id))
 
@@ -179,6 +196,35 @@ async def transition_order(
 
     order.reviewed_at = datetime.now(timezone.utc)
 
+    # Handle return: refund budget and restore stock
+    if new_status == "returned":
+        # Create a positive budget adjustment to refund the order total
+        order_id_short = str(order.id)[:8]
+        refund = BudgetAdjustment(
+            user_id=order.user_id,
+            amount_cents=order.total_cents,
+            reason=f"Return: Order #{order_id_short}",
+            created_by=admin_id,
+            source="return",
+        )
+        db.add(refund)
+
+        # Restore stock for products that track stock
+        items_result = await db.execute(
+            select(OrderItem).where(OrderItem.order_id == order.id)
+        )
+        order_items = items_result.scalars().all()
+        product_ids = {item.product_id for item in order_items}
+        if product_ids:
+            prod_result = await db.execute(
+                select(Product).where(Product.id.in_(product_ids)).with_for_update()
+            )
+            products_map = {p.id: p for p in prod_result.scalars().all()}
+            for item in order_items:
+                product = products_map.get(item.product_id)
+                if product and product.stock_quantity is not None:
+                    product.stock_quantity = product.stock_quantity + item.quantity
+
     await db.flush()
     await refresh_budget_cache(db, order.user_id)
 
@@ -193,19 +239,50 @@ async def notify_status_changed(
     admin_note: str | None = None,
 ) -> None:
     """Send email notifications after a status change."""
-    if order_data and order_data.get("user_email"):
+    if not order_data or not order_data.get("user_email"):
+        return
+
+    user_email = order_data["user_email"]
+    items = order_data.get("items", [])
+
+    # Send status-specific notifications to the employee
+    if new_status == "ordered":
         await notify_user_email(
-            order_data["user_email"],
-            subject=f"Order Status Updated: {new_status.title()}",
-            template_name="order_status_changed.html",
+            user_email,
+            subject="Your order has been placed",
+            template_name="order_shipped.html",
             context={
                 "order_id_short": str(order.id)[:8],
-                "new_status": new_status,
-                "admin_note": admin_note,
-                "items": order_data.get("items", []),
+                "expected_delivery": order.expected_delivery,
+                "items": items,
                 "total_cents": order.total_cents,
             },
         )
+    elif new_status == "delivered":
+        await notify_user_email(
+            user_email,
+            subject="Your order has been delivered",
+            template_name="order_delivered.html",
+            context={
+                "order_id_short": str(order.id)[:8],
+                "items": items,
+                "total_cents": order.total_cents,
+            },
+        )
+
+    # Always send the generic status-change notification as well
+    await notify_user_email(
+        user_email,
+        subject=f"Order Status Updated: {new_status.title()}",
+        template_name="order_status_changed.html",
+        context={
+            "order_id_short": str(order.id)[:8],
+            "new_status": new_status,
+            "admin_note": admin_note,
+            "items": items,
+            "total_cents": order.total_cents,
+        },
+    )
 
 
 async def notify_order_created(

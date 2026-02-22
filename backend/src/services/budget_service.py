@@ -125,11 +125,11 @@ async def get_available_budget_cents(db: AsyncSession, user_id: UUID) -> int:
 
 
 async def get_live_spent_cents(db: AsyncSession, user_id: UUID) -> int:
-    """Calculate actual spent from orders (pending + ordered + delivered)."""
+    """Calculate actual spent from orders (pending + ordered + delivered + return_requested)."""
     result = await db.execute(
         select(func.coalesce(func.sum(Order.total_cents), 0)).where(
             Order.user_id == user_id,
-            Order.status.in_(["pending", "ordered", "delivered"]),
+            Order.status.in_(["pending", "ordered", "delivered", "return_requested"]),
         )
     )
     return result.scalar() or 0
@@ -186,7 +186,7 @@ async def check_budget_for_order(
     spent_result = await db.execute(
         select(func.coalesce(func.sum(Order.total_cents), 0)).where(
             Order.user_id == user_id,
-            Order.status.in_(["pending", "ordered", "delivered"]),
+            Order.status.in_(["pending", "ordered", "delivered", "return_requested"]),
         ).with_for_update()
     )
     spent = spent_result.scalar() or 0

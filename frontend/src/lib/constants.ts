@@ -7,6 +7,8 @@ export const ORDER_STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'suc
   delivered: 'success',
   rejected: 'destructive',
   cancelled: 'secondary',
+  return_requested: 'warning',
+  returned: 'secondary',
 }
 
 export const PURCHASE_STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning'> = {

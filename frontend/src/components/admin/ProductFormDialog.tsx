@@ -19,7 +19,7 @@ interface ProductFormDialogProps {
   product?: Product | null
 }
 
-const EMPTY_FORM = { name: '', category_id: '', price_euro: '', external_url: '', amazon_asin: '', brand: '', brand_id: '', description: '' }
+const EMPTY_FORM = { name: '', category_id: '', price_euro: '', external_url: '', amazon_asin: '', brand: '', brand_id: '', description: '', sku: '', stock_quantity: '', stock_warning_level: '5' }
 
 export function ProductFormDialog({ open, onClose, onSaved, categories, brands, product }: ProductFormDialogProps) {
   const isEdit = !!product
@@ -46,6 +46,9 @@ export function ProductFormDialog({ open, onClose, onSaved, categories, brands, 
         brand_id: product.brand_id || '',
         description: product.description || '',
         amazon_asin: product.amazon_asin || '',
+        sku: product.sku || '',
+        stock_quantity: product.stock_quantity != null ? String(product.stock_quantity) : '',
+        stock_warning_level: String(product.stock_warning_level ?? 5),
       })
       setLoadedVariants(product.variants || [])
     } else if (open) {
@@ -131,6 +134,9 @@ export function ProductFormDialog({ open, onClose, onSaved, categories, brands, 
     const priceCents = parseEuroToCents(form.price_euro)
     setSaving(true)
     try {
+      const stockQuantity = form.stock_quantity === '' ? null : Number(form.stock_quantity)
+      const stockWarningLevel = Number(form.stock_warning_level) || 5
+
       if (isEdit && product) {
         const selectedBrand = brands.find(b => b.id === form.brand_id)
         await adminApi.updateProduct(product.id, {
@@ -141,6 +147,9 @@ export function ProductFormDialog({ open, onClose, onSaved, categories, brands, 
           brand: selectedBrand?.name || form.brand || undefined,
           brand_id: form.brand_id || undefined,
           description: form.description || undefined,
+          sku: form.sku || null,
+          stock_quantity: stockQuantity,
+          stock_warning_level: stockWarningLevel,
         })
         addToast({ title: 'Product updated' })
       } else {
@@ -150,6 +159,9 @@ export function ProductFormDialog({ open, onClose, onSaved, categories, brands, 
           brand_id: form.brand_id,
           price_cents: priceCents,
           amazon_asin: form.amazon_asin || undefined,
+          sku: form.sku || undefined,
+          stock_quantity: stockQuantity ?? undefined,
+          stock_warning_level: stockWarningLevel,
         })
         addToast({ title: 'Product created' })
       }
@@ -253,6 +265,21 @@ export function ProductFormDialog({ open, onClose, onSaved, categories, brands, 
           <label htmlFor={`${isEdit ? 'edit' : 'create'}-description`} className="sr-only">Description</label>
           <textarea id={`${isEdit ? 'edit' : 'create'}-description`} placeholder="Description" value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
             className="w-full rounded-md border px-3 py-2 text-sm min-h-[80px]" />
+
+          {/* Stock / SKU fields */}
+          <Input placeholder="SKU / Article number (optional)" value={form.sku} onChange={(e) => setForm(f => ({ ...f, sku: e.target.value }))} />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label htmlFor={`${isEdit ? 'edit' : 'create'}-stock-qty`} className="text-xs text-[hsl(var(--muted-foreground))]">Stock quantity (empty = unlimited)</label>
+              <Input id={`${isEdit ? 'edit' : 'create'}-stock-qty`} type="number" min="0" placeholder="Unlimited" value={form.stock_quantity}
+                onChange={(e) => setForm(f => ({ ...f, stock_quantity: e.target.value }))} />
+            </div>
+            <div>
+              <label htmlFor={`${isEdit ? 'edit' : 'create'}-stock-warn`} className="text-xs text-[hsl(var(--muted-foreground))]">Low stock warning level</label>
+              <Input id={`${isEdit ? 'edit' : 'create'}-stock-warn`} type="number" min="0" value={form.stock_warning_level}
+                onChange={(e) => setForm(f => ({ ...f, stock_warning_level: e.target.value }))} />
+            </div>
+          </div>
 
           {variants.length > 0 && <VariantTable variants={variants} />}
         </div>

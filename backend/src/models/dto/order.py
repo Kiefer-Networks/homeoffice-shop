@@ -14,7 +14,7 @@ class OrderCreate(BaseModel):
 
 
 class OrderStatusUpdate(BaseModel):
-    status: Literal["ordered", "delivered", "rejected", "cancelled"]
+    status: Literal["ordered", "delivered", "rejected", "cancelled", "return_requested", "returned"]
     admin_note: str | None = Field(default=None, max_length=2000)
     expected_delivery: str | None = Field(default=None, max_length=255)
     purchase_url: str | None = Field(default=None, max_length=2048)
@@ -87,7 +87,7 @@ class OrderResponse(BaseModel):
     user_id: UUID
     user_email: str | None = None
     user_display_name: str | None = None
-    status: Literal["pending", "ordered", "delivered", "rejected", "cancelled"]
+    status: Literal["pending", "ordered", "delivered", "rejected", "cancelled", "return_requested", "returned"]
     total_cents: int
     delivery_note: str | None = None
     admin_note: str | None = None

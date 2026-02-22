@@ -19,6 +19,9 @@ class ProductCreate(BaseModel):
     external_url: str
     is_active: bool = True
     max_quantity_per_user: int = Field(default=1, ge=1, le=100)
+    sku: str | None = Field(default=None, max_length=50)
+    stock_quantity: int | None = Field(default=None, ge=0)
+    stock_warning_level: int = Field(default=5, ge=0)
 
     @field_validator("external_url")
     @classmethod
@@ -38,6 +41,9 @@ class ProductUpdate(BaseModel):
     external_url: str | None = None
     is_active: bool | None = None
     max_quantity_per_user: int | None = Field(default=None, ge=1, le=100)
+    sku: str | None = Field(default=None, max_length=50)
+    stock_quantity: int | None = Field(default=None, ge=0)
+    stock_warning_level: int | None = Field(default=None, ge=0)
 
     @field_validator("external_url")
     @classmethod
@@ -65,6 +71,9 @@ class ProductResponse(BaseModel):
     item_model_number: str | None = None
     product_information: dict[str, Any] | None = None
     variants: list[dict[str, Any]] | None = None
+    sku: str | None = None
+    stock_quantity: int | None = None
+    stock_warning_level: int = 5
     amazon_asin: str | None = None
     external_url: str
     brand_id: UUID | None = None
@@ -100,6 +109,9 @@ class ProductListItem(BaseModel):
     item_weight: str | None = None
     item_model_number: str | None = None
     variants: list[dict[str, Any]] | None = None
+    sku: str | None = None
+    stock_quantity: int | None = None
+    stock_warning_level: int = 5
     amazon_asin: str | None = None
     external_url: str
     brand_id: UUID | None = None

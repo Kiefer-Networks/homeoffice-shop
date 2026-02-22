@@ -8,7 +8,7 @@ import { getErrorMessage } from '@/lib/error'
 import { HiBobSyncSection } from '@/components/admin/HiBobSyncSection'
 import type { Order } from '@/types'
 
-type PendingAction = 'ordered' | 'rejected' | 'delivered' | 'cancelled' | null
+type PendingAction = 'ordered' | 'rejected' | 'delivered' | 'cancelled' | 'returned' | null
 
 const ACTION_BUTTONS: Record<string, { label: string; action: PendingAction; variant: 'default' | 'destructive' }[]> = {
   pending: [
@@ -18,6 +18,10 @@ const ACTION_BUTTONS: Record<string, { label: string; action: PendingAction; var
   ordered: [
     { label: 'Mark Delivered', action: 'delivered', variant: 'default' },
     { label: 'Cancel Order', action: 'cancelled', variant: 'destructive' },
+  ],
+  return_requested: [
+    { label: 'Approve Return', action: 'returned', variant: 'default' },
+    { label: 'Reject Return', action: 'delivered', variant: 'destructive' },
   ],
 }
 
@@ -76,8 +80,9 @@ export function OrderStatusSection({ order, onUpdate }: OrderStatusSectionProps)
           <div className="text-sm font-medium">
             {pendingAction === 'ordered' && 'Approve Order'}
             {pendingAction === 'rejected' && 'Reject Order'}
-            {pendingAction === 'delivered' && 'Mark as Delivered'}
+            {pendingAction === 'delivered' && (order.status === 'return_requested' ? 'Reject Return' : 'Mark as Delivered')}
             {pendingAction === 'cancelled' && 'Cancel Order'}
+            {pendingAction === 'returned' && 'Approve Return'}
           </div>
 
           {pendingAction === 'ordered' && (

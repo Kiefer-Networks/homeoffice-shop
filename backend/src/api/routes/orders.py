@@ -4,6 +4,7 @@ from uuid import UUID
 from src.services.order_service import _retry_notification
 
 from fastapi import APIRouter, Depends, Query, Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import get_current_user
@@ -11,6 +12,7 @@ from src.api.dependencies.database import get_db
 from src.audit.service import log_admin_action
 from src.core.exceptions import NotFoundError
 from src.models.dto.order import OrderCancelRequest, OrderCreate, OrderListResponse, OrderResponse
+from src.models.orm.order import Order
 from src.models.orm.user import User
 from src.services import order_service
 
@@ -87,6 +89,44 @@ async def create_order(
         str(order.id),
     )
 
+    return order_data
+
+
+@router.post("/{order_id}/request-return", response_model=OrderResponse)
+async def request_return(
+    order_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Employee requests a return for a delivered order."""
+    result = await db.execute(
+        select(Order).where(Order.id == order_id).with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise NotFoundError("Order not found")
+    if order.user_id != user.id:
+        raise NotFoundError("Order not found")
+
+    from src.core.exceptions import InvalidStatusTransitionError
+    if order.status != "delivered":
+        raise InvalidStatusTransitionError(
+            current=order.status,
+            requested="return_requested",
+            allowed=order_service.VALID_TRANSITIONS.get(order.status, set()),
+        )
+
+    order.status = "return_requested"
+    await db.flush()
+
+    await log_admin_action(
+        db, request, user.id, "order.return_requested",
+        resource_type="order", resource_id=order.id,
+        details={"total_cents": order.total_cents},
+    )
+
+    order_data = await order_service.get_order_with_items(db, order.id)
     return order_data
 
 

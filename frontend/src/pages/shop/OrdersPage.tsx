@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { orderApi } from '@/services/orderApi'
 import { formatCents, formatDate } from '@/lib/utils'
-import { ChevronRight, Package, AlertTriangle, CheckCircle2, XCircle, Clock, Truck, ExternalLink, MessageSquare } from 'lucide-react'
+import { ChevronRight, Package, AlertTriangle, CheckCircle2, XCircle, Clock, Truck, ExternalLink, MessageSquare, RotateCcw, Undo2 } from 'lucide-react'
 import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
 import { getErrorMessage } from '@/lib/error'
@@ -17,6 +17,8 @@ const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'success
   delivered: { variant: 'success', icon: CheckCircle2, label: 'Delivered' },
   rejected: { variant: 'destructive', icon: XCircle, label: 'Rejected' },
   cancelled: { variant: 'secondary', icon: AlertTriangle, label: 'Cancelled' },
+  return_requested: { variant: 'warning', icon: RotateCcw, label: 'Return Requested' },
+  returned: { variant: 'secondary', icon: Undo2, label: 'Returned' },
 }
 
 export function OrdersPage() {
@@ -27,6 +29,7 @@ export function OrdersPage() {
   const [cancelOrder, setCancelOrder] = useState<Order | null>(null)
   const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
+  const [requestingReturn, setRequestingReturn] = useState(false)
   const { addToast } = useUiStore()
 
   const loadOrders = () => {
@@ -59,6 +62,20 @@ export function OrdersPage() {
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     } finally {
       setCancelling(false)
+    }
+  }
+
+  const handleRequestReturn = async (order: Order) => {
+    setRequestingReturn(true)
+    try {
+      await orderApi.requestReturn(order.id)
+      setSelectedOrder(null)
+      loadOrders()
+      addToast({ title: 'Return requested' })
+    } catch (err: unknown) {
+      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+    } finally {
+      setRequestingReturn(false)
     }
   }
 
@@ -282,6 +299,24 @@ export function OrdersPage() {
                   >
                     Cancel Order
                   </Button>
+                )}
+
+                {selectedOrder.status === 'delivered' && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => handleRequestReturn(selectedOrder)}
+                    disabled={requestingReturn}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-1" />
+                    {requestingReturn ? 'Requesting...' : 'Request Return'}
+                  </Button>
+                )}
+
+                {selectedOrder.status === 'return_requested' && (
+                  <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+                    Return has been requested. An admin will review your request.
+                  </div>
                 )}
               </div>
             </>

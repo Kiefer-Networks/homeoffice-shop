@@ -128,6 +128,9 @@ export interface Product {
   item_model_number: string | null
   product_information: Record<string, unknown> | null
   variants: ProductVariant[] | null
+  sku: string | null
+  stock_quantity: number | null
+  stock_warning_level: number
   amazon_asin: string | null
   external_url: string
   is_active: boolean
@@ -206,7 +209,7 @@ export interface Order {
   user_id: string
   user_email: string | null
   user_display_name: string | null
-  status: 'pending' | 'ordered' | 'delivered' | 'rejected' | 'cancelled'
+  status: 'pending' | 'ordered' | 'delivered' | 'rejected' | 'cancelled' | 'return_requested' | 'returned'
   total_cents: number
   delivery_note: string | null
   admin_note: string | null
@@ -326,6 +329,12 @@ export interface ProductSearchResult {
   facets: Facets | null
 }
 
+export interface SearchSuggestion {
+  id: string
+  name: string
+  image_url: string | null
+}
+
 export interface NotificationPrefs {
   email_enabled: boolean
   email_events: string[]
@@ -366,6 +375,9 @@ export interface ProductCreateInput {
   external_url: string
   is_active?: boolean
   max_quantity_per_user?: number
+  sku?: string | null
+  stock_quantity?: number | null
+  stock_warning_level?: number
 }
 
 export interface ProductUpdateInput {
@@ -379,6 +391,9 @@ export interface ProductUpdateInput {
   external_url?: string
   is_active?: boolean
   max_quantity_per_user?: number
+  sku?: string | null
+  stock_quantity?: number | null
+  stock_warning_level?: number
 }
 
 export interface CategoryCreateInput {

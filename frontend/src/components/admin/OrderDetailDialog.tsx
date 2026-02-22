@@ -1,10 +1,11 @@
+import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { adminApi } from '@/services/adminApi'
 import { formatCents, formatDate } from '@/lib/utils'
 import { useUiStore } from '@/stores/uiStore'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, Loader2 } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { ORDER_STATUS_VARIANT } from '@/lib/constants'
 import { InvoiceSection } from '@/components/admin/InvoiceSection'
@@ -21,12 +22,15 @@ interface OrderDetailDialogProps {
 
 export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetailDialogProps) {
   const { addToast } = useUiStore()
+  const [refreshing, setRefreshing] = useState(false)
 
   const refreshOrder = async (orderId: string) => {
+    setRefreshing(true)
     try {
       const { data } = await adminApi.getOrder(orderId)
       onOrderUpdated(data)
     } catch { /* ignore */ }
+    finally { setRefreshing(false) }
   }
 
   const handleItemCheck = async (orderId: string, itemId: string, checked: boolean) => {
@@ -44,9 +48,15 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
 
   return (
     <Dialog open={!!order} onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto relative">
         {order && (
           <>
+            {/* Refreshing overlay */}
+            {refreshing && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-[hsl(var(--background)/0.5)] rounded-lg">
+                <Loader2 className="h-6 w-6 animate-spin text-[hsl(var(--muted-foreground))]" />
+              </div>
+            )}
             {/* Header */}
             <DialogHeader>
               <DialogTitle className="flex items-center gap-3">
@@ -165,7 +175,7 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
             )}
 
             {/* Actions bar */}
-            {(order.status === 'pending' || order.status === 'ordered' || order.status === 'delivered') && (
+            {(order.status === 'pending' || order.status === 'ordered' || order.status === 'delivered' || order.status === 'return_requested') && (
               <OrderStatusSection order={order} onUpdate={onOrderUpdated} />
             )}
           </>

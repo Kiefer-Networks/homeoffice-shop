@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ShoppingCart } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatCents } from '@/lib/utils'
@@ -70,6 +71,11 @@ export function ProductCard({ product, onRefreshCart, onShowDetail }: Props) {
           <p className="text-xs text-[hsl(var(--muted-foreground))] mb-1">
             {product.variants.length} {product.variants[0]?.group ? formatGroupLabel(product.variants[0].group) : 'variants'}
           </p>
+        )}
+        {product.stock_quantity != null && product.stock_quantity <= product.stock_warning_level && (
+          <Badge variant="destructive" className="mb-1 text-xs">
+            {product.stock_quantity === 0 ? 'Out of stock' : 'Low stock'}
+          </Badge>
         )}
         <div className="flex items-center justify-between mt-auto">
           <span className="text-lg font-bold">
