@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { formatCents } from '@/lib/utils'
@@ -38,6 +38,25 @@ const INFO_FIELDS: { key: string; label: string }[] = [
   { key: 'included_components', label: 'Included' },
   { key: 'specific_uses_for_product', label: 'Use Cases' },
 ]
+
+const VariantButton = React.memo(function VariantButton({
+  variant, isSelected, onClick
+}: {
+  variant: { value: string; asin?: string }; isSelected: boolean; onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-sm border transition-all ${
+        isSelected
+          ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-white'
+          : 'border-gray-200 hover:border-gray-400'
+      }`}
+    >
+      {formatVariantValue(variant.value)}
+    </button>
+  )
+})
 
 interface Props {
   product: Product | null
@@ -184,17 +203,12 @@ export function ProductDetailModal({ product, open, onClose, onRefreshCart }: Pr
                     }
                     // Other groups: pill buttons
                     return (
-                      <button
+                      <VariantButton
                         key={v.asin}
+                        variant={v}
+                        isSelected={isSelected}
                         onClick={() => { setSelectedVariant(v); setCurrentImage(0) }}
-                        className={`px-3 py-1.5 rounded-full text-sm border transition-all ${
-                          isSelected
-                            ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-white'
-                            : 'border-gray-200 hover:border-gray-400'
-                        }`}
-                      >
-                        {label}
-                      </button>
+                      />
                     )
                   })}
                 </div>

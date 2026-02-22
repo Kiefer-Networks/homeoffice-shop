@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import get_current_user
 from src.api.dependencies.database import get_db
-from src.models.dto.product import ProductListResponse, ProductResponse
+from src.models.dto.product import ProductListItem, ProductListResponse, ProductResponse
 from src.models.orm.user import User
 from src.services import product_service
 
@@ -46,7 +46,7 @@ async def list_products(
         per_page=per_page,
     )
     result["items"] = [
-        ProductResponse.model_validate(p) for p in result["items"]
+        ProductListItem.model_validate(p) for p in result["items"]
     ]
     return result
 

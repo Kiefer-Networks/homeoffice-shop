@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from uuid import UUID
 
 from sqlalchemy import select
@@ -8,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.orm.app_setting import AppSetting
 
 logger = logging.getLogger(__name__)
+
+_CACHE_TTL = 60  # seconds
 
 DEFAULT_SETTINGS = {
     "budget_initial_cents": "75000",
@@ -35,24 +38,32 @@ DEFAULT_SETTINGS = {
 
 _cache: dict[str, str] = {}
 _cache_lock = asyncio.Lock()
+_cache_loaded_at: float = 0
 
 
 async def load_settings(db: AsyncSession) -> dict[str, str]:
-    global _cache
+    global _cache, _cache_loaded_at
     result = await db.execute(select(AppSetting))
     settings = {s.key: s.value for s in result.scalars().all()}
     async with _cache_lock:
         _cache = {**DEFAULT_SETTINGS, **settings}
+        _cache_loaded_at = time.monotonic()
     return _cache
 
 
+def _is_cache_fresh() -> bool:
+    return bool(_cache) and (time.monotonic() - _cache_loaded_at) < _CACHE_TTL
+
+
 def get_cached_settings() -> dict[str, str]:
-    if not _cache:
+    if not _cache or not _is_cache_fresh():
         return dict(DEFAULT_SETTINGS)
     return dict(_cache)
 
 
 def get_setting(key: str) -> str:
+    if not _is_cache_fresh():
+        return DEFAULT_SETTINGS.get(key, "")
     return _cache.get(key, DEFAULT_SETTINGS.get(key, ""))
 
 

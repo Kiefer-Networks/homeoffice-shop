@@ -8,7 +8,7 @@ from uuid import UUID
 import sqlalchemy as sa
 from sqlalchemy import and_, delete, or_, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
 from src.core.exceptions import (
     BadRequestError,
@@ -27,6 +27,20 @@ from src.mappers.order import order_item_to_dict, invoice_to_dict, order_to_dict
 from src.services.budget_service import check_budget_for_order, refresh_budget_cache
 
 logger = logging.getLogger(__name__)
+
+
+async def _retry_notification(coro_factory, order_id: str, max_attempts: int = 3):
+    """Retry a notification coroutine with exponential backoff."""
+    for attempt in range(max_attempts):
+        try:
+            await coro_factory()
+            return
+        except Exception:
+            if attempt == max_attempts - 1:
+                logger.exception("Notification failed after %d attempts for order %s", max_attempts, order_id)
+            else:
+                await asyncio.sleep(2 ** attempt)
+
 
 VALID_TRANSITIONS: dict[str, set[str]] = {
     "pending": {"ordered", "rejected", "cancelled"},
@@ -114,8 +128,8 @@ async def create_order_from_cart(
 
     await db.execute(delete(CartItem).where(CartItem.user_id == user_id))
 
+    await db.flush()  # single atomic flush: order + items + cart deletion
     await refresh_budget_cache(db, user_id)
-    await db.flush()  # single atomic flush: order + items + cart deletion + cache
 
     return order
 
@@ -263,8 +277,8 @@ async def cancel_order_by_user(
     order.cancelled_by = user_id
     order.cancelled_at = datetime.now(timezone.utc)
 
+    await db.flush()  # single atomic flush: status change
     await refresh_budget_cache(db, order.user_id)
-    await db.flush()  # single atomic flush: status change + cache update
 
     return order
 
@@ -276,43 +290,49 @@ async def get_order_with_items(
     include_invoices: bool = False,
     include_tracking_updates: bool = False,
 ) -> dict | None:
-    result = await db.execute(
-        select(Order).where(Order.id == order_id)
+    # Build a single query: fetch order + user (joined) with eager-loaded items
+    query = (
+        select(Order, User)
+        .join(User, Order.user_id == User.id, isouter=True)
+        .options(selectinload(Order.items))
+        .where(Order.id == order_id)
     )
-    order = result.scalar_one_or_none()
-    if not order:
+    if include_invoices:
+        query = query.options(selectinload(Order.invoices))
+    if include_tracking_updates:
+        query = query.options(selectinload(Order.tracking_updates))
+
+    result = await db.execute(query)
+    row = result.unique().first()
+    if not row:
         return None
 
-    items_result = await db.execute(
-        select(OrderItem, Product.name)
-        .join(Product, OrderItem.product_id == Product.id, isouter=True)
-        .where(OrderItem.order_id == order_id)
-    )
+    order, user = row.tuple()
 
-    user = await db.get(User, order.user_id)
+    # Batch-fetch product names for order items
+    product_ids = {item.product_id for item in order.items}
+    product_names: dict[UUID, str] = {}
+    if product_ids:
+        prod_result = await db.execute(
+            select(Product.id, Product.name).where(Product.id.in_(product_ids))
+        )
+        product_names = {pid: pname for pid, pname in prod_result.all()}
 
     items = [
-        order_item_to_dict(item, product_name)
-        for item, product_name in items_result.all()
+        order_item_to_dict(item, product_names.get(item.product_id))
+        for item in order.items
     ]
 
     invoices: list[dict] = []
     if include_invoices:
-        inv_result = await db.execute(
-            select(OrderInvoice)
-            .where(OrderInvoice.order_id == order_id)
-            .order_by(OrderInvoice.uploaded_at.desc())
-        )
-        invoices = [invoice_to_dict(inv) for inv in inv_result.scalars().all()]
+        invoices = [
+            invoice_to_dict(inv)
+            for inv in sorted(order.invoices, key=lambda i: i.uploaded_at, reverse=True)
+        ]
 
     tracking_updates: list[dict] = []
     if include_tracking_updates:
-        tu_result = await db.execute(
-            select(OrderTrackingUpdate)
-            .where(OrderTrackingUpdate.order_id == order_id)
-            .order_by(OrderTrackingUpdate.created_at.desc())
-        )
-        updates = tu_result.scalars().all()
+        updates = sorted(order.tracking_updates, key=lambda u: u.created_at, reverse=True)
         # Batch-fetch creator names
         creator_ids = {u.created_by for u in updates}
         creators_map: dict[UUID, str] = {}

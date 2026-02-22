@@ -77,8 +77,43 @@ class ProductResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ProductListItem(BaseModel):
+    """Lighter product model for list endpoints.
+
+    Excludes heavy JSONB fields (specifications, product_information,
+    image_gallery) that are only needed on the detail view. This reduces
+    response payload size significantly for product listings.
+    """
+    id: UUID
+    category_id: UUID
+    name: str
+    description: str | None = None
+    brand: str | None = None
+    model: str | None = None
+    image_url: str | None = None
+    price_cents: int
+    price_min_cents: int | None = None
+    price_max_cents: int | None = None
+    color: str | None = None
+    material: str | None = None
+    product_dimensions: str | None = None
+    item_weight: str | None = None
+    item_model_number: str | None = None
+    variants: list[dict[str, Any]] | None = None
+    amazon_asin: str | None = None
+    external_url: str
+    brand_id: UUID | None = None
+    is_active: bool
+    archived_at: datetime | None = None
+    max_quantity_per_user: int = 1
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class ProductListResponse(BaseModel):
-    items: list[ProductResponse]
+    items: list[ProductListItem]
     total: int
     page: int
     per_page: int

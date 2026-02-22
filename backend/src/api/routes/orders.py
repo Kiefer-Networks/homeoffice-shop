@@ -1,6 +1,8 @@
 import logging
 from uuid import UUID
 
+from src.services.order_service import _retry_notification
+
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -75,10 +77,10 @@ async def create_order(
 
     order_data = await order_service.get_order_with_items(db, order.id)
 
-    try:
-        await order_service.notify_order_created(db, order, user, order_data)
-    except Exception:
-        logger.exception("Failed to send order creation notification for order %s", order.id)
+    await _retry_notification(
+        lambda: order_service.notify_order_created(db, order, user, order_data),
+        str(order.id),
+    )
 
     return order_data
 
@@ -101,10 +103,10 @@ async def cancel_my_order(
         details={"reason": body.reason, "total_cents": order.total_cents},
     )
 
-    try:
-        await order_service.notify_order_cancelled_by_user(db, order, user, body.reason)
-    except Exception:
-        logger.exception("Failed to send cancellation notification for order %s", order.id)
+    await _retry_notification(
+        lambda: order_service.notify_order_cancelled_by_user(db, order, user, body.reason),
+        str(order.id),
+    )
 
     order_data = await order_service.get_order_with_items(db, order.id)
     return order_data

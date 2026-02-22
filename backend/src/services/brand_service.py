@@ -1,4 +1,5 @@
 import re
+import time
 from uuid import UUID
 
 from sqlalchemy import select, func
@@ -7,6 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.exceptions import BadRequestError, ConflictError, NotFoundError
 from src.models.orm.brand import Brand
 from src.models.orm.product import Product
+
+_cache: list | None = None
+_cache_time: float = 0
+_CACHE_TTL = 300  # 5 minutes
 
 
 def slugify(name: str) -> str:
@@ -17,9 +22,22 @@ def slugify(name: str) -> str:
     return slug
 
 
+def invalidate_cache() -> None:
+    global _cache, _cache_time
+    _cache = None
+    _cache_time = 0
+
+
 async def list_all(db: AsyncSession) -> list[Brand]:
+    global _cache, _cache_time
+    now = time.monotonic()
+    if _cache is not None and (now - _cache_time) < _CACHE_TTL:
+        return _cache
     result = await db.execute(select(Brand).order_by(Brand.name.asc()))
-    return list(result.scalars().all())
+    items = list(result.scalars().all())
+    _cache = items
+    _cache_time = now
+    return items
 
 
 async def create(db: AsyncSession, *, name: str) -> Brand:
@@ -36,6 +54,7 @@ async def create(db: AsyncSession, *, name: str) -> Brand:
     db.add(brand)
     await db.flush()
     await db.refresh(brand)
+    invalidate_cache()
     return brand
 
 
@@ -73,6 +92,7 @@ async def update(
 
     await db.flush()
     await db.refresh(brand)
+    invalidate_cache()
     return brand, changes
 
 
@@ -94,4 +114,5 @@ async def delete(db: AsyncSession, brand_id: UUID) -> str:
     name = brand.name
     await db.delete(brand)
     await db.flush()
+    invalidate_cache()
     return name

@@ -295,7 +295,11 @@ async def search_products(
         row = r.one_or_none()
         return {"min_cents": row[0] or 0, "max_cents": row[1] or 0} if row else {"min_cents": 0, "max_cents": 0}
 
-    # Execute sequentially — all coroutines share the same db session
+    # Execute sequentially — SQLAlchemy async sessions are NOT safe for
+    # concurrent use from multiple coroutines, so these cannot be run with
+    # asyncio.gather(). Each query shares the same `db` session, which
+    # maintains internal state (transaction, connection) that would race
+    # under concurrent access.
     brands = await _brand_facets()
     categories = await _cat_facets()
     colors = await _color_facets()

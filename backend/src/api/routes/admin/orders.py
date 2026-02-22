@@ -3,6 +3,8 @@ from typing import Literal
 from urllib.parse import quote
 from uuid import UUID
 
+from src.services.order_service import _retry_notification
+
 from fastapi import APIRouter, Depends, Query, Request, Response, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy import select
@@ -105,12 +107,12 @@ async def update_order_status(
         db, order_id, include_invoices=True, include_tracking_updates=True
     )
 
-    try:
-        await order_service.notify_status_changed(
+    await _retry_notification(
+        lambda: order_service.notify_status_changed(
             db, order, order_data, body.status, body.admin_note,
-        )
-    except Exception:
-        logger.exception("Failed to send status notification for order %s", order_id)
+        ),
+        str(order_id),
+    )
 
     return order_data
 
@@ -165,12 +167,12 @@ async def update_order_tracking(
         db, order_id, include_invoices=True, include_tracking_updates=True
     )
 
-    try:
-        await order_service.notify_tracking_update(
+    await _retry_notification(
+        lambda: order_service.notify_tracking_update(
             db, order, order_data, body.comment,
-        )
-    except Exception:
-        logger.exception("Failed to send tracking notification for order %s", order_id)
+        ),
+        str(order_id),
+    )
 
     return order_data
 

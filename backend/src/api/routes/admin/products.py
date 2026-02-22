@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin, require_staff
 from src.api.dependencies.database import get_db
+from src.api.dependencies.rate_limit import rate_limit
 from src.audit.service import log_admin_action
 from src.models.dto.product import (
     PriceRefreshResponse, ProductCreate, ProductResponse, ProductUpdate,
@@ -144,7 +145,11 @@ async def restore_product(
     return product
 
 
-@router.post("/{product_id}/refresh-preview", response_model=RefreshPreviewResponse)
+@router.post(
+    "/{product_id}/refresh-preview",
+    response_model=RefreshPreviewResponse,
+    dependencies=[rate_limit(limit=10, window_seconds=300, key_prefix="price-refresh")],
+)
 async def refresh_preview(
     product_id: UUID,
     request: Request,
@@ -163,7 +168,11 @@ async def refresh_preview(
     return preview
 
 
-@router.post("/{product_id}/refresh-apply", response_model=ProductResponse)
+@router.post(
+    "/{product_id}/refresh-apply",
+    response_model=ProductResponse,
+    dependencies=[rate_limit(limit=10, window_seconds=300, key_prefix="price-refresh")],
+)
 async def refresh_apply(
     product_id: UUID,
     body: RefreshApplyRequest,
@@ -184,7 +193,11 @@ async def refresh_apply(
     return product
 
 
-@router.post("/refresh-prices", response_model=PriceRefreshResponse)
+@router.post(
+    "/refresh-prices",
+    response_model=PriceRefreshResponse,
+    dependencies=[rate_limit(limit=10, window_seconds=300, key_prefix="price-refresh")],
+)
 async def trigger_price_refresh(
     request: Request,
     db: AsyncSession = Depends(get_db),

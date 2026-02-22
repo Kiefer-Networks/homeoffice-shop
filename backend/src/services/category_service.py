@@ -1,3 +1,4 @@
+import time
 from uuid import UUID
 
 from sqlalchemy import select
@@ -6,12 +7,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.exceptions import NotFoundError
 from src.models.orm.category import Category
 
+_cache: list | None = None
+_cache_time: float = 0
+_CACHE_TTL = 300  # 5 minutes
+
+
+def invalidate_cache() -> None:
+    global _cache, _cache_time
+    _cache = None
+    _cache_time = 0
+
 
 async def list_all(db: AsyncSession) -> list[Category]:
+    global _cache, _cache_time
+    now = time.monotonic()
+    if _cache is not None and (now - _cache_time) < _CACHE_TTL:
+        return _cache
     result = await db.execute(
         select(Category).order_by(Category.sort_order, Category.name)
     )
-    return list(result.scalars().all())
+    items = list(result.scalars().all())
+    _cache = items
+    _cache_time = now
+    return items
 
 
 async def create(
@@ -28,6 +46,7 @@ async def create(
     )
     db.add(category)
     await db.flush()
+    invalidate_cache()
     return category
 
 
@@ -51,6 +70,8 @@ async def update(
             changes[field] = value
             setattr(category, field, value)
     await db.flush()
+    if changes:
+        invalidate_cache()
     return category, changes
 
 
@@ -60,6 +81,7 @@ async def delete(db: AsyncSession, category_id: UUID) -> str:
         raise NotFoundError("Category not found")
     name = category.name
     await db.delete(category)
+    invalidate_cache()
     return name
 
 
@@ -77,4 +99,5 @@ async def reorder(
             raise NotFoundError(f"Category {item_id} not found")
         category.sort_order = sort_order
     await db.flush()
+    invalidate_cache()
     return len(items)

@@ -1,19 +1,17 @@
-import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { adminApi } from '@/services/adminApi'
-import { formatCents, formatDate, detectCarrier, isAmazonAuthUrl } from '@/lib/utils'
+import { formatCents, formatDate } from '@/lib/utils'
 import { useUiStore } from '@/stores/uiStore'
-import { ExternalLink, Loader2, Link2, Truck, MessageSquare, AlertTriangle, RefreshCw } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { ORDER_STATUS_VARIANT } from '@/lib/constants'
 import { InvoiceSection } from '@/components/admin/InvoiceSection'
-import { HiBobSyncSection } from '@/components/admin/HiBobSyncSection'
+import { OrderTrackingSection } from '@/components/admin/OrderTrackingSection'
+import { OrderPurchaseUrlSection } from '@/components/admin/OrderPurchaseUrlSection'
+import { OrderStatusSection } from '@/components/admin/OrderStatusSection'
 import type { Order } from '@/types'
-
-type PendingAction = 'ordered' | 'rejected' | 'delivered' | 'cancelled' | null
 
 interface OrderDetailDialogProps {
   order: Order | null
@@ -22,67 +20,13 @@ interface OrderDetailDialogProps {
 }
 
 export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetailDialogProps) {
-  const [pendingAction, setPendingAction] = useState<PendingAction>(null)
-  const [adminNote, setAdminNote] = useState('')
-  const [expectedDelivery, setExpectedDelivery] = useState('')
-  const [statusLoading, setStatusLoading] = useState(false)
-
-  const [purchaseUrl, setPurchaseUrl] = useState('')
-  const [purchaseUrlSaving, setPurchaseUrlSaving] = useState(false)
-
-  const [trackingNumber, setTrackingNumber] = useState('')
-  const [trackingUrl, setTrackingUrl] = useState('')
-  const [trackingComment, setTrackingComment] = useState('')
-  const [trackingSaving, setTrackingSaving] = useState(false)
-  const [aftershipSyncing, setAftershipSyncing] = useState(false)
-
   const { addToast } = useUiStore()
-
-  useEffect(() => {
-    if (order) {
-      setPurchaseUrl(order.purchase_url || '')
-      setTrackingNumber(order.tracking_number || '')
-      setTrackingUrl(order.tracking_url || '')
-      setTrackingComment('')
-      setPendingAction(null)
-      setAdminNote('')
-      setExpectedDelivery('')
-    }
-  }, [order])
 
   const refreshOrder = async (orderId: string) => {
     try {
       const { data } = await adminApi.getOrder(orderId)
       onOrderUpdated(data)
     } catch { /* ignore */ }
-  }
-
-  const startAction = (action: PendingAction) => {
-    setPendingAction(action)
-    setAdminNote('')
-    setExpectedDelivery('')
-  }
-
-  const handleStatusConfirm = async () => {
-    if (!order || !pendingAction) return
-    setStatusLoading(true)
-    try {
-      const payload: Record<string, string | undefined> = {
-        status: pendingAction,
-        admin_note: adminNote || undefined,
-      }
-      if (pendingAction === 'ordered' && expectedDelivery) {
-        payload.expected_delivery = expectedDelivery
-      }
-      await adminApi.updateOrderStatus(order.id, payload as { status: string; admin_note?: string; expected_delivery?: string })
-      setPendingAction(null)
-      await refreshOrder(order.id)
-      addToast({ title: 'Status updated' })
-    } catch (err: unknown) {
-      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
-    } finally {
-      setStatusLoading(false)
-    }
   }
 
   const handleItemCheck = async (orderId: string, itemId: string, checked: boolean) => {
@@ -94,66 +38,8 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
     }
   }
 
-  const handleSavePurchaseUrl = async () => {
-    if (!order) return
-    setPurchaseUrlSaving(true)
-    try {
-      await adminApi.updatePurchaseUrl(order.id, purchaseUrl || null)
-      await refreshOrder(order.id)
-      addToast({ title: 'Purchase URL saved' })
-    } catch (err: unknown) {
-      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
-    } finally {
-      setPurchaseUrlSaving(false)
-    }
-  }
-
-  const handleSaveTracking = async () => {
-    if (!order) return
-    setTrackingSaving(true)
-    try {
-      await adminApi.updateOrderTracking(order.id, {
-        tracking_number: trackingNumber || null,
-        tracking_url: trackingUrl || null,
-        comment: trackingComment || null,
-      })
-      setTrackingComment('')
-      await refreshOrder(order.id)
-      addToast({ title: 'Tracking updated & employee notified' })
-    } catch (err: unknown) {
-      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
-    } finally {
-      setTrackingSaving(false)
-    }
-  }
-
-  const handleAftershipSync = async () => {
-    if (!order) return
-    setAftershipSyncing(true)
-    try {
-      await adminApi.syncAfterShipTracking(order.id)
-      await refreshOrder(order.id)
-      addToast({ title: 'AfterShip sync complete' })
-    } catch (err: unknown) {
-      addToast({ title: 'AfterShip sync failed', description: getErrorMessage(err), variant: 'destructive' })
-    } finally {
-      setAftershipSyncing(false)
-    }
-  }
-
   const openAllLinks = (o: Order) => {
     o.items.forEach((item) => { window.open(item.external_url, '_blank', 'noopener,noreferrer') })
-  }
-
-  const actionButtons: Record<string, { label: string; action: PendingAction; variant: 'default' | 'destructive' }[]> = {
-    pending: [
-      { label: 'Approve', action: 'ordered', variant: 'default' },
-      { label: 'Reject', action: 'rejected', variant: 'destructive' },
-    ],
-    ordered: [
-      { label: 'Mark Delivered', action: 'delivered', variant: 'default' },
-      { label: 'Cancel Order', action: 'cancelled', variant: 'destructive' },
-    ],
   }
 
   return (
@@ -265,152 +151,13 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
 
             {/* Purchase URL */}
             {order.status !== 'rejected' && order.status !== 'cancelled' && (
-              <div>
-                <label className="text-sm font-medium block mb-1">Purchase URL (internal)</label>
-                <div className="flex gap-2">
-                  <Input
-                    value={purchaseUrl}
-                    onChange={(e) => setPurchaseUrl(e.target.value)}
-                    placeholder="Vendor order/purchase link..."
-                    className="flex-1"
-                  />
-                  {purchaseUrl && (
-                    <Button size="icon" variant="outline" asChild>
-                      <a href={purchaseUrl} target="_blank" rel="noopener noreferrer">
-                        <Link2 className="h-4 w-4" />
-                      </a>
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleSavePurchaseUrl}
-                    disabled={purchaseUrlSaving || purchaseUrl === (order.purchase_url || '')}
-                  >
-                    {purchaseUrlSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
-                  </Button>
-                </div>
-              </div>
+              <OrderPurchaseUrlSection order={order} onUpdate={onOrderUpdated} />
             )}
 
             {/* Tracking */}
-            {(order.status === 'ordered' || order.status === 'delivered') && (() => {
-              const detected = detectCarrier(trackingNumber)
-              const amazonAuthWarning = isAmazonAuthUrl(trackingUrl)
-              return (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Truck className="h-4 w-4" />
-                  <h3 className="font-medium">Tracking</h3>
-                </div>
-                <div className="space-y-2">
-                  <div>
-                    <label className="text-sm font-medium block mb-1">Tracking Number</label>
-                    <Input
-                      value={trackingNumber}
-                      onChange={(e) => {
-                        const val = e.target.value
-                        setTrackingNumber(val)
-                        // Auto-fill tracking URL when carrier is detected and URL is empty or was auto-filled
-                        const carrier = detectCarrier(val.trim())
-                        if (carrier && (!trackingUrl || detectCarrier(order.tracking_number || '')?.trackingUrl === trackingUrl)) {
-                          setTrackingUrl(carrier.trackingUrl)
-                        }
-                      }}
-                      placeholder="e.g. DE5240663797, 1Z999AA1..."
-                    />
-                    {detected && (
-                      <div className="text-xs text-green-600 mt-1">
-                        Erkannt: <strong>{detected.name}</strong>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium block mb-1">Tracking URL</label>
-                    <div className="flex gap-2">
-                      <Input
-                        value={trackingUrl}
-                        onChange={(e) => setTrackingUrl(e.target.value)}
-                        placeholder="https://..."
-                        className="flex-1"
-                      />
-                      {trackingUrl && (
-                        <Button size="icon" variant="outline" asChild>
-                          <a href={trackingUrl} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        </Button>
-                      )}
-                    </div>
-                    {amazonAuthWarning && (
-                      <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mt-1 flex items-start gap-1.5">
-                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                        <span>
-                          Diese Amazon-URL erfordert Login und funktioniert nicht für Mitarbeiter.
-                          Bitte stattdessen die Carrier-Tracking-URL verwenden (z.B. DHL, Swiship).
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium block mb-1">Comment (optional)</label>
-                    <Input
-                      value={trackingComment}
-                      onChange={(e) => setTrackingComment(e.target.value)}
-                      placeholder="Status update for the employee..."
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={handleSaveTracking}
-                      disabled={trackingSaving || (
-                        trackingNumber === (order.tracking_number || '') &&
-                        trackingUrl === (order.tracking_url || '') &&
-                        !trackingComment
-                      )}
-                    >
-                      {trackingSaving ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Saving...</> : 'Save & Notify Employee'}
-                    </Button>
-                    {order.tracking_number && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleAftershipSync}
-                        disabled={aftershipSyncing}
-                      >
-                        {aftershipSyncing ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Syncing...</> : <><RefreshCw className="h-3 w-3 mr-1" /> AfterShip Sync</>}
-                      </Button>
-                    )}
-                  </div>
-                  {order.aftership_tracking_id && (
-                    <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
-                      AfterShip: {order.aftership_slug} ({order.aftership_tracking_id.slice(0, 12)}...)
-                    </div>
-                  )}
-                </div>
-
-                {/* Timeline */}
-                {order.tracking_updates && order.tracking_updates.length > 0 && (
-                  <div className="mt-4">
-                    <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
-                      <MessageSquare className="h-3 w-3" /> Updates
-                    </h4>
-                    <div className="space-y-2">
-                      {order.tracking_updates.map((update) => (
-                        <div key={update.id} className="text-sm p-2 rounded bg-[hsl(var(--muted)/0.5)] border">
-                          <div className="text-[hsl(var(--muted-foreground))] text-xs mb-1">
-                            {update.created_by_name || 'Admin'} — {formatDate(update.created_at)}
-                          </div>
-                          <div>{update.comment}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-              )
-            })()}
+            {(order.status === 'ordered' || order.status === 'delivered') && (
+              <OrderTrackingSection order={order} onUpdate={onOrderUpdated} />
+            )}
 
             {/* Invoices */}
             {order.status !== 'rejected' && order.status !== 'cancelled' && (
@@ -418,69 +165,8 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
             )}
 
             {/* Actions bar */}
-            {(actionButtons[order.status] || order.status === 'delivered') && (
-              <div className="pt-2 border-t">
-                {pendingAction ? (
-                  <div className="space-y-3">
-                    <div className="text-sm font-medium">
-                      {pendingAction === 'ordered' && 'Approve Order'}
-                      {pendingAction === 'rejected' && 'Reject Order'}
-                      {pendingAction === 'delivered' && 'Mark as Delivered'}
-                      {pendingAction === 'cancelled' && 'Cancel Order'}
-                    </div>
-
-                    {pendingAction === 'ordered' && (
-                      <div>
-                        <label className="text-sm font-medium">Expected delivery (optional)</label>
-                        <Input
-                          type="date"
-                          value={expectedDelivery}
-                          onChange={(e) => setExpectedDelivery(e.target.value)}
-                          min={new Date().toISOString().split('T')[0]}
-                          className="mt-1"
-                        />
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="text-sm font-medium">
-                        {pendingAction === 'rejected' ? 'Reason (required)' : 'Note (optional)'}
-                      </label>
-                      <Input
-                        value={adminNote}
-                        onChange={(e) => setAdminNote(e.target.value)}
-                        placeholder={pendingAction === 'rejected' ? 'Enter reason...' : 'Enter note...'}
-                        className="mt-1"
-                      />
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={handleStatusConfirm}
-                        disabled={statusLoading || (pendingAction === 'rejected' && !adminNote)}
-                      >
-                        {statusLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Updating...</> : 'Confirm'}
-                      </Button>
-                      <Button variant="outline" onClick={() => setPendingAction(null)} disabled={statusLoading}>
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {actionButtons[order.status]?.map((btn) => (
-                      <Button key={btn.action} variant={btn.variant} onClick={() => startAction(btn.action)}>
-                        {btn.label}
-                      </Button>
-                    ))}
-                  </div>
-                )}
-
-                {/* HiBob sync */}
-                {order.status === 'delivered' && !pendingAction && (
-                  <HiBobSyncSection order={order} onSyncChange={() => refreshOrder(order.id)} />
-                )}
-              </div>
+            {(order.status === 'pending' || order.status === 'ordered' || order.status === 'delivered') && (
+              <OrderStatusSection order={order} onUpdate={onOrderUpdated} />
             )}
           </>
         )}

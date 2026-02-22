@@ -1,5 +1,6 @@
 import csv
 import io
+import ipaddress
 import json
 import logging
 import re
@@ -15,6 +16,22 @@ from src.audit.models import AuditLog
 from src.core.search import ilike_escape
 from src.models.orm.user import User
 
+_TRUSTED_PROXIES = {
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("::1/128"),
+}
+
+
+def _is_trusted_proxy(ip: str) -> bool:
+    try:
+        addr = ipaddress.ip_address(ip)
+        return any(addr in net for net in _TRUSTED_PROXIES)
+    except ValueError:
+        return False
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,13 +40,12 @@ def audit_context(request: Request) -> tuple[str | None, str | None]:
 
     Returns (ip_address, user_agent).
     """
+    direct_ip = request.client.host if request.client else None
     forwarded_for = request.headers.get("x-forwarded-for")
-    if forwarded_for:
+    if forwarded_for and direct_ip and _is_trusted_proxy(direct_ip):
         ip = forwarded_for.split(",")[0].strip()
-    elif request.client:
-        ip = request.client.host
     else:
-        ip = None
+        ip = direct_ip
 
     user_agent = request.headers.get("user-agent")
     return ip, user_agent

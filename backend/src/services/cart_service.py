@@ -30,13 +30,14 @@ async def get_cart(db: AsyncSession, user_id: UUID) -> dict:
     has_unavailable = False
 
     for cart_item, product in rows:
-        # If cart item has a variant, use variant price as current price
+        # If cart item has a variant, use variant price as current price.
+        # Use dict lookup (O(1)) instead of linear scan (O(n)) over variants.
         current_price = product.price_cents
         if cart_item.variant_asin and product.variants:
-            for v in product.variants:
-                if v.get("asin") == cart_item.variant_asin and v.get("price_cents", 0) > 0:
-                    current_price = v["price_cents"]
-                    break
+            variant_map = {v.get("asin"): v for v in product.variants}
+            matched = variant_map.get(cart_item.variant_asin)
+            if matched and matched.get("price_cents", 0) > 0:
+                current_price = matched["price_cents"]
 
         price_changed = cart_item.price_at_add_cents != current_price
         price_diff = current_price - cart_item.price_at_add_cents

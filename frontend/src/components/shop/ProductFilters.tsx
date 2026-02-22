@@ -17,6 +17,8 @@ export function ProductFilters({ facets, categories }: Props) {
         <h3 className="font-semibold mb-2 text-sm">Category</h3>
         <div className="space-y-1">
           <button
+            role="checkbox"
+            aria-checked={!category}
             aria-label="Filter by category: All Categories"
             onClick={() => setFilter('category', '')}
             className={`block w-full text-left px-2 py-1 rounded text-sm ${!category ? 'bg-[hsl(var(--primary))] text-white' : 'hover:bg-gray-100'}`}
@@ -26,6 +28,8 @@ export function ProductFilters({ facets, categories }: Props) {
           {categories.map((cat) => (
             <button
               key={cat.id}
+              role="checkbox"
+              aria-checked={category === cat.id}
               aria-label={`Filter by category: ${cat.name}`}
               onClick={() => setFilter('category', cat.id)}
               className={`block w-full text-left px-2 py-1 rounded text-sm ${category === cat.id ? 'bg-[hsl(var(--primary))] text-white' : 'hover:bg-gray-100'}`}
@@ -46,6 +50,8 @@ export function ProductFilters({ facets, categories }: Props) {
           <h3 className="font-semibold mb-2 text-sm">Brand</h3>
           <div className="space-y-1 max-h-40 overflow-y-auto">
             <button
+              role="checkbox"
+              aria-checked={!brand}
               aria-label="Filter by brand: All Brands"
               onClick={() => setFilter('brand', '')}
               className={`block w-full text-left px-2 py-1 rounded text-sm ${!brand ? 'font-medium' : 'hover:bg-gray-100'}`}
@@ -55,6 +61,8 @@ export function ProductFilters({ facets, categories }: Props) {
             {facets.brands.map((b) => (
               <button
                 key={b.value}
+                role="checkbox"
+                aria-checked={brand === b.value}
                 aria-label={`Filter by brand: ${b.value}`}
                 onClick={() => setFilter('brand', b.value)}
                 className={`block w-full text-left px-2 py-1 rounded text-sm ${brand === b.value ? 'bg-[hsl(var(--primary))] text-white' : 'hover:bg-gray-100'}`}
@@ -71,6 +79,8 @@ export function ProductFilters({ facets, categories }: Props) {
           <h3 className="font-semibold mb-2 text-sm">Color</h3>
           <div className="space-y-1 max-h-40 overflow-y-auto">
             <button
+              role="checkbox"
+              aria-checked={!color}
               aria-label="Filter by color: All Colors"
               onClick={() => setFilter('color', '')}
               className={`block w-full text-left px-2 py-1 rounded text-sm ${!color ? 'font-medium' : 'hover:bg-gray-100'}`}
@@ -80,6 +90,8 @@ export function ProductFilters({ facets, categories }: Props) {
             {facets.colors.map((c) => (
               <button
                 key={c.value}
+                role="checkbox"
+                aria-checked={color === c.value}
                 aria-label={`Filter by color: ${c.value}`}
                 onClick={() => setFilter('color', c.value)}
                 className={`block w-full text-left px-2 py-1 rounded text-sm ${color === c.value ? 'bg-[hsl(var(--primary))] text-white' : 'hover:bg-gray-100'}`}
@@ -96,6 +108,8 @@ export function ProductFilters({ facets, categories }: Props) {
           <h3 className="font-semibold mb-2 text-sm">Material</h3>
           <div className="space-y-1 max-h-40 overflow-y-auto">
             <button
+              role="checkbox"
+              aria-checked={!material}
               aria-label="Filter by material: All Materials"
               onClick={() => setFilter('material', '')}
               className={`block w-full text-left px-2 py-1 rounded text-sm ${!material ? 'font-medium' : 'hover:bg-gray-100'}`}
@@ -105,6 +119,8 @@ export function ProductFilters({ facets, categories }: Props) {
             {facets.materials.map((m) => (
               <button
                 key={m.value}
+                role="checkbox"
+                aria-checked={material === m.value}
                 aria-label={`Filter by material: ${m.value}`}
                 onClick={() => setFilter('material', m.value)}
                 className={`block w-full text-left px-2 py-1 rounded text-sm ${material === m.value ? 'bg-[hsl(var(--primary))] text-white' : 'hover:bg-gray-100'}`}
