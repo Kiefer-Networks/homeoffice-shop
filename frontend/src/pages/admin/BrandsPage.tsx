@@ -7,12 +7,13 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { formatDate } from '@/lib/utils'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import type { Brand } from '@/types'
 
 export function AdminBrandsPage() {
   const [brands, setBrands] = useState<Brand[]>([])
+  const [search, setSearch] = useState('')
   const [showDialog, setShowDialog] = useState(false)
   const [editing, setEditing] = useState<Brand | null>(null)
   const [name, setName] = useState('')
@@ -62,11 +63,23 @@ export function AdminBrandsPage() {
     }
   }
 
+  const filteredBrands = search.trim()
+    ? brands.filter(b => b.name.toLowerCase().includes(search.toLowerCase()))
+    : brands
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Brands</h1>
         <Button onClick={openCreate}><Plus className="h-4 w-4 mr-1" /> Add Brand</Button>
+      </div>
+
+      {/* Search */}
+      <div className="mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input placeholder="Search brands..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 max-w-sm" />
+        </div>
       </div>
 
       <Card>
@@ -82,7 +95,7 @@ export function AdminBrandsPage() {
                 </tr>
               </thead>
               <tbody>
-                {brands.map((brand) => (
+                {filteredBrands.map((brand) => (
                   <tr key={brand.id} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.5)]">
                     <td className="px-4 py-3 font-medium">{brand.name}</td>
                     <td className="px-4 py-3 text-[hsl(var(--muted-foreground))]">{brand.slug}</td>
@@ -99,10 +112,10 @@ export function AdminBrandsPage() {
                     </td>
                   </tr>
                 ))}
-                {brands.length === 0 && (
+                {filteredBrands.length === 0 && (
                   <tr>
                     <td colSpan={4} className="px-4 py-8 text-center text-[hsl(var(--muted-foreground))]">
-                      No brands found.
+                      {search.trim() ? 'No brands matching your search.' : 'No brands found.'}
                     </td>
                   </tr>
                 )}

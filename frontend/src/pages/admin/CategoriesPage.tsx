@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
-import { Plus, Pencil, Trash2, GripVertical } from 'lucide-react'
+import { Plus, Pencil, Trash2, GripVertical, Search } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import type { Category } from '@/types'
 import {
@@ -69,6 +69,7 @@ function SortableCategory({
 
 export function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([])
+  const [search, setSearch] = useState('')
   const [showDialog, setShowDialog] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)
   const [form, setForm] = useState({ name: '', slug: '', description: '', icon: '', sort_order: 0 })
@@ -145,18 +146,40 @@ export function AdminCategoriesPage() {
     }
   }
 
+  const filteredCategories = search.trim()
+    ? categories.filter(c =>
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.slug.toLowerCase().includes(search.toLowerCase())
+      )
+    : categories
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Categories</h1>
         <Button onClick={openCreate}><Plus className="h-4 w-4 mr-1" /> Add Category</Button>
       </div>
+
+      {/* Search */}
+      <div className="mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input placeholder="Search categories..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 max-w-sm" />
+        </div>
+      </div>
+
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={categories.map(c => c.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={filteredCategories.map(c => c.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">
-            {categories.map((cat) => (
-              <SortableCategory key={cat.id} cat={cat} onEdit={openEdit} onDelete={handleDelete} />
-            ))}
+            {filteredCategories.length > 0 ? (
+              filteredCategories.map((cat) => (
+                <SortableCategory key={cat.id} cat={cat} onEdit={openEdit} onDelete={handleDelete} />
+              ))
+            ) : (
+              <div className="px-4 py-8 text-center text-[hsl(var(--muted-foreground))]">
+                {search.trim() ? 'No categories matching your search.' : 'No categories found.'}
+              </div>
+            )}
           </div>
         </SortableContext>
       </DndContext>
