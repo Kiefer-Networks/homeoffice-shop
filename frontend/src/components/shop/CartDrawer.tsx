@@ -3,9 +3,7 @@ import { X, Trash2, Plus, Minus, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useCartStore } from '@/stores/cartStore'
-import { useUiStore } from '@/stores/uiStore'
 import { formatCents } from '@/lib/utils'
-import { getErrorMessage } from '@/lib/error'
 
 interface Props {
   onCheckout: () => void
@@ -13,7 +11,6 @@ interface Props {
 
 export function CartDrawer({ onCheckout }: Props) {
   const { cart, isOpen, setOpen, updateItem, removeItem } = useCartStore()
-  const { addToast } = useUiStore()
   const drawerRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
 
@@ -58,20 +55,14 @@ export function CartDrawer({ onCheckout }: Props) {
 
   if (!isOpen) return null
 
-  const handleUpdateQty = async (productId: string, qty: number) => {
-    try {
-      await updateItem(productId, qty)
-    } catch (err: unknown) {
-      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
-    }
+  const handleUpdateQty = (productId: string, qty: number) => {
+    // Fire-and-forget: optimistic update is instant; errors handled inside the store
+    void updateItem(productId, qty)
   }
 
-  const handleRemove = async (productId: string) => {
-    try {
-      await removeItem(productId)
-    } catch (err: unknown) {
-      addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
-    }
+  const handleRemove = (productId: string) => {
+    // Fire-and-forget: optimistic removal is instant; errors handled inside the store
+    void removeItem(productId)
   }
 
   return (

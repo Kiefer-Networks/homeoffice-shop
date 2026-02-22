@@ -47,20 +47,26 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
   updateItem: async (productId, quantity) => {
     const prevCart = get().cart
-    // Optimistic update
+    // Optimistic update — apply locally before the API call
     if (prevCart) {
-      if (quantity <= 0) {
-        set({ cart: { ...prevCart, items: prevCart.items.filter(i => i.product_id !== productId) } })
-      } else {
-        set({
-          cart: {
-            ...prevCart,
-            items: prevCart.items.map(i =>
-              i.product_id === productId ? { ...i, quantity } : i
-            ),
-          },
-        })
-      }
+      const newItems = quantity <= 0
+        ? prevCart.items.filter(i => i.product_id !== productId)
+        : prevCart.items.map(i =>
+            i.product_id === productId ? { ...i, quantity } : i
+          )
+      const newTotal = newItems.reduce((sum, i) => sum + i.current_price_cents * i.quantity, 0)
+      const budgetExceeded = newTotal > prevCart.available_budget_cents
+      set({
+        cart: {
+          ...prevCart,
+          items: newItems,
+          total_current_cents: newTotal,
+          total_at_add_cents: newItems.reduce((sum, i) => sum + i.price_at_add_cents * i.quantity, 0),
+          budget_exceeded: budgetExceeded,
+          has_unavailable_items: newItems.some(i => !i.product_active),
+          has_price_changes: newItems.some(i => i.price_changed),
+        },
+      })
     }
     try {
       if (quantity <= 0) {
@@ -69,34 +75,47 @@ export const useCartStore = create<CartState>((set, get) => ({
         await cartApi.updateItem(productId, quantity)
       }
     } catch (err) {
-      // Rollback on error — re-fetch true server state instead of restoring stale prevCart
-      set({ error: getErrorMessage(err) })
+      // Rollback on error — restore backup then re-fetch true server state
+      set({ cart: prevCart, error: getErrorMessage(err) })
       useUiStore.getState().addToast({ title: 'Failed to update cart', description: getErrorMessage(err), variant: 'destructive' })
       try {
         const { data } = await cartApi.get()
         set({ cart: data })
       } catch {
-        // keep current cart on refetch failure
+        // keep restored cart on refetch failure
       }
     }
   },
   removeItem: async (productId) => {
     const prevCart = get().cart
-    // Optimistic: remove locally
+    // Optimistic: remove locally with recalculated totals
     if (prevCart) {
-      set({ cart: { ...prevCart, items: prevCart.items.filter(i => i.product_id !== productId) } })
+      const newItems = prevCart.items.filter(i => i.product_id !== productId)
+      const newTotal = newItems.reduce((sum, i) => sum + i.current_price_cents * i.quantity, 0)
+      const budgetExceeded = newTotal > prevCart.available_budget_cents
+      set({
+        cart: {
+          ...prevCart,
+          items: newItems,
+          total_current_cents: newTotal,
+          total_at_add_cents: newItems.reduce((sum, i) => sum + i.price_at_add_cents * i.quantity, 0),
+          budget_exceeded: budgetExceeded,
+          has_unavailable_items: newItems.some(i => !i.product_active),
+          has_price_changes: newItems.some(i => i.price_changed),
+        },
+      })
     }
     try {
       await cartApi.removeItem(productId)
     } catch (err) {
-      // Rollback on error — re-fetch true server state instead of restoring stale prevCart
-      set({ error: getErrorMessage(err) })
+      // Rollback on error — restore backup then re-fetch true server state
+      set({ cart: prevCart, error: getErrorMessage(err) })
       useUiStore.getState().addToast({ title: 'Failed to update cart', description: getErrorMessage(err), variant: 'destructive' })
       try {
         const { data } = await cartApi.get()
         set({ cart: data })
       } catch {
-        // keep current cart on refetch failure
+        // keep restored cart on refetch failure
       }
     }
   },
