@@ -29,7 +29,6 @@ class Settings(BaseSettings):
 
     # HiBob HRIS (base64-encoded "user:token" string)
     hibob_api_key: str = ""
-    hibob_sync_interval_hours: int = 6
 
     # ScraperAPI (Amazon)
     scraperapi_api_key: str = ""

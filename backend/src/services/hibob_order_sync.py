@@ -11,7 +11,7 @@ from src.integrations.hibob.client import HiBobClient, HiBobClientProtocol
 from src.models.orm.order import Order, OrderItem
 from src.models.orm.product import Product
 from src.models.orm.user import User
-from src.services.settings_service import get_setting, load_settings
+from src.services.settings_service import get_setting, get_setting_int, load_settings
 
 logger = logging.getLogger(__name__)
 
@@ -83,13 +83,14 @@ async def unsync_order_from_hibob(
         )
 
     # Delete matching entries from HiBob
+    rate_limit_delay = get_setting_int("hibob_rate_limit_delay_ms") / 1000
     deleted = 0
     for i, entry in enumerate(entries_to_delete):
         entry_id = str(entry["id"])
         await client.delete_custom_table_entry(user.hibob_id, table_id, entry_id)
         deleted += 1
         if i < len(entries_to_delete) - 1:
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(rate_limit_delay)
 
     # Reset sync status in DB
     order.hibob_synced_at = None
@@ -213,9 +214,9 @@ async def sync_order_to_hibob(
         await db.flush()
         entries_created += 1
 
-        # Rate limit: 1.5s delay between items (avoid HiBob rate limits)
+        # Rate limit delay between items (avoid HiBob rate limits)
         if i < len(pending_items) - 1:
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(get_setting_int("hibob_rate_limit_delay_ms") / 1000)
 
     # All items synced — mark order as fully synced
     order.hibob_synced_at = datetime.now(timezone.utc)

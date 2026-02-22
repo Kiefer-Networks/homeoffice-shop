@@ -41,9 +41,9 @@ export function AdminSettingsPage() {
   const { user } = useAuthStore()
   const isAdmin = user?.role === 'admin'
 
-  // HiBob Purchase Sync settings
-  const [purchaseDirty, setPurchaseDirty] = useState<Set<string>>(new Set())
-  const [savingPurchase, setSavingPurchase] = useState(false)
+  // HiBob settings
+  const [hibobDirty, setHibobDirty] = useState<Set<string>>(new Set())
+  const [savingHibob, setSavingHibob] = useState(false)
 
   // Budget rules state
   const [rules, setRules] = useState<BudgetRule[]>([])
@@ -268,20 +268,22 @@ export function AdminSettingsPage() {
             </Card>
           )}
 
-          {/* HiBob Purchase Sync (admin only) */}
+          {/* HiBob Integration (admin only) */}
           {isAdmin && (
             <Card>
               <CardContent className="space-y-4 pt-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">HiBob Purchase Sync</h2>
+                  <h2 className="text-lg font-semibold">HiBob Integration</h2>
                   <Button
                     size="sm"
-                    onClick={() => saveGroup(purchaseDirty, setPurchaseDirty, setSavingPurchase)}
-                    disabled={purchaseDirty.size === 0 || savingPurchase}
+                    onClick={() => saveGroup(hibobDirty, setHibobDirty, setSavingHibob)}
+                    disabled={hibobDirty.size === 0 || savingHibob}
                   >
                     <Save className="h-4 w-4 mr-1" /> Save
                   </Button>
                 </div>
+
+                <h3 className="text-sm font-medium pt-2">Purchase Table Mapping</h3>
                 {[
                   { key: 'hibob_purchase_table_id', label: 'Table ID', description: 'HiBob custom table ID for purchases' },
                   { key: 'hibob_purchase_col_date', label: 'Column: Date', description: 'Column name for purchase date' },
@@ -296,11 +298,57 @@ export function AdminSettingsPage() {
                       value={settings[key] || ''}
                       onChange={(e) => {
                         setSettings(s => ({ ...s, [key]: e.target.value }))
-                        setPurchaseDirty(d => new Set(d).add(key))
+                        setHibobDirty(d => new Set(d).add(key))
                       }}
                     />
                   </div>
                 ))}
+
+                <div className="border-t pt-4 mt-2">
+                  <h3 className="text-sm font-medium mb-3">Sync Schedule</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {[
+                      { key: 'hibob_user_sync_hour', label: 'User Sync Hour (UTC)', description: 'Hour of day for daily employee sync (0–23)' },
+                      { key: 'hibob_purchase_sync_hours', label: 'Purchase Sync Hours (UTC)', description: 'Comma-separated hours for purchase sync, e.g. 4,16' },
+                    ].map(({ key, label, description }) => (
+                      <div key={key}>
+                        <label className="text-sm font-medium">{label}</label>
+                        <p className="text-xs text-[hsl(var(--muted-foreground))] mb-1">{description}</p>
+                        <Input
+                          value={settings[key] || ''}
+                          onChange={(e) => {
+                            setSettings(s => ({ ...s, [key]: e.target.value }))
+                            setHibobDirty(d => new Set(d).add(key))
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border-t pt-4 mt-2">
+                  <h3 className="text-sm font-medium mb-3">Matching & Rate Limits</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {[
+                      { key: 'hibob_amount_tolerance_cents', label: 'Amount Tolerance (cents)', description: 'Max difference when matching purchases to orders' },
+                      { key: 'hibob_date_tolerance_days', label: 'Date Tolerance (days)', description: 'Max date difference when matching purchases' },
+                      { key: 'hibob_rate_limit_delay_ms', label: 'Rate Limit Delay (ms)', description: 'Delay between HiBob API calls' },
+                    ].map(({ key, label, description }) => (
+                      <div key={key}>
+                        <label className="text-sm font-medium">{label}</label>
+                        <p className="text-xs text-[hsl(var(--muted-foreground))] mb-1">{description}</p>
+                        <Input
+                          type="number"
+                          value={settings[key] || ''}
+                          onChange={(e) => {
+                            setSettings(s => ({ ...s, [key]: e.target.value }))
+                            setHibobDirty(d => new Set(d).add(key))
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}

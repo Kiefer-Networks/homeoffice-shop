@@ -15,12 +15,9 @@ from src.models.orm.hibob_purchase_sync_log import HiBobPurchaseSyncLog
 from src.models.orm.order import Order
 from src.models.orm.user import User
 from src.services.budget_service import refresh_budget_cache
-from src.services.settings_service import get_setting, load_settings
+from src.services.settings_service import get_setting, get_setting_int, load_settings
 
 logger = logging.getLogger(__name__)
-
-AMOUNT_TOLERANCE_CENTS = 100
-DATE_TOLERANCE_DAYS = 7
 
 
 def _parse_amount_cents(raw_value: str) -> int:
@@ -54,7 +51,11 @@ def _parse_amount_cents(raw_value: str) -> int:
 
 
 def _find_matching_orders(
-    orders: list[Order], amount_cents: int, entry_date: date
+    orders: list[Order],
+    amount_cents: int,
+    entry_date: date,
+    amount_tolerance: int,
+    date_tolerance: int,
 ) -> list[Order]:
     """Find orders within tolerance for amount and date."""
     matches = []
@@ -63,7 +64,7 @@ def _find_matching_orders(
             continue
         amount_diff = abs(order.total_cents - amount_cents)
         date_diff = abs((order.created_at.date() - entry_date).days)
-        if amount_diff <= AMOUNT_TOLERANCE_CENTS and date_diff <= DATE_TOLERANCE_DAYS:
+        if amount_diff <= amount_tolerance and date_diff <= date_tolerance:
             matches.append(order)
     return matches
 
@@ -93,6 +94,9 @@ async def sync_purchases(
         col_description = get_setting("hibob_purchase_col_description")
         col_amount = get_setting("hibob_purchase_col_amount")
         col_currency = get_setting("hibob_purchase_col_currency")
+        amount_tolerance = get_setting_int("hibob_amount_tolerance_cents")
+        date_tolerance = get_setting_int("hibob_date_tolerance_days")
+        rate_limit_delay = get_setting_int("hibob_rate_limit_delay_ms") / 1000
 
         # Fetch all active users with hibob_id
         result = await db.execute(
@@ -143,7 +147,7 @@ async def sync_purchases(
                 )
             # Delay between requests to stay within HiBob rate limits
             if i < len(users) - 1:
-                await asyncio.sleep(1.5)
+                await asyncio.sleep(rate_limit_delay)
 
         logger.info("Purchase sync: fetched custom tables, %d users have entries", len(user_rows))
 
@@ -203,7 +207,8 @@ async def sync_purchases(
 
                 # Try auto-match
                 matching_orders = _find_matching_orders(
-                    user_orders, amount_cents, entry_date
+                    user_orders, amount_cents, entry_date,
+                    amount_tolerance, date_tolerance,
                 )
 
                 review = HiBobPurchaseReview(

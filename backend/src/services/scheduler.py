@@ -1,12 +1,12 @@
 """Unified background scheduler — single event loop for all periodic tasks.
 
 Schedule:
-  - Backup:           configurable (default daily 02:00 UTC)
+  - Backup:            configurable (default daily 02:00 UTC)
   - Delivery reminder: daily 08:00 UTC
-  - AfterShip sync:   4× daily at 08, 12, 16, 20 UTC
-  - HiBob user sync:  daily 03:00 UTC (every 24h)
+  - AfterShip sync:    4× daily at 08, 12, 16, 20 UTC
+  - HiBob user sync:   configurable (default daily 03:00 UTC)
   - Cart stale cleanup: daily 04:30 UTC
-  - HiBob purchases:  2× daily at 04:00 and 16:00 UTC (every 12h)
+  - HiBob purchases:   configurable (default 04:00 and 16:00 UTC)
 """
 
 import asyncio
@@ -16,7 +16,7 @@ from pathlib import Path
 
 from src.core.config import settings
 from src.core.database import async_session_factory
-from src.services.settings_service import get_setting, load_settings
+from src.services.settings_service import get_setting, get_setting_int, load_settings
 
 logger = logging.getLogger(__name__)
 
@@ -138,13 +138,12 @@ async def _run_aftership_sync(now: datetime) -> None:
 
 # ── Task: HiBob User Sync (every 24h) ───────────────────────────────────────
 
-HIBOB_USER_SYNC_HOUR = 3
-
 async def _run_hibob_user_sync(now: datetime) -> None:
     if not settings.hibob_api_key:
         return
 
-    if now.hour != HIBOB_USER_SYNC_HOUR:
+    sync_hour = get_setting_int("hibob_user_sync_hour")
+    if now.hour != sync_hour:
         return
 
     run_key = now.strftime("%Y-%m-%d")
@@ -250,15 +249,15 @@ async def _run_cart_cleanup(now: datetime) -> None:
             logger.exception("Cart stale item cleanup failed")
 
 
-# ── Task: HiBob Purchase Sync (every 12h) ───────────────────────────────────
-
-HIBOB_PURCHASE_SYNC_HOURS = (4, 16)
+# ── Task: HiBob Purchase Sync (configurable hours) ──────────────────────────
 
 async def _run_hibob_purchase_sync(now: datetime) -> None:
     if not settings.hibob_api_key:
         return
 
-    if now.hour not in HIBOB_PURCHASE_SYNC_HOURS:
+    raw = get_setting("hibob_purchase_sync_hours")
+    purchase_sync_hours = tuple(int(h.strip()) for h in raw.split(",") if h.strip())
+    if now.hour not in purchase_sync_hours:
         return
 
     run_key = f"{now.strftime('%Y-%m-%d')}T{now.hour}"
@@ -362,11 +361,10 @@ def start_scheduler() -> None:
         _scheduler_task = asyncio.create_task(_scheduler_loop())
         logger.info(
             "Unified scheduler started — backup, delivery reminders, "
-            "AfterShip (%s UTC), HiBob users (%02d UTC), "
-            "cart cleanup (%02d:%02d UTC), HiBob purchases (%s UTC)",
-            AFTERSHIP_SYNC_HOURS, HIBOB_USER_SYNC_HOUR,
+            "AfterShip (%s UTC), HiBob users (configurable), "
+            "cart cleanup (%02d:%02d UTC), HiBob purchases (configurable)",
+            AFTERSHIP_SYNC_HOURS,
             CART_CLEANUP_HOUR, CART_CLEANUP_MINUTE,
-            HIBOB_PURCHASE_SYNC_HOURS,
         )
 
 
