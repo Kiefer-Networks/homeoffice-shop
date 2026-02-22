@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_admin
 from src.api.dependencies.database import get_db
+from src.api.dependencies.rate_limit import rate_limit
 from src.audit.service import audit_context
 from src.core.exceptions import ConflictError
 from src.core.tasks import create_background_task
@@ -26,7 +27,12 @@ from src.services.hibob_service import (
 router = APIRouter(prefix="/hibob", tags=["admin-hibob"])
 
 
-@router.post("/sync", response_model=DetailResponse, status_code=202)
+@router.post(
+    "/sync",
+    response_model=DetailResponse,
+    status_code=202,
+    dependencies=[rate_limit(limit=3, window_seconds=3600, key_prefix="hibob_sync")],
+)
 async def trigger_sync(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -60,7 +66,12 @@ async def purchase_sync_status(
     return {"running": running}
 
 
-@router.post("/purchase-sync", response_model=DetailResponse, status_code=202)
+@router.post(
+    "/purchase-sync",
+    response_model=DetailResponse,
+    status_code=202,
+    dependencies=[rate_limit(limit=3, window_seconds=3600, key_prefix="hibob_purchase_sync")],
+)
 async def trigger_purchase_sync(
     request: Request,
     db: AsyncSession = Depends(get_db),

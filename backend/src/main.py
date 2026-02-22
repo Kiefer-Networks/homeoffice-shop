@@ -24,6 +24,7 @@ from src.api.routes.admin import (
     budget_rules as admin_budget_rules,
     budgets as admin_budgets,
     categories as admin_categories,
+    dashboard as admin_dashboard,
     hibob as admin_hibob,
     amazon as admin_amazon,
     notifications as admin_notifications,
@@ -130,6 +131,7 @@ app.include_router(admin_amazon.router, prefix="/api/admin")
 app.include_router(admin_budget_rules.router, prefix="/api/admin")
 app.include_router(admin_purchase_reviews.router, prefix="/api/admin")
 app.include_router(admin_backup.router, prefix="/api/admin")
+app.include_router(admin_dashboard.router, prefix="/api/admin")
 
 # Static files for uploaded product images only (invoices are served via authenticated endpoint)
 _products_upload_dir = settings.upload_dir / "products"

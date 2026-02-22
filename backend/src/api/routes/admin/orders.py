@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_staff
 from src.api.dependencies.database import get_db
+from src.api.dependencies.rate_limit import rate_limit
 from src.audit.service import log_admin_action
 from src.core.exceptions import BadRequestError, NotFoundError
 from src.models.dto.order import (
@@ -69,13 +70,8 @@ async def export_orders_csv(
     MAX_EXPORT_ROWS = 10000
     items, _ = await order_service.get_orders(
         db, status=status, q=q, page=1, per_page=MAX_EXPORT_ROWS,
+        date_from=date_from, date_to=date_to,
     )
-
-    # Apply date filters in Python since get_orders doesn't support them directly
-    if date_from:
-        items = [i for i in items if i.get("created_at") and i["created_at"] >= date_from]
-    if date_to:
-        items = [i for i in items if i.get("created_at") and i["created_at"] <= date_to]
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -231,7 +227,10 @@ async def update_order_tracking(
     return order_data
 
 
-@router.post("/{order_id}/aftership-sync")
+@router.post(
+    "/{order_id}/aftership-sync",
+    dependencies=[rate_limit(limit=3, window_seconds=3600, key_prefix="aftership_sync")],
+)
 async def sync_aftership_tracking(
     order_id: UUID,
     request: Request,
