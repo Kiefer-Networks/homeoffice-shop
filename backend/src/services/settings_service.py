@@ -96,7 +96,7 @@ async def seed_defaults(db: AsyncSession) -> None:
     await db.flush()
 
 
-_REDACTED_KEYS = {"smtp_password", "slack_webhook_url"}
+_REDACTED_KEYS = {"smtp_password"}
 
 
 async def get_all_settings_redacted(db: AsyncSession) -> dict[str, str]:

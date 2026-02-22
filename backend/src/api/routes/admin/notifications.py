@@ -28,8 +28,6 @@ async def update_my_preferences(
 ):
     result = await notification_service.update_preferences(
         db, user.id, user.role,
-        slack_enabled=body.slack_enabled,
-        slack_events=body.slack_events,
         email_enabled=body.email_enabled,
         email_events=body.email_events,
     )
@@ -39,8 +37,6 @@ async def update_my_preferences(
         resource_type="notification_pref",
         details={
             k: v for k, v in {
-                "slack_enabled": body.slack_enabled,
-                "slack_events": body.slack_events,
                 "email_enabled": body.email_enabled,
                 "email_events": body.email_events,
             }.items() if v is not None

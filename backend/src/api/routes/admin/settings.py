@@ -38,7 +38,7 @@ async def update_setting(
     if key not in settings_service.DEFAULT_SETTINGS:
         raise BadRequestError(f"Unknown setting key: {key}")
 
-    SENSITIVE_KEYS = {"smtp_password", "slack_webhook_url"}
+    SENSITIVE_KEYS = {"smtp_password"}
 
     # Skip update if the value is the redaction marker (password not changed)
     if key in SENSITIVE_KEYS and body.value == "********":

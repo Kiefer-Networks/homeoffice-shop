@@ -35,13 +35,6 @@ async def check_smtp() -> dict:
     return {"status": "configured"}
 
 
-async def check_slack() -> dict:
-    """Check whether Slack webhook is configured."""
-    if not settings.slack_webhook_url:
-        return {"status": "not_configured"}
-    return {"status": "configured"}
-
-
 async def check_disk() -> dict:
     """Check disk usage for the uploads directory."""
     uploads_path = Path("/app/uploads")
@@ -81,7 +74,6 @@ async def get_detailed_health(db: AsyncSession) -> dict:
     checks = {
         "database": await check_database(db),
         "smtp": await check_smtp(),
-        "slack": await check_slack(),
         "disk": await check_disk(),
     }
 

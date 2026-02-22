@@ -27,14 +27,10 @@ async def upsert(
     db: AsyncSession,
     user_id: UUID,
     *,
-    slack_enabled: bool | None = None,
-    slack_events: list[str] | None = None,
     email_enabled: bool | None = None,
     email_events: list[str] | None = None,
 ) -> AdminNotificationPref:
     fields = {
-        "slack_enabled": slack_enabled,
-        "slack_events": slack_events,
         "email_enabled": email_enabled,
         "email_events": email_events,
     }

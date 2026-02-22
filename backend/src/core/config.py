@@ -36,9 +36,6 @@ class Settings(BaseSettings):
     amazon_tld: str = "de"
     amazon_country_code: str = "de"
 
-    # Slack
-    slack_webhook_url: str = ""
-
     # App
     debug: bool = False
     secret_key: str = "CHANGE_ME"

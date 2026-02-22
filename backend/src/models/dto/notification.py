@@ -4,8 +4,6 @@ from pydantic import BaseModel
 
 
 class NotificationPrefUpdate(BaseModel):
-    slack_enabled: bool | None = None
-    slack_events: list[str] | None = None
     email_enabled: bool | None = None
     email_events: list[str] | None = None
 
@@ -13,11 +11,8 @@ class NotificationPrefUpdate(BaseModel):
 class NotificationPrefResponse(BaseModel):
     id: UUID | None = None
     user_id: UUID | None = None
-    slack_enabled: bool
-    slack_events: list[str]
     email_enabled: bool
     email_events: list[str]
-    available_slack_events: list[str] = []
     available_email_events: list[str] = []
 
     model_config = {"from_attributes": True}

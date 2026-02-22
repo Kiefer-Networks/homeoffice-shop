@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.orm.admin_notification_pref import DEFAULT_EMAIL_EVENTS
 from src.notifications.email import send_email
-from src.notifications.slack import send_slack_message
 from src.repositories import user_repo, notification_pref_repo
 
 logger = logging.getLogger(__name__)
@@ -50,32 +49,6 @@ async def notify_staff_email(
         *(send_email(addr, subject, template_name, context) for addr in recipients)
     )
     return sum(1 for r in results if r is True)
-
-
-async def notify_staff_slack(
-    db: AsyncSession,
-    *,
-    event: str,
-    text: str,
-    blocks: list[dict] | None = None,
-) -> None:
-    staff = await user_repo.get_active_staff(db)
-    prefs = await notification_pref_repo.get_all(db)
-
-    should_send = any(
-        (pref := prefs.get(member.id)) is not None
-        and pref.slack_enabled
-        and event in (pref.slack_events or [])
-        for member in staff
-    )
-
-    if not should_send:
-        # Default: send if no prefs exist at all
-        if not prefs:
-            should_send = True
-
-    if should_send:
-        await send_slack_message(text, blocks)
 
 
 async def notify_user_email(

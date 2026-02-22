@@ -7,7 +7,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.orm.base import Base
 
-DEFAULT_SLACK_EVENTS = ["order.created", "order.cancelled"]
 DEFAULT_EMAIL_EVENTS = ["order.created"]
 
 
@@ -19,10 +18,6 @@ class AdminNotificationPref(Base):
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False
-    )
-    slack_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    slack_events: Mapped[list] = mapped_column(
-        JSONB, nullable=False, default=list(DEFAULT_SLACK_EVENTS)
     )
     email_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     email_events: Mapped[list] = mapped_column(

@@ -22,8 +22,7 @@ from src.models.orm.cart_item import CartItem
 from src.models.orm.order import Order, OrderInvoice, OrderItem
 from src.models.orm.product import Product
 from src.models.orm.user import User
-from src.notifications.service import notify_staff_email, notify_staff_slack, notify_user_email
-from src.notifications.slack import sanitize_slack_text
+from src.notifications.service import notify_staff_email, notify_user_email
 from src.mappers.order import order_item_to_dict, invoice_to_dict, order_to_dict
 from src.services.budget_service import check_budget_for_order, refresh_budget_cache
 
@@ -172,7 +171,7 @@ async def notify_status_changed(
     new_status: str,
     admin_note: str | None = None,
 ) -> None:
-    """Send email and Slack notifications after a status change."""
+    """Send email notifications after a status change."""
     if order_data and order_data.get("user_email"):
         await notify_user_email(
             order_data["user_email"],
@@ -187,17 +186,6 @@ async def notify_status_changed(
             },
         )
 
-    if new_status == "cancelled":
-        await notify_staff_slack(
-            db, event="order.cancelled",
-            text=f"Order {str(order.id)[:8]} has been cancelled.",
-        )
-    else:
-        await notify_staff_slack(
-            db, event="order.status_changed",
-            text=f"Order {str(order.id)[:8]} status changed to {new_status}.",
-        )
-
 
 async def notify_order_created(
     db: AsyncSession,
@@ -205,7 +193,7 @@ async def notify_order_created(
     user: User,
     order_data: dict | None,
 ) -> None:
-    """Send email and Slack notifications after a new order is created."""
+    """Send email notifications after a new order is created."""
     from src.core.config import settings as _settings
     await notify_staff_email(
         db, event="order.created",
@@ -220,10 +208,6 @@ async def notify_order_created(
             "admin_url": f"{_settings.frontend_url}/admin/orders/{order.id}",
         },
     )
-    await notify_staff_slack(
-        db, event="order.created",
-        text=f"New order from {sanitize_slack_text(user.display_name)} - Total: EUR {order.total_cents / 100:.2f}",
-    )
 
 
 async def notify_order_cancelled_by_user(
@@ -232,7 +216,7 @@ async def notify_order_cancelled_by_user(
     user: User,
     reason: str,
 ) -> None:
-    """Send email and Slack notifications after a user cancels their order."""
+    """Send email notifications after a user cancels their order."""
     await notify_staff_email(
         db, event="order.cancelled",
         subject=f"Order Cancelled by {user.display_name}",
@@ -244,10 +228,6 @@ async def notify_order_cancelled_by_user(
             "reason": reason,
             "total_cents": order.total_cents,
         },
-    )
-    await notify_staff_slack(
-        db, event="order.cancelled",
-        text=f"Order #{str(order.id)[:8]} cancelled by {sanitize_slack_text(user.display_name)}: {sanitize_slack_text(reason)}",
     )
 
 

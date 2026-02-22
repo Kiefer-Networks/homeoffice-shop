@@ -12,7 +12,7 @@ from src.integrations.hibob.client import HiBobClient
 from src.integrations.hibob.sync import sync_employees
 from src.models.orm.hibob_purchase_sync_log import HiBobPurchaseSyncLog
 from src.models.orm.hibob_sync_log import HiBobSyncLog
-from src.notifications.service import notify_staff_email, notify_staff_slack
+from src.notifications.service import notify_staff_email
 from src.services.purchase_sync import sync_purchases
 from src.services.settings_service import get_setting
 
@@ -86,10 +86,6 @@ async def _run_employee_sync(admin_id: UUID, ip: str | None, user_agent: str | N
                     template_name="hibob_sync_error.html",
                     context={"error_message": log.error_message},
                 )
-                await notify_staff_slack(
-                    db, event="hibob.sync_error",
-                    text=f"HiBob sync failed: {log.error_message}",
-                )
             else:
                 await notify_staff_email(
                     db, event="hibob.sync",
@@ -102,11 +98,6 @@ async def _run_employee_sync(admin_id: UUID, ip: str | None, user_agent: str | N
                         "employees_deactivated": log.employees_deactivated,
                         "error_message": log.error_message,
                     },
-                )
-                await notify_staff_slack(
-                    db, event="hibob.sync",
-                    text=f"HiBob sync completed: {log.employees_synced} synced, "
-                         f"{log.employees_created} created, {log.employees_updated} updated",
                 )
 
             purchase_log_id = None
@@ -121,10 +112,6 @@ async def _run_employee_sync(admin_id: UUID, ip: str | None, user_agent: str | N
                             subject="HiBob Purchases Pending Review",
                             template_name="purchase_review_pending.html",
                             context={"count": purchase_log.pending_review},
-                        )
-                        await notify_staff_slack(
-                            db, event="hibob.purchase_review",
-                            text=f"There are {purchase_log.pending_review} HiBob purchases pending review.",
                         )
 
             await db.commit()
@@ -186,10 +173,6 @@ async def _run_purchase_sync(admin_id: UUID, ip: str | None, user_agent: str | N
                     subject="HiBob Purchases Pending Review",
                     template_name="purchase_review_pending.html",
                     context={"count": purchase_log.pending_review},
-                )
-                await notify_staff_slack(
-                    db, event="hibob.purchase_review",
-                    text=f"There are {purchase_log.pending_review} HiBob purchases pending review.",
                 )
 
             await db.commit()
