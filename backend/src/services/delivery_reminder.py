@@ -61,11 +61,11 @@ async def send_delivery_reminders(db: AsyncSession) -> int:
                 for item, product_name in items_result.all()
             ]
 
-            # Determine recipient: manager_email if available, otherwise skip
+            # Determine recipient: manager_email if available, otherwise skip manager notification
             recipient = user.manager_email
             if not recipient:
                 logger.info(
-                    "No manager email for user %s (order %s), skipping reminder",
+                    "No manager email for user %s (order %s), skipping manager reminder",
                     user.id, order.id,
                 )
                 # Still mark as sent to avoid retrying every day
@@ -83,6 +83,24 @@ async def send_delivery_reminders(db: AsyncSession) -> int:
                         "order_total_cents": order.total_cents,
                     },
                 )
+                # Still notify the employee about the delay
+                try:
+                    await notify_user_email(
+                        to=user.email,
+                        subject="Delivery Update \u2014 Your order may be delayed",
+                        template_name="delivery_delayed_employee.html",
+                        context={
+                            "order_id_short": str(order.id)[:8],
+                            "expected_delivery": order.expected_delivery,
+                            "items": items,
+                            "total_cents": order.total_cents,
+                        },
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to send delivery delay notification to employee %s for order %s",
+                        user.id, order.id,
+                    )
                 continue
 
             # Mark before sending to prevent infinite daily retries on SMTP failure
@@ -138,6 +156,35 @@ async def send_delivery_reminders(db: AsyncSession) -> int:
                         "expected_delivery": order.expected_delivery,
                         "reason": "email_send_failed",
                     },
+                )
+
+            # Also notify the employee about the delay
+            try:
+                employee_success = await notify_user_email(
+                    to=user.email,
+                    subject=f"Delivery Update \u2014 Your order may be delayed",
+                    template_name="delivery_delayed_employee.html",
+                    context={
+                        "order_id_short": str(order.id)[:8],
+                        "expected_delivery": order.expected_delivery,
+                        "items": items,
+                        "total_cents": order.total_cents,
+                    },
+                )
+                if employee_success:
+                    logger.info(
+                        "Delivery delay notification sent to employee %s for order %s",
+                        user.id, order.id,
+                    )
+                else:
+                    logger.warning(
+                        "Delivery delay notification to employee %s failed for order %s",
+                        user.id, order.id,
+                    )
+            except Exception:
+                logger.exception(
+                    "Failed to send delivery delay notification to employee %s for order %s",
+                    user.id, order.id,
                 )
         except Exception:
             logger.exception("Failed to process delivery reminder for order %s", order.id)

@@ -1,0 +1,38 @@
+{% extends "base_layout.html" %}
+{% block content %}
+    <h2 style="margin: 0 0 16px; font-size: 18px; color: #333;">Delivery Update</h2>
+    <p style="color: #555;">
+        We wanted to let you know that the expected delivery date for your order
+        <strong>#{{ order_id_short }}</strong> ({{ expected_delivery }}) has passed
+        and we haven't received confirmation of delivery yet.
+    </p>
+    <p style="color: #555;">
+        Don't worry — delays can happen. We're keeping an eye on it and will
+        update you as soon as we have more information.
+    </p>
+    <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+        <tr style="background: #f5f5f5;">
+            <th style="padding: 8px; text-align: left;">Item</th>
+            <th style="padding: 8px; text-align: right;">Qty</th>
+            <th style="padding: 8px; text-align: right;">Price</th>
+        </tr>
+        {% for item in items %}
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">{{ item.product_name }}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">{{ item.quantity }}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">&euro;{{ "%.2f"|format(item.price_cents / 100) }}</td>
+        </tr>
+        {% endfor %}
+        <tr style="font-weight: bold;">
+            <td style="padding: 8px;" colspan="2">Total</td>
+            <td style="padding: 8px; text-align: right;">&euro;{{ "%.2f"|format(total_cents / 100) }}</td>
+        </tr>
+    </table>
+    {% if frontend_url %}
+    <p style="margin-top: 24px;">
+        <a href="{{ frontend_url }}/orders" style="display: inline-block; padding: 10px 20px; background-color: #1a1a2e; color: #ffffff; text-decoration: none; border-radius: 4px;">
+            View Your Orders
+        </a>
+    </p>
+    {% endif %}
+{% endblock %}
