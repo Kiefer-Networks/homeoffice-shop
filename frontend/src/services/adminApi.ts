@@ -61,6 +61,8 @@ export const adminApi = {
   updateOrderTracking: (orderId: string, data: {
     tracking_number?: string | null; tracking_url?: string | null; comment?: string | null
   }) => api.put<Order>(`/api/admin/orders/${orderId}/tracking`, data),
+  syncAfterShipTracking: (orderId: string) =>
+    api.post<Order>(`/api/admin/orders/${orderId}/aftership-sync`),
   checkOrderItem: (orderId: string, itemId: string, vendor_ordered: boolean) =>
     api.put(`/api/admin/orders/${orderId}/items/${itemId}/check`, { vendor_ordered }),
   syncOrderToHiBob: (orderId: string) =>

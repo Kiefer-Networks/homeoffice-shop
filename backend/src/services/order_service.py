@@ -486,6 +486,10 @@ async def update_tracking_info(
     if order.status not in ("ordered", "delivered"):
         raise BadRequestError("Tracking info can only be updated for ordered or delivered orders")
 
+    tracking_number_changed = (
+        tracking_number is not None and tracking_number != order.tracking_number
+    )
+
     if tracking_number is not None:
         order.tracking_number = tracking_number
     if tracking_url is not None:
@@ -500,7 +504,70 @@ async def update_tracking_info(
         db.add(update)
 
     await db.flush()
+
+    # Register with AfterShip if tracking number was set/changed
+    if tracking_number_changed and tracking_number:
+        try:
+            await _register_aftership_tracking(db, order)
+        except Exception:
+            logger.exception("Failed to register AfterShip tracking for order %s", order_id)
+
     return order
+
+
+async def _register_aftership_tracking(db: AsyncSession, order: Order) -> None:
+    """Register a tracking number with AfterShip for automated status updates."""
+    from src.integrations.aftership.client import (
+        CARRIER_SLUG_MAP,
+        aftership_client,
+    )
+
+    if not aftership_client.is_configured:
+        return
+    if not order.tracking_number:
+        return
+
+    # Try to detect the carrier slug
+    slug = order.aftership_slug
+    if not slug:
+        # Use frontend's carrier detection logic (duplicated here for backend)
+        slug = _detect_aftership_slug(order.tracking_number)
+
+    tracking = await aftership_client.create_tracking(
+        tracking_number=order.tracking_number,
+        slug=slug,
+        order_id=str(order.id),
+    )
+
+    if tracking:
+        order.aftership_tracking_id = tracking.id
+        order.aftership_slug = tracking.slug
+        await db.flush()
+        logger.info(
+            "Registered AfterShip tracking for order %s: id=%s slug=%s",
+            order.id, tracking.id, tracking.slug,
+        )
+
+
+def _detect_aftership_slug(tracking_number: str) -> str | None:
+    """Detect AfterShip courier slug from tracking number format."""
+    import re
+
+    tn = tracking_number.strip()
+    patterns: list[tuple[str, str]] = [
+        (r"^DE\d{10}$", "swiship"),
+        (r"^TB[ACM]\d{12}$", "amazon"),
+        (r"^1Z[A-Z0-9]{16}$", "ups"),
+        (r"^JJD\d{18,20}$", "dhl"),
+        (r"^\d{12,20}$", "dhl-germany"),
+        (r"^\d{14,15}$", "dpd-de"),
+        (r"^\d{16}$", "hermes-de"),
+        (r"^[A-Z0-9]{11,12}$", "gls"),
+    ]
+    for pattern, slug in patterns:
+        if re.match(pattern, tn, re.IGNORECASE):
+            return slug
+    return None
 
 
 async def notify_tracking_update(

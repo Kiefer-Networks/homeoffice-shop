@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request, Response, UploadFile, File
 from fastapi.responses import FileResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_staff
@@ -23,6 +24,7 @@ from src.models.dto.order import (
     OrderStatusUpdate,
     OrderTrackingInfoUpdate,
 )
+from src.models.orm.order import Order
 from src.models.orm.user import User
 from src.services import order_service
 from src.services.hibob_order_sync import sync_order_to_hibob, unsync_order_from_hibob
@@ -170,6 +172,59 @@ async def update_order_tracking(
     except Exception:
         logger.exception("Failed to send tracking notification for order %s", order_id)
 
+    return order_data
+
+
+@router.post("/{order_id}/aftership-sync")
+async def sync_aftership_tracking(
+    order_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_staff),
+):
+    """Manually trigger an AfterShip sync for this order."""
+    from src.integrations.aftership.sync import sync_order_tracking
+    from src.integrations.aftership.client import aftership_client
+
+    if not aftership_client.is_configured:
+        raise BadRequestError("AfterShip is not configured")
+
+    order_result = await db.execute(
+        select(Order).where(Order.id == order_id)
+    )
+    order = order_result.scalar_one_or_none()
+    if not order:
+        raise NotFoundError("Order not found")
+
+    if not order.aftership_tracking_id:
+        # Try to register first
+        if order.tracking_number:
+            await order_service._register_aftership_tracking(db, order)
+            await db.flush()
+        if not order.aftership_tracking_id:
+            raise BadRequestError("No AfterShip tracking registered for this order")
+
+    transitioned = await sync_order_tracking(db, order)
+
+    await log_admin_action(
+        db, request, admin.id, "admin.order.aftership_synced",
+        resource_type="order", resource_id=order.id,
+        details={
+            "tracking_number": order.tracking_number,
+            "tracking_url": order.tracking_url,
+            "aftership_tracking_id": order.aftership_tracking_id,
+            "aftership_slug": order.aftership_slug,
+            "order_status": order.status,
+            "auto_delivered": transitioned,
+            "order_user_id": str(order.user_id),
+            "order_total_cents": order.total_cents,
+            "trigger": "manual",
+        },
+    )
+
+    order_data = await order_service.get_order_with_items(
+        db, order_id, include_invoices=True, include_tracking_updates=True
+    )
     return order_data
 
 

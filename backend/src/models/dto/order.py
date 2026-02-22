@@ -95,6 +95,8 @@ class OrderResponse(BaseModel):
     purchase_url: str | None = None
     tracking_number: str | None = None
     tracking_url: str | None = None
+    aftership_tracking_id: str | None = None
+    aftership_slug: str | None = None
     tracking_updates: list[OrderTrackingUpdateResponse] = []
     reviewed_by: UUID | None = None
     reviewed_at: datetime | None = None

@@ -55,6 +55,8 @@ def order_to_dict(
         "purchase_url": order.purchase_url,
         "tracking_number": order.tracking_number,
         "tracking_url": order.tracking_url,
+        "aftership_tracking_id": order.aftership_tracking_id,
+        "aftership_slug": order.aftership_slug,
         "tracking_updates": tracking_updates or [],
         "reviewed_by": order.reviewed_by,
         "reviewed_at": order.reviewed_at,

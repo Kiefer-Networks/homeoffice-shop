@@ -214,6 +214,8 @@ export interface Order {
   purchase_url: string | null
   tracking_number: string | null
   tracking_url: string | null
+  aftership_tracking_id: string | null
+  aftership_slug: string | null
   tracking_updates: OrderTrackingUpdate[]
   reviewed_by: string | null
   reviewed_at: string | null

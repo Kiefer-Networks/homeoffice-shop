@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { adminApi } from '@/services/adminApi'
 import { formatCents, formatDate, detectCarrier, isAmazonAuthUrl } from '@/lib/utils'
 import { useUiStore } from '@/stores/uiStore'
-import { ExternalLink, Loader2, Link2, Truck, MessageSquare, AlertTriangle } from 'lucide-react'
+import { ExternalLink, Loader2, Link2, Truck, MessageSquare, AlertTriangle, RefreshCw } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { ORDER_STATUS_VARIANT } from '@/lib/constants'
 import { InvoiceSection } from '@/components/admin/InvoiceSection'
@@ -34,6 +34,7 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
   const [trackingUrl, setTrackingUrl] = useState('')
   const [trackingComment, setTrackingComment] = useState('')
   const [trackingSaving, setTrackingSaving] = useState(false)
+  const [aftershipSyncing, setAftershipSyncing] = useState(false)
 
   const { addToast } = useUiStore()
 
@@ -123,6 +124,20 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
       addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
     } finally {
       setTrackingSaving(false)
+    }
+  }
+
+  const handleAftershipSync = async () => {
+    if (!order) return
+    setAftershipSyncing(true)
+    try {
+      await adminApi.syncAfterShipTracking(order.id)
+      await refreshOrder(order.id)
+      addToast({ title: 'AfterShip sync complete' })
+    } catch (err: unknown) {
+      addToast({ title: 'AfterShip sync failed', description: getErrorMessage(err), variant: 'destructive' })
+    } finally {
+      setAftershipSyncing(false)
     }
   }
 
@@ -345,17 +360,34 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
                       placeholder="Status update for the employee..."
                     />
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={handleSaveTracking}
-                    disabled={trackingSaving || (
-                      trackingNumber === (order.tracking_number || '') &&
-                      trackingUrl === (order.tracking_url || '') &&
-                      !trackingComment
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleSaveTracking}
+                      disabled={trackingSaving || (
+                        trackingNumber === (order.tracking_number || '') &&
+                        trackingUrl === (order.tracking_url || '') &&
+                        !trackingComment
+                      )}
+                    >
+                      {trackingSaving ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Saving...</> : 'Save & Notify Employee'}
+                    </Button>
+                    {order.tracking_number && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleAftershipSync}
+                        disabled={aftershipSyncing}
+                      >
+                        {aftershipSyncing ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Syncing...</> : <><RefreshCw className="h-3 w-3 mr-1" /> AfterShip Sync</>}
+                      </Button>
                     )}
-                  >
-                    {trackingSaving ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Saving...</> : 'Save & Notify Employee'}
-                  </Button>
+                  </div>
+                  {order.aftership_tracking_id && (
+                    <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
+                      AfterShip: {order.aftership_slug} ({order.aftership_tracking_id.slice(0, 12)}...)
+                    </div>
+                  )}
                 </div>
 
                 {/* Timeline */}

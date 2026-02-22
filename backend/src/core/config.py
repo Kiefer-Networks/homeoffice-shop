@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     amazon_tld: str = "de"
     amazon_country_code: str = "de"
 
+    # AfterShip tracking
+    aftership_api_key: str = ""
+
     # App
     debug: bool = False
     secret_key: str = "CHANGE_ME"

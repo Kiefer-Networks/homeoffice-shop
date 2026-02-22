@@ -58,6 +58,8 @@ class Order(Base):
     )
     tracking_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
     tracking_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    aftership_tracking_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    aftership_slug: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     items: Mapped[list["OrderItem"]] = relationship(
         "OrderItem", back_populates="order", cascade="all, delete-orphan"
