@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { ShoppingCart } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,7 +17,7 @@ interface Props {
   onShowDetail: (product: Product) => void
 }
 
-export function ProductCard({ product, onRefreshCart, onShowDetail }: Props) {
+export const ProductCard = React.memo(function ProductCard({ product, onRefreshCart, onShowDetail }: Props) {
   const { addToast } = useUiStore()
   const setCartOpen = useCartStore((s) => s.setOpen)
   const [adding, setAdding] = useState(false)
@@ -92,4 +92,4 @@ export function ProductCard({ product, onRefreshCart, onShowDetail }: Props) {
       </CardContent>
     </Card>
   )
-}
+})

@@ -10,9 +10,9 @@ import { LoginPage } from '@/pages/auth/LoginPage'
 import { CallbackPage } from '@/pages/auth/CallbackPage'
 import { ProbationBlockedPage } from '@/pages/auth/ProbationBlockedPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
-import { CatalogPage } from '@/pages/shop/CatalogPage'
-import { OrdersPage } from '@/pages/shop/OrdersPage'
-import { ProfilePage } from '@/pages/ProfilePage'
+const CatalogPage = React.lazy(() => import('@/pages/shop/CatalogPage').then(m => ({ default: m.CatalogPage })))
+const OrdersPage = React.lazy(() => import('@/pages/shop/OrdersPage').then(m => ({ default: m.OrdersPage })))
+const ProfilePage = React.lazy(() => import('@/pages/ProfilePage').then(m => ({ default: m.ProfilePage })))
 import { useUiStore, type Toast } from '@/stores/uiStore'
 
 const DashboardPage = React.lazy(() => import('@/pages/admin/DashboardPage').then(m => ({ default: m.DashboardPage })))
@@ -163,7 +163,7 @@ function ToastContainer() {
   )
 }
 
-function AdminFallback() {
+function PageFallback() {
   return (
     <div className="flex items-center justify-center py-12">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[hsl(var(--primary))]" />
@@ -184,25 +184,25 @@ export default function App() {
 
           {/* Shop routes */}
           <Route element={<AuthGuard><ShopLayout /></AuthGuard>}>
-            <Route path="/" element={<ErrorBoundary><CatalogPage /></ErrorBoundary>} />
-            <Route path="/orders" element={<ErrorBoundary><OrdersPage /></ErrorBoundary>} />
-            <Route path="/profile" element={<ErrorBoundary><ProfilePage /></ErrorBoundary>} />
+            <Route path="/" element={<ErrorBoundary><Suspense fallback={<PageFallback />}><CatalogPage /></Suspense></ErrorBoundary>} />
+            <Route path="/orders" element={<ErrorBoundary><Suspense fallback={<PageFallback />}><OrdersPage /></Suspense></ErrorBoundary>} />
+            <Route path="/profile" element={<ErrorBoundary><Suspense fallback={<PageFallback />}><ProfilePage /></Suspense></ErrorBoundary>} />
           </Route>
 
           {/* Admin routes */}
           <Route element={<AuthGuard><AdminGuard><AdminLayout /></AdminGuard></AuthGuard>}>
-            <Route path="/admin" element={<ErrorBoundary><Suspense fallback={<AdminFallback />}><DashboardPage /></Suspense></ErrorBoundary>} />
-            <Route path="/admin/products" element={<ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminProductsPage /></Suspense></ErrorBoundary>} />
-            <Route path="/admin/brands" element={<ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminBrandsPage /></Suspense></ErrorBoundary>} />
-            <Route path="/admin/orders" element={<ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminOrdersPage /></Suspense></ErrorBoundary>} />
-            <Route path="/admin/categories" element={<ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminCategoriesPage /></Suspense></ErrorBoundary>} />
-            <Route path="/admin/employees" element={<ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminEmployeesPage /></Suspense></ErrorBoundary>} />
-            <Route path="/admin/budgets" element={<ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminBudgetAdjustmentsPage /></Suspense></ErrorBoundary>} />
-            <Route path="/admin/purchase-reviews" element={<ErrorBoundary><Suspense fallback={<AdminFallback />}><PurchaseReviewsPage /></Suspense></ErrorBoundary>} />
-            <Route path="/admin/settings" element={<AdminOnlyGuard><ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminSettingsPage /></Suspense></ErrorBoundary></AdminOnlyGuard>} />
-            <Route path="/admin/audit" element={<AdminOnlyGuard><ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminAuditLogPage /></Suspense></ErrorBoundary></AdminOnlyGuard>} />
-            <Route path="/admin/sync-log" element={<AdminOnlyGuard><ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminSyncLogPage /></Suspense></ErrorBoundary></AdminOnlyGuard>} />
-            <Route path="/admin/backups" element={<AdminOnlyGuard><ErrorBoundary><Suspense fallback={<AdminFallback />}><AdminBackupPage /></Suspense></ErrorBoundary></AdminOnlyGuard>} />
+            <Route path="/admin" element={<ErrorBoundary><Suspense fallback={<PageFallback />}><DashboardPage /></Suspense></ErrorBoundary>} />
+            <Route path="/admin/products" element={<ErrorBoundary><Suspense fallback={<PageFallback />}><AdminProductsPage /></Suspense></ErrorBoundary>} />
+            <Route path="/admin/brands" element={<ErrorBoundary><Suspense fallback={<PageFallback />}><AdminBrandsPage /></Suspense></ErrorBoundary>} />
+            <Route path="/admin/orders" element={<ErrorBoundary><Suspense fallback={<PageFallback />}><AdminOrdersPage /></Suspense></ErrorBoundary>} />
+            <Route path="/admin/categories" element={<ErrorBoundary><Suspense fallback={<PageFallback />}><AdminCategoriesPage /></Suspense></ErrorBoundary>} />
+            <Route path="/admin/employees" element={<ErrorBoundary><Suspense fallback={<PageFallback />}><AdminEmployeesPage /></Suspense></ErrorBoundary>} />
+            <Route path="/admin/budgets" element={<ErrorBoundary><Suspense fallback={<PageFallback />}><AdminBudgetAdjustmentsPage /></Suspense></ErrorBoundary>} />
+            <Route path="/admin/purchase-reviews" element={<ErrorBoundary><Suspense fallback={<PageFallback />}><PurchaseReviewsPage /></Suspense></ErrorBoundary>} />
+            <Route path="/admin/settings" element={<AdminOnlyGuard><ErrorBoundary><Suspense fallback={<PageFallback />}><AdminSettingsPage /></Suspense></ErrorBoundary></AdminOnlyGuard>} />
+            <Route path="/admin/audit" element={<AdminOnlyGuard><ErrorBoundary><Suspense fallback={<PageFallback />}><AdminAuditLogPage /></Suspense></ErrorBoundary></AdminOnlyGuard>} />
+            <Route path="/admin/sync-log" element={<AdminOnlyGuard><ErrorBoundary><Suspense fallback={<PageFallback />}><AdminSyncLogPage /></Suspense></ErrorBoundary></AdminOnlyGuard>} />
+            <Route path="/admin/backups" element={<AdminOnlyGuard><ErrorBoundary><Suspense fallback={<PageFallback />}><AdminBackupPage /></Suspense></ErrorBoundary></AdminOnlyGuard>} />
           </Route>
 
           {/* Catch-all */}

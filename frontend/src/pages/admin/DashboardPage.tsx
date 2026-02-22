@@ -4,8 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ShoppingBag, Users, Wallet, Package, Truck, Box, ArrowRight } from 'lucide-react'
-import { adminApi } from '@/services/adminApi'
-import { productApi } from '@/services/productApi'
+import { adminApi, type DashboardStats } from '@/services/adminApi'
 import { formatCents, formatDate } from '@/lib/utils'
 import { ORDER_STATUS_VARIANT } from '@/lib/constants'
 import { useUiStore } from '@/stores/uiStore'
@@ -23,21 +22,17 @@ export function DashboardPage() {
 
   useEffect(() => {
     Promise.all([
-      adminApi.listOrders({ per_page: 1 }),
-      adminApi.listOrders({ status: 'pending', per_page: 1 }),
-      adminApi.listOrders({ status: 'ordered', per_page: 1 }),
-      adminApi.listOrders({ status: 'delivered', per_page: 1 }),
-      adminApi.listUsers({ per_page: 1 }),
-      productApi.search(new URLSearchParams({ per_page: '1' })),
+      adminApi.getDashboardStats(),
       adminApi.listOrders({ per_page: 5, sort: 'newest' }),
-    ]).then(([allOrders, pendingOrders, orderedOrders, deliveredOrders, users, products, recent]) => {
+    ]).then(([statsRes, recent]) => {
+      const d: DashboardStats = statsRes.data
       setStats({
-        orders: allOrders.data.total,
-        pending: pendingOrders.data.total,
-        ordered: orderedOrders.data.total,
-        delivered: deliveredOrders.data.total,
-        users: users.data.total,
-        products: products.data.total,
+        orders: d.total_orders,
+        pending: d.pending_orders,
+        ordered: 0,
+        delivered: 0,
+        users: d.total_employees,
+        products: d.total_products,
       })
       setRecentOrders(recent.data.items)
     }).catch((err: unknown) => {

@@ -1,4 +1,4 @@
-import type { AxiosResponse } from 'axios'
+import type { AxiosRequestConfig, AxiosResponse } from 'axios'
 import api from './api'
 import type { ProductSearchResult, Category, SearchSuggestion } from '@/types'
 
@@ -9,8 +9,8 @@ const CACHE_TTL = 60_000 // 1 minute
 export const productApi = {
   search: (params: URLSearchParams) =>
     api.get<ProductSearchResult>('/api/products', { params }),
-  getSearchSuggestions: (q: string) =>
-    api.get<SearchSuggestion[]>('/api/products/suggestions', { params: { q } }),
+  getSearchSuggestions: (q: string, config?: AxiosRequestConfig) =>
+    api.get<SearchSuggestion[]>('/api/products/suggestions', { params: { q }, ...config }),
   getCategories: () => {
     const now = Date.now()
     if (categoriesPromise && (now - categoriesCacheTime) < CACHE_TTL) {

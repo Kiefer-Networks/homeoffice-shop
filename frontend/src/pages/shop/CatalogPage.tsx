@@ -21,7 +21,18 @@ import type { Product, Category, Facets } from '@/types'
 
 export function CatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const filterStore = useFilterStore()
+  const q = useFilterStore(s => s.q)
+  const category = useFilterStore(s => s.category)
+  const brand = useFilterStore(s => s.brand)
+  const color = useFilterStore(s => s.color)
+  const material = useFilterStore(s => s.material)
+  const priceMin = useFilterStore(s => s.priceMin)
+  const priceMax = useFilterStore(s => s.priceMax)
+  const sort = useFilterStore(s => s.sort)
+  const page = useFilterStore(s => s.page)
+  const syncFromUrl = useFilterStore(s => s.syncFromUrl)
+  const setFilter = useFilterStore(s => s.setFilter)
+  const toSearchParams = useFilterStore(s => s.toSearchParams)
   const { cart, setOpen: setCartOpen } = useCartStore()
   const { addToast } = useUiStore()
 
@@ -35,7 +46,7 @@ export function CatalogPage() {
   const [showMobileFilters, setShowMobileFilters] = useState(false)
 
   useEffect(() => {
-    filterStore.syncFromUrl(searchParams)
+    syncFromUrl(searchParams)
     productApi.getCategories().then(({ data }) => setCategories(data)).catch((err) => addToast({ title: 'Failed to load categories', description: getErrorMessage(err), variant: 'destructive' }))
   }, [])
 
@@ -50,7 +61,7 @@ export function CatalogPage() {
   useEffect(() => { refreshCart() }, [refreshCart])
 
   useEffect(() => {
-    const params = filterStore.toSearchParams()
+    const params = toSearchParams()
     setSearchParams(params, { replace: true })
 
     setLoading(true)
@@ -59,7 +70,7 @@ export function CatalogPage() {
       setTotal(data.total)
       setFacets(data.facets)
     }).finally(() => setLoading(false))
-  }, [filterStore.q, filterStore.category, filterStore.brand, filterStore.color, filterStore.material, filterStore.priceMin, filterStore.priceMax, filterStore.sort, filterStore.page])
+  }, [q, category, brand, color, material, priceMin, priceMax, sort, page])
 
   const handleCheckout = async () => {
     if (!cart) return
@@ -155,9 +166,9 @@ export function CatalogPage() {
               </div>
 
               <Pagination
-                page={filterStore.page}
+                page={page}
                 totalPages={totalPages}
-                onPageChange={(p) => filterStore.setFilter('page', p)}
+                onPageChange={(p) => setFilter('page', p)}
               />
             </>
           )}

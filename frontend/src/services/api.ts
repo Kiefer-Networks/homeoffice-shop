@@ -14,6 +14,8 @@ function shouldRetry(error: AxiosError): boolean {
 
 const RETRYABLE_METHODS = new Set(['get', 'put', 'delete'])
 
+let refreshPromise: Promise<any> | null = null
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '',
   withCredentials: true,
@@ -46,7 +48,7 @@ api.interceptors.response.use(
       return api(config)
     }
 
-    // 401 token refresh
+    // 401 token refresh with mutex to avoid concurrent refreshes
     const url = config.url || ''
     if (
       error.response?.status === 401 &&
@@ -55,19 +57,29 @@ api.interceptors.response.use(
     ) {
       config._retry = true
       try {
-        const { data } = await axios.post(
-          `${import.meta.env.VITE_API_URL || ''}/api/auth/refresh`,
-          {},
-          { withCredentials: true }
-        )
-        setAccessToken(data.access_token)
-        useAuthStore.getState().setAccessToken(data.access_token)
+        if (!refreshPromise) {
+          refreshPromise = axios.post(
+            `${import.meta.env.VITE_API_URL || ''}/api/auth/refresh`,
+            {},
+            { withCredentials: true }
+          ).then(({ data }) => {
+            setAccessToken(data.access_token)
+            useAuthStore.getState().setAccessToken(data.access_token)
+            return data.access_token
+          }).catch((err) => {
+            setAccessToken(null)
+            useAuthStore.getState().logout()
+            throw err
+          }).finally(() => {
+            refreshPromise = null
+          })
+        }
+        const newToken = await refreshPromise
         config.headers = config.headers || {}
-        ;(config.headers as Record<string, string>).Authorization = `Bearer ${data.access_token}`
+        ;(config.headers as Record<string, string>).Authorization = `Bearer ${newToken}`
         return api(config)
       } catch {
-        setAccessToken(null)
-        useAuthStore.getState().logout()
+        // Refresh failed – already handled above (logout)
       }
     }
     return Promise.reject(error)

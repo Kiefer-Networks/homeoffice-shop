@@ -9,7 +9,20 @@ import type {
   BackupFile, BackupSchedule,
 } from '@/types'
 
+export interface DashboardStats {
+  pending_orders: number
+  total_orders: number
+  total_products: number
+  active_products: number
+  total_employees: number
+  pending_reviews: number
+  total_categories: number
+}
+
 export const adminApi = {
+  // Dashboard
+  getDashboardStats: () => api.get<DashboardStats>('/api/admin/dashboard/stats'),
+
   // Products
   createProduct: (data: ProductCreateInput) => api.post<Product>('/api/admin/products', data),
   updateProduct: (id: string, data: ProductUpdateInput) => api.put<Product>(`/api/admin/products/${id}`, data),

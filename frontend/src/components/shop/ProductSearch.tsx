@@ -63,7 +63,7 @@ export function ProductSearch() {
       abortControllerRef.current = controller
 
       try {
-        const { data } = await productApi.getSearchSuggestions(value)
+        const { data } = await productApi.getSearchSuggestions(value, { signal: controller.signal })
         if (!controller.signal.aborted) {
           setSuggestions(data)
           setShowSuggestions(data.length > 0)
