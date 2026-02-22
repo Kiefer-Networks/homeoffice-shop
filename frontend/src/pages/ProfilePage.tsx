@@ -35,21 +35,16 @@ export function ProfilePage() {
       .finally(() => setLoading(false))
   }, [isStaff])
 
-  const handleToggle = (channel: 'slack' | 'email', enabled: boolean) => {
+  const handleToggle = (enabled: boolean) => {
     if (!prefs) return
-    if (channel === 'slack') {
-      setPrefs({ ...prefs, slack_enabled: enabled })
-    } else {
-      setPrefs({ ...prefs, email_enabled: enabled })
-    }
+    setPrefs({ ...prefs, email_enabled: enabled })
   }
 
-  const handleEventToggle = (channel: 'slack' | 'email', event: string, checked: boolean) => {
+  const handleEventToggle = (event: string, checked: boolean) => {
     if (!prefs) return
-    const key = channel === 'slack' ? 'slack_events' : 'email_events'
-    const current = prefs[key]
+    const current = prefs.email_events
     const updated = checked ? [...current, event] : current.filter(e => e !== event)
-    setPrefs({ ...prefs, [key]: updated })
+    setPrefs({ ...prefs, email_events: updated })
   }
 
   const handleSave = async () => {
@@ -57,8 +52,6 @@ export function ProfilePage() {
     setSaving(true)
     try {
       const { data } = await adminApi.updateNotificationPrefs({
-        slack_enabled: prefs.slack_enabled,
-        slack_events: prefs.slack_events,
         email_enabled: prefs.email_enabled,
         email_events: prefs.email_events,
       })
@@ -149,7 +142,7 @@ export function ProfilePage() {
                       <input
                         type="checkbox"
                         checked={prefs.email_enabled}
-                        onChange={e => handleToggle('email', e.target.checked)}
+                        onChange={e => handleToggle(e.target.checked)}
                         className="h-4 w-4 rounded border-gray-300"
                       />
                     </label>
@@ -162,7 +155,7 @@ export function ProfilePage() {
                         <input
                           type="checkbox"
                           checked={prefs.email_events.includes(event)}
-                          onChange={e => handleEventToggle('email', event, e.target.checked)}
+                          onChange={e => handleEventToggle(event, e.target.checked)}
                           disabled={!prefs.email_enabled}
                           className="h-4 w-4 rounded border-gray-300"
                         />
