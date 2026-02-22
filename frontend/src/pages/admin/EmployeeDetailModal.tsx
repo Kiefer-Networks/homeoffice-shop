@@ -66,7 +66,7 @@ export function EmployeeDetailModal({ userId, onClose }: EmployeeDetailModalProp
 
   return (
     <Dialog open={!!userId} onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         {loading ? (
           <div className="space-y-4 py-8">
             <div className="h-6 w-48 bg-[hsl(var(--muted))] rounded animate-pulse" />

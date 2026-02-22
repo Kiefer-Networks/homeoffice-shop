@@ -50,7 +50,7 @@ export function OrderDetailDialog({ order, onClose, onOrderUpdated }: OrderDetai
 
   return (
     <Dialog open={!!order} onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto relative">
+      <DialogContent className="max-w-2xl relative">
         {order && (
           <>
             {/* Refreshing overlay */}
