@@ -4,6 +4,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-homeoffice_shop}
       POSTGRES_USER: ${DB_USER:-shop}
+      # REQUIRED: DB_PASSWORD must be set in .env to a secure value (not empty or "CHANGE_ME")
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -17,6 +18,8 @@ services:
       interval: 5s
       retries: 5
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:
@@ -33,6 +36,10 @@ services:
     volumes:
       - uploads:/app/uploads
       - backups:/app/backups
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
@@ -40,6 +47,8 @@ services:
       retries: 3
       start_period: 40s
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:
@@ -55,12 +64,19 @@ services:
         condition: service_healthy
     ports:
       - "127.0.0.1:${FRONTEND_PORT:-3002}:80"
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run
+      - /var/cache/nginx
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:80"]
       interval: 30s
       timeout: 5s
       retries: 3
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:

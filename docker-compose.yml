@@ -4,6 +4,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-homeoffice_shop}
       POSTGRES_USER: ${DB_USER:-shop}
+      # REQUIRED: DB_PASSWORD must be set in .env to a secure value (not empty or "CHANGE_ME")
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
