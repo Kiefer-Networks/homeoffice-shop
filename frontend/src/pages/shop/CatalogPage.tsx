@@ -17,6 +17,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { productApi } from '@/services/productApi'
 import { orderApi } from '@/services/orderApi'
 import { getErrorMessage } from '@/lib/error'
+import { ErrorBoundary } from '@/App'
 import type { Product, Category, Facets } from '@/types'
 
 export function CatalogPage() {
@@ -175,14 +176,18 @@ export function CatalogPage() {
         </div>
       </div>
 
-      <CartDrawer onCheckout={handleCheckout} />
+      <ErrorBoundary fallback={null}>
+        <CartDrawer onCheckout={handleCheckout} />
+      </ErrorBoundary>
 
-      <ProductDetailModal
-        product={selectedProduct}
-        open={!!selectedProduct}
-        onClose={() => setSelectedProduct(null)}
-        onRefreshCart={refreshCart}
-      />
+      <ErrorBoundary fallback={null}>
+        <ProductDetailModal
+          product={selectedProduct}
+          open={!!selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          onRefreshCart={refreshCart}
+        />
+      </ErrorBoundary>
 
       {cart && showPriceAlert && (
         <CartPriceAlert

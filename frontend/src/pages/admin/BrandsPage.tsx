@@ -13,6 +13,7 @@ import type { Brand } from '@/types'
 
 export function AdminBrandsPage() {
   const [brands, setBrands] = useState<Brand[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showDialog, setShowDialog] = useState(false)
   const [editing, setEditing] = useState<Brand | null>(null)
@@ -21,7 +22,7 @@ export function AdminBrandsPage() {
   const [saving, setSaving] = useState(false)
   const { addToast } = useUiStore()
 
-  const load = () => adminApi.listBrands().then(({ data }) => setBrands(data))
+  const load = () => adminApi.listBrands().then(({ data }) => setBrands(data)).finally(() => setLoading(false))
   useEffect(() => { load() }, [])
 
   const openCreate = () => {
@@ -86,48 +87,56 @@ export function AdminBrandsPage() {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Name</th>
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Slug</th>
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Created</th>
-                  <th className="text-right px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredBrands.map((brand) => (
-                  <tr key={brand.id} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.5)]">
-                    <td className="px-4 py-3 font-medium">{brand.name}</td>
-                    <td className="px-4 py-3 text-[hsl(var(--muted-foreground))]">{brand.slug}</td>
-                    <td className="px-4 py-3 text-[hsl(var(--muted-foreground))]">{formatDate(brand.created_at)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => openEdit(brand)}>
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="ghost" className="text-red-600" onClick={() => setDeleteTarget(brand)}>
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </td>
+      {loading ? (
+        <div className="space-y-2">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
+                    <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Name</th>
+                    <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Slug</th>
+                    <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Created</th>
+                    <th className="text-right px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Actions</th>
                   </tr>
-                ))}
-                {filteredBrands.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-[hsl(var(--muted-foreground))]">
-                      {search.trim() ? 'No brands matching your search.' : 'No brands found.'}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                </thead>
+                <tbody>
+                  {filteredBrands.map((brand) => (
+                    <tr key={brand.id} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.5)]">
+                      <td className="px-4 py-3 font-medium">{brand.name}</td>
+                      <td className="px-4 py-3 text-[hsl(var(--muted-foreground))]">{brand.slug}</td>
+                      <td className="px-4 py-3 text-[hsl(var(--muted-foreground))]">{formatDate(brand.created_at)}</td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => openEdit(brand)}>
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-red-600" onClick={() => setDeleteTarget(brand)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredBrands.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-[hsl(var(--muted-foreground))]">
+                        {search.trim() ? 'No brands matching your search.' : 'No brands found.'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Create / Edit Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>

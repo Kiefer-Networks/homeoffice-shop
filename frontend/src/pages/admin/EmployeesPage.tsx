@@ -29,6 +29,7 @@ type SortKey = 'name_asc' | 'name_desc' | 'department' | 'start_date' | 'budget'
 
 export function AdminEmployeesPage() {
   const [users, setUsers] = useState<UserAdmin[]>([])
+  const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState<SortKey>('name_asc')
@@ -61,7 +62,7 @@ export function AdminEmployeesPage() {
       setTotal(data.total)
     }).catch((err: unknown) => {
       addToast({ title: 'Failed to load employees', description: getErrorMessage(err), variant: 'destructive' })
-    })
+    }).finally(() => setLoading(false))
   }, [page, sort, debouncedSearch, roleFilter, departmentFilter, activeFilter])
 
   useEffect(() => { load() }, [load])
@@ -270,15 +271,23 @@ export function AdminEmployeesPage() {
       </div>
 
       {/* Table */}
-      <DataTable
-        columns={columns}
-        data={users}
-        rowKey={(u) => u.id}
-        emptyMessage="No employees found."
-        onRowClick={(u) => setSelectedUserId(u.id)}
-      >
-        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
-      </DataTable>
+      {loading ? (
+        <div className="space-y-2">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={users}
+          rowKey={(u) => u.id}
+          emptyMessage="No employees found."
+          onRowClick={(u) => setSelectedUserId(u.id)}
+        >
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        </DataTable>
+      )}
 
       {selectedUserId && (
         <EmployeeDetailModal

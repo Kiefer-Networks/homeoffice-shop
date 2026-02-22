@@ -28,11 +28,11 @@ const AdminBrandsPage = React.lazy(() => import('@/pages/admin/BrandsPage').then
 const PurchaseReviewsPage = React.lazy(() => import('@/pages/admin/PurchaseReviewsPage').then(m => ({ default: m.PurchaseReviewsPage })))
 const AdminBackupPage = React.lazy(() => import('@/pages/admin/BackupPage').then(m => ({ default: m.AdminBackupPage })))
 
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode; fullPage?: boolean },
+export class ErrorBoundary extends React.Component<
+  { children: React.ReactNode; fullPage?: boolean; fallback?: React.ReactNode },
   { hasError: boolean; error: Error | null }
 > {
-  constructor(props: { children: React.ReactNode; fullPage?: boolean }) {
+  constructor(props: { children: React.ReactNode; fullPage?: boolean; fallback?: React.ReactNode }) {
     super(props)
     this.state = { hasError: false, error: null }
   }
@@ -44,6 +44,10 @@ class ErrorBoundary extends React.Component<
   }
   render() {
     if (this.state.hasError) {
+      // If a custom fallback is provided (including null), render it directly
+      if (this.props.fallback !== undefined) {
+        return <>{this.props.fallback}</>
+      }
       const wrapper = this.props.fullPage
         ? 'min-h-screen flex items-center justify-center'
         : 'flex items-center justify-center py-12'

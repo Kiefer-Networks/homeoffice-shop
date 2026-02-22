@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Package, ShoppingBag, FolderOpen, Users,
@@ -30,8 +30,12 @@ export function AdminSidebar() {
   const { sidebarOpen, setSidebarOpen } = useUiStore()
   const { user } = useAuthStore()
   const [pendingCount, setPendingCount] = useState(0)
+  const lastFetchRef = useRef(0)
 
   useEffect(() => {
+    const now = Date.now()
+    if (now - lastFetchRef.current < 30000) return
+    lastFetchRef.current = now
     adminApi.getPendingReviewCount()
       .then(({ data }) => setPendingCount(data.count))
       .catch((err) => console.error('Failed to load pending review count:', err))

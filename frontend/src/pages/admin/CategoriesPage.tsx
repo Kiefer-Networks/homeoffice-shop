@@ -8,6 +8,7 @@ import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { Plus, Pencil, Trash2, GripVertical, Search } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
+import { invalidateCategoryCache } from '@/services/productApi'
 import type { Category } from '@/types'
 import {
   DndContext,
@@ -69,6 +70,7 @@ function SortableCategory({
 
 export function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showDialog, setShowDialog] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)
@@ -82,7 +84,7 @@ export function AdminCategoriesPage() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
-  const load = () => adminApi.listCategories().then(({ data }) => setCategories(data))
+  const load = () => adminApi.listCategories().then(({ data }) => setCategories(data)).finally(() => setLoading(false))
   useEffect(() => { load() }, [])
 
   const toSlug = (name: string) =>
@@ -114,6 +116,7 @@ export function AdminCategoriesPage() {
       } else {
         await adminApi.createCategory(form)
       }
+      invalidateCategoryCache()
       setShowDialog(false); load()
       addToast({ title: editing ? 'Category updated' : 'Category created' })
     } catch (err: unknown) { addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' }) }
@@ -126,7 +129,7 @@ export function AdminCategoriesPage() {
 
   const confirmDelete = async () => {
     if (!deleteTarget) return
-    try { await adminApi.deleteCategory(deleteTarget); load(); addToast({ title: 'Category deleted' }) }
+    try { await adminApi.deleteCategory(deleteTarget); invalidateCategoryCache(); load(); addToast({ title: 'Category deleted' }) }
     catch (err: unknown) { addToast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' }) }
     finally { setDeleteTarget(null) }
   }
@@ -171,21 +174,29 @@ export function AdminCategoriesPage() {
         </div>
       </div>
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={filteredCategories.map(c => c.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-2">
-            {filteredCategories.length > 0 ? (
-              filteredCategories.map((cat) => (
-                <SortableCategory key={cat.id} cat={cat} onEdit={openEdit} onDelete={handleDelete} />
-              ))
-            ) : (
-              <div className="px-4 py-8 text-center text-[hsl(var(--muted-foreground))]">
-                {search.trim() ? 'No categories matching your search.' : 'No categories found.'}
-              </div>
-            )}
-          </div>
-        </SortableContext>
-      </DndContext>
+      {loading ? (
+        <div className="space-y-2">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={filteredCategories.map(c => c.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-2">
+              {filteredCategories.length > 0 ? (
+                filteredCategories.map((cat) => (
+                  <SortableCategory key={cat.id} cat={cat} onEdit={openEdit} onDelete={handleDelete} />
+                ))
+              ) : (
+                <div className="px-4 py-8 text-center text-[hsl(var(--muted-foreground))]">
+                  {search.trim() ? 'No categories matching your search.' : 'No categories found.'}
+                </div>
+              )}
+            </div>
+          </SortableContext>
+        </DndContext>
+      )}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editing ? 'Edit Category' : 'Add Category'}</DialogTitle></DialogHeader>
