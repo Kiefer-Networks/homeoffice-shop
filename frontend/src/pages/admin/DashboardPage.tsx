@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ShoppingBag, Users, Wallet, Package, Truck, XCircle, ArrowRight } from 'lucide-react'
+import { ShoppingBag, Users, Wallet, Package, Truck, Box, ArrowRight } from 'lucide-react'
 import { adminApi } from '@/services/adminApi'
 import { productApi } from '@/services/productApi'
 import { formatCents, formatDate } from '@/lib/utils'
@@ -43,12 +43,12 @@ export function DashboardPage() {
   }, [])
 
   const cards = [
-    { title: 'Total Orders', value: stats.orders, icon: ShoppingBag, color: 'text-blue-600' },
-    { title: 'Pending', value: stats.pending, icon: Wallet, color: 'text-yellow-600' },
-    { title: 'Ordered', value: stats.ordered, icon: Truck, color: 'text-blue-500' },
-    { title: 'Delivered', value: stats.delivered, icon: Package, color: 'text-green-600' },
-    { title: 'Employees', value: stats.users, icon: Users, color: 'text-purple-600' },
-    { title: 'Products', value: stats.products, icon: XCircle, color: 'text-gray-600' },
+    { title: 'Total Orders', value: stats.orders, icon: ShoppingBag, color: 'text-blue-600', link: '/admin/orders' },
+    { title: 'Pending', value: stats.pending, icon: Wallet, color: 'text-yellow-600', link: '/admin/orders' },
+    { title: 'Ordered', value: stats.ordered, icon: Truck, color: 'text-blue-500', link: '/admin/orders' },
+    { title: 'Delivered', value: stats.delivered, icon: Package, color: 'text-green-600', link: '/admin/orders' },
+    { title: 'Employees', value: stats.users, icon: Users, color: 'text-purple-600', link: '/admin/employees' },
+    { title: 'Products', value: stats.products, icon: Box, color: 'text-gray-600', link: '/admin/products' },
   ]
 
   return (
@@ -58,7 +58,11 @@ export function DashboardPage() {
       {/* Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         {cards.map((card) => (
-          <Card key={card.title}>
+          <Card
+            key={card.title}
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate(card.link)}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-[hsl(var(--muted-foreground))]">{card.title}</CardTitle>
               <card.icon className={`h-5 w-5 ${card.color}`} />

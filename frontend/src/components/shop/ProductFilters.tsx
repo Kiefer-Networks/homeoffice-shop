@@ -7,9 +7,10 @@ import type { Facets, Category } from '@/types'
 interface Props {
   facets: Facets | null
   categories: Category[]
+  idPrefix?: string
 }
 
-export function ProductFilters({ facets, categories }: Props) {
+export function ProductFilters({ facets, categories, idPrefix = '' }: Props) {
   const { category, brand, color, material, priceMin, priceMax, sort, setFilter, resetFilters } = useFilterStore()
 
   const [localPriceMin, setLocalPriceMin] = useState(priceMin)
@@ -159,29 +160,37 @@ export function ProductFilters({ facets, categories }: Props) {
       <div>
         <h3 className="font-semibold mb-2 text-sm">Price Range</h3>
         <div className="flex gap-2">
-          <Input
-            type="number"
-            placeholder="Min"
-            value={localPriceMin}
-            onChange={(e) => setLocalPriceMin(e.target.value)}
-            className="w-20"
-          />
+          <div>
+            <label htmlFor={`${idPrefix}price-min`} className="sr-only">Minimum price</label>
+            <Input
+              id={`${idPrefix}price-min`}
+              type="number"
+              placeholder="Min"
+              value={localPriceMin}
+              onChange={(e) => setLocalPriceMin(e.target.value)}
+              className="w-20"
+            />
+          </div>
           <span className="text-gray-400 self-center">-</span>
-          <Input
-            type="number"
-            placeholder="Max"
-            value={localPriceMax}
-            onChange={(e) => setLocalPriceMax(e.target.value)}
-            className="w-20"
-          />
+          <div>
+            <label htmlFor={`${idPrefix}price-max`} className="sr-only">Maximum price</label>
+            <Input
+              id={`${idPrefix}price-max`}
+              type="number"
+              placeholder="Max"
+              value={localPriceMax}
+              onChange={(e) => setLocalPriceMax(e.target.value)}
+              className="w-20"
+            />
+          </div>
         </div>
       </div>
 
       <div>
         <h3 className="font-semibold mb-2 text-sm">Sort</h3>
-        <label htmlFor="sort-select" className="sr-only">Sort</label>
+        <label htmlFor={`${idPrefix}sort-select`} className="sr-only">Sort</label>
         <select
-          id="sort-select"
+          id={`${idPrefix}sort-select`}
           value={sort}
           onChange={(e) => setFilter('sort', e.target.value)}
           className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { SlidersHorizontal, X } from 'lucide-react'
 import { ProductCard } from '@/components/shop/ProductCard'
 import { ProductDetailModal } from '@/components/shop/ProductDetailModal'
 import { ProductFilters } from '@/components/shop/ProductFilters'
@@ -8,6 +9,7 @@ import { BudgetIndicator } from '@/components/shop/BudgetIndicator'
 import { CartDrawer } from '@/components/shop/CartDrawer'
 import { CartPriceAlert } from '@/components/shop/CartPriceAlert'
 import { Pagination } from '@/components/ui/Pagination'
+import { Button } from '@/components/ui/button'
 import { useFilterStore } from '@/stores/filterStore'
 import { useCartStore } from '@/stores/cartStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -30,10 +32,11 @@ export function CatalogPage() {
   const [loading, setLoading] = useState(true)
   const [showPriceAlert, setShowPriceAlert] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
 
   useEffect(() => {
     filterStore.syncFromUrl(searchParams)
-    productApi.getCategories().then(({ data }) => setCategories(data)).catch((err) => console.error('Failed to load categories:', err))
+    productApi.getCategories().then(({ data }) => setCategories(data)).catch((err) => addToast({ title: 'Failed to load categories', description: getErrorMessage(err), variant: 'destructive' }))
   }, [])
 
   const refreshCart = useCallback(async () => {
@@ -87,6 +90,33 @@ export function CatalogPage() {
       <div className="mb-6">
         <BudgetIndicator />
       </div>
+
+      <div className="mb-4 md:hidden">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowMobileFilters((prev) => !prev)}
+          className="w-full flex items-center justify-center gap-2"
+        >
+          {showMobileFilters ? (
+            <>
+              <X className="h-4 w-4" />
+              Hide Filters
+            </>
+          ) : (
+            <>
+              <SlidersHorizontal className="h-4 w-4" />
+              Show Filters
+            </>
+          )}
+        </Button>
+      </div>
+
+      {showMobileFilters && (
+        <div className="mb-6 md:hidden rounded-lg border border-[hsl(var(--border))] p-4">
+          <ProductFilters facets={facets} categories={categories} idPrefix="mobile-" />
+        </div>
+      )}
 
       <div className="flex gap-6">
         <aside className="hidden md:block w-56 shrink-0">
