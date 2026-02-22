@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { usePurchaseSyncStatus } from '@/hooks/usePurchaseSyncStatus'
 import { Button } from '@/components/ui/button'
@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/Pagination'
 import { Badge } from '@/components/ui/badge'
+import { DataTable } from '@/components/ui/data-table'
+import type { Column } from '@/components/ui/data-table'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
@@ -154,6 +156,103 @@ export function PurchaseReviewsPage() {
     if (matchDialog) searchOrders()
   }, [matchDialog])
 
+  const columns = useMemo<Column<HiBobPurchaseReview>[]>(() => [
+    {
+      header: <SortHeader label="Date" ascKey="date_asc" descKey="date_desc" currentSort={sort} onSort={setSort} />,
+      accessor: (review) => (
+        <span className="whitespace-nowrap">{formatDate(review.entry_date)}</span>
+      ),
+    },
+    {
+      header: <SortHeader label="Employee" ascKey="employee_asc" descKey="employee_desc" currentSort={sort} onSort={setSort} />,
+      accessor: (review) => (
+        <button
+          className="font-medium text-left hover:underline hover:text-[hsl(var(--primary))] transition-colors"
+          onClick={() => setSelectedUserId(review.user_id)}
+        >
+          {review.user_display_name || review.hibob_employee_id}
+        </button>
+      ),
+    },
+    {
+      header: 'Description',
+      accessor: (review) => (
+        <span className="max-w-xs truncate block">{review.description}</span>
+      ),
+    },
+    {
+      header: (
+        <div className="flex justify-end">
+          <SortHeader label="Amount" ascKey="amount_asc" descKey="amount_desc" currentSort={sort} onSort={setSort} />
+        </div>
+      ),
+      className: 'text-right',
+      accessor: (review) => (
+        <span className="whitespace-nowrap font-medium text-red-600">
+          {formatCents(review.amount_cents)}
+        </span>
+      ),
+    },
+    {
+      header: 'Status',
+      className: 'text-center',
+      accessor: (review) => (
+        <Badge variant={PURCHASE_STATUS_VARIANT[review.status]}>{review.status}</Badge>
+      ),
+    },
+    {
+      header: 'Actions',
+      className: 'text-right',
+      accessor: (review) => (
+        <>
+          {review.status === 'pending' && (
+            <div className="flex justify-end gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => openMatchDialog(review)}
+                disabled={actionLoading === review.id}
+              >
+                <LinkIcon className="h-3.5 w-3.5 mr-1" /> Match
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleAdjust(review.id)}
+                disabled={actionLoading === review.id}
+              >
+                <Minus className="h-3.5 w-3.5 mr-1" /> Adjust
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleDismiss(review.id)}
+                disabled={actionLoading === review.id}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
+          {review.status === 'matched' && review.matched_order_id && (
+            <span className="text-xs text-[hsl(var(--muted-foreground))]">
+              Order: {review.matched_order_id.slice(0, 8)}...
+            </span>
+          )}
+          {review.status === 'adjusted' && (
+            <span className="text-xs text-[hsl(var(--muted-foreground))]">
+              -{formatCents(review.amount_cents)}
+            </span>
+          )}
+          {review.status === 'dismissed' && review.resolved_at && (
+            <span className="text-xs text-[hsl(var(--muted-foreground))]">
+              {formatDate(review.resolved_at)}
+            </span>
+          )}
+        </>
+      ),
+    },
+  ], [sort, actionLoading])
+
   return (
     <div>
       {/* Sync Running Banner */}
@@ -200,114 +299,25 @@ export function PurchaseReviewsPage() {
       </div>
 
       {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
+      {loading ? (
+        <Card>
+          <CardContent className="p-0">
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-[hsl(var(--muted-foreground))]" />
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
-                    <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                      <SortHeader label="Date" ascKey="date_asc" descKey="date_desc" currentSort={sort} onSort={setSort} />
-                    </th>
-                    <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                      <SortHeader label="Employee" ascKey="employee_asc" descKey="employee_desc" currentSort={sort} onSort={setSort} />
-                    </th>
-                    <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Description</th>
-                    <th className="text-right px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                      <div className="flex justify-end">
-                        <SortHeader label="Amount" ascKey="amount_asc" descKey="amount_desc" currentSort={sort} onSort={setSort} />
-                      </div>
-                    </th>
-                    <th className="text-center px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Status</th>
-                    <th className="text-right px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reviews.map(review => (
-                    <tr key={review.id} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.5)]">
-                      <td className="px-4 py-3 whitespace-nowrap">{formatDate(review.entry_date)}</td>
-                      <td className="px-4 py-3">
-                        <button
-                          className="font-medium text-left hover:underline hover:text-[hsl(var(--primary))] transition-colors"
-                          onClick={() => setSelectedUserId(review.user_id)}
-                        >
-                          {review.user_display_name || review.hibob_employee_id}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 max-w-xs truncate">{review.description}</td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap font-medium text-red-600">
-                        {formatCents(review.amount_cents)}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge variant={PURCHASE_STATUS_VARIANT[review.status]}>{review.status}</Badge>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {review.status === 'pending' && (
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openMatchDialog(review)}
-                              disabled={actionLoading === review.id}
-                            >
-                              <LinkIcon className="h-3.5 w-3.5 mr-1" /> Match
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleAdjust(review.id)}
-                              disabled={actionLoading === review.id}
-                            >
-                              <Minus className="h-3.5 w-3.5 mr-1" /> Adjust
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleDismiss(review.id)}
-                              disabled={actionLoading === review.id}
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        )}
-                        {review.status === 'matched' && review.matched_order_id && (
-                          <span className="text-xs text-[hsl(var(--muted-foreground))]">
-                            Order: {review.matched_order_id.slice(0, 8)}...
-                          </span>
-                        )}
-                        {review.status === 'adjusted' && (
-                          <span className="text-xs text-[hsl(var(--muted-foreground))]">
-                            -{formatCents(review.amount_cents)}
-                          </span>
-                        )}
-                        {review.status === 'dismissed' && review.resolved_at && (
-                          <span className="text-xs text-[hsl(var(--muted-foreground))]">
-                            {formatDate(review.resolved_at)}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {reviews.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-[hsl(var(--muted-foreground))]">
-                        No purchase reviews found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-
+            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+          </CardContent>
+        </Card>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={reviews}
+          rowKey={(review) => review.id}
+          emptyMessage="No purchase reviews found."
+        >
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
-        </CardContent>
-      </Card>
+        </DataTable>
+      )}
 
       {/* Match to Order Dialog */}
       <Dialog open={!!matchDialog} onOpenChange={() => setMatchDialog(null)}>

@@ -1,11 +1,12 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/Pagination'
 import { Badge } from '@/components/ui/badge'
+import { DataTable } from '@/components/ui/data-table'
+import type { Column } from '@/components/ui/data-table'
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate } from '@/lib/utils'
@@ -103,6 +104,95 @@ export function AdminEmployeesPage() {
     }
   }
 
+  const columns = useMemo<Column<UserAdmin>[]>(() => [
+    {
+      header: <SortHeader label="Name" ascKey="name_asc" descKey="name_desc" currentSort={sort} onSort={setSort} />,
+      accessor: (u) => (
+        <div className="flex items-center gap-3">
+          <Avatar name={u.display_name} src={u.avatar_url} size="sm" />
+          <div>
+            <div className="font-medium">{u.display_name}</div>
+            <div className="text-xs text-[hsl(var(--muted-foreground))]">{u.email}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      header: <SortHeader label="Department" ascKey="department" descKey="department" currentSort={sort} onSort={setSort} />,
+      accessor: (u) => <>{u.department || '—'}</>,
+    },
+    {
+      header: 'Role',
+      accessor: (u) => (
+        <Badge variant={u.role === 'admin' ? 'default' : u.role === 'manager' ? 'warning' : 'secondary'}>{u.role}</Badge>
+      ),
+    },
+    {
+      header: <SortHeader label="Start Date" ascKey="start_date" descKey="start_date" currentSort={sort} onSort={setSort} />,
+      accessor: (u) => <>{u.start_date ? formatDate(u.start_date) : '—'}</>,
+    },
+    {
+      header: <SortHeader label="Budget / Spent" ascKey="budget" descKey="budget" currentSort={sort} onSort={setSort} />,
+      accessor: (u) => (
+        <>
+          <div>{formatCents(u.total_budget_cents)}</div>
+          <div className="text-xs text-[hsl(var(--muted-foreground))]">
+            Spent: {formatCents(u.cached_spent_cents)}
+          </div>
+        </>
+      ),
+    },
+    {
+      header: 'Status',
+      accessor: (u) => (
+        <div className="flex flex-wrap gap-1">
+          <Badge variant={u.is_active ? 'success' : 'destructive'}>
+            {u.is_active ? 'Active' : 'Inactive'}
+          </Badge>
+          {u.probation_override && <Badge variant="warning">Early Access</Badge>}
+        </div>
+      ),
+    },
+    {
+      header: 'Actions',
+      className: 'text-right',
+      accessor: (u) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {currentUser?.role === 'admin' && (
+              <>
+                {u.role !== 'admin' && (
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeRole(u, 'admin') }}>
+                    Make Admin
+                  </DropdownMenuItem>
+                )}
+                {u.role !== 'manager' && (
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeRole(u, 'manager') }}>
+                    Make Manager
+                  </DropdownMenuItem>
+                )}
+                {u.role !== 'employee' && (
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeRole(u, 'employee') }}>
+                    Remove Role
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); toggleProbation(u) }}>
+              {u.probation_override ? 'Revoke Early Access' : 'Grant Early Access'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ], [sort, currentUser?.role])
+
   return (
     <div>
       {/* Header */}
@@ -180,117 +270,15 @@ export function AdminEmployeesPage() {
       </div>
 
       {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                    <SortHeader label="Name" ascKey="name_asc" descKey="name_desc" currentSort={sort} onSort={setSort} />
-                  </th>
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                    <SortHeader label="Department" ascKey="department" descKey="department" currentSort={sort} onSort={setSort} />
-                  </th>
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Role</th>
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                    <SortHeader label="Start Date" ascKey="start_date" descKey="start_date" currentSort={sort} onSort={setSort} />
-                  </th>
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                    <SortHeader label="Budget / Spent" ascKey="budget" descKey="budget" currentSort={sort} onSort={setSort} />
-                  </th>
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Status</th>
-                  <th className="text-right px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.id} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.5)] cursor-pointer" onClick={() => setSelectedUserId(u.id)}>
-                    {/* Avatar + Name */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar name={u.display_name} src={u.avatar_url} size="sm" />
-                        <div>
-                          <div className="font-medium">{u.display_name}</div>
-                          <div className="text-xs text-[hsl(var(--muted-foreground))]">{u.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    {/* Department */}
-                    <td className="px-4 py-3">{u.department || '—'}</td>
-                    {/* Role */}
-                    <td className="px-4 py-3">
-                      <Badge variant={u.role === 'admin' ? 'default' : u.role === 'manager' ? 'warning' : 'secondary'}>{u.role}</Badge>
-                    </td>
-                    {/* Start Date */}
-                    <td className="px-4 py-3">{u.start_date ? formatDate(u.start_date) : '—'}</td>
-                    {/* Budget / Spent */}
-                    <td className="px-4 py-3">
-                      <div>{formatCents(u.total_budget_cents)}</div>
-                      <div className="text-xs text-[hsl(var(--muted-foreground))]">
-                        Spent: {formatCents(u.cached_spent_cents)}
-                      </div>
-                    </td>
-                    {/* Status */}
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        <Badge variant={u.is_active ? 'success' : 'destructive'}>
-                          {u.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
-                        {u.probation_override && <Badge variant="warning">Early Access</Badge>}
-                      </div>
-                    </td>
-                    {/* Actions */}
-                    <td className="px-4 py-3 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {currentUser?.role === 'admin' && (
-                            <>
-                              {u.role !== 'admin' && (
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeRole(u, 'admin') }}>
-                                  Make Admin
-                                </DropdownMenuItem>
-                              )}
-                              {u.role !== 'manager' && (
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeRole(u, 'manager') }}>
-                                  Make Manager
-                                </DropdownMenuItem>
-                              )}
-                              {u.role !== 'employee' && (
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeRole(u, 'employee') }}>
-                                  Remove Role
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                            </>
-                          )}
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); toggleProbation(u) }}>
-                            {u.probation_override ? 'Revoke Early Access' : 'Grant Early Access'}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                ))}
-                {users.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-[hsl(var(--muted-foreground))]">
-                      No employees found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
-        </CardContent>
-      </Card>
+      <DataTable
+        columns={columns}
+        data={users}
+        rowKey={(u) => u.id}
+        emptyMessage="No employees found."
+        onRowClick={(u) => setSelectedUserId(u.id)}
+      >
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+      </DataTable>
 
       {selectedUserId && (
         <EmployeeDetailModal

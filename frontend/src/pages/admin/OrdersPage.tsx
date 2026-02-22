@@ -1,10 +1,12 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/Pagination'
+import { DataTable } from '@/components/ui/data-table'
+import type { Column } from '@/components/ui/data-table'
 import { adminApi } from '@/services/adminApi'
 import { formatCents, formatDate } from '@/lib/utils'
 import { ORDER_STATUS_VARIANT, DEFAULT_PAGE_SIZE, SEARCH_DEBOUNCE_MS } from '@/lib/constants'
@@ -15,7 +17,7 @@ import { SortHeader } from '@/components/ui/SortHeader'
 import { OrderDetailDialog } from '@/components/admin/OrderDetailDialog'
 import type { Order } from '@/types'
 
-const STATUS_FILTERS = ['', 'pending', 'ordered', 'delivered', 'rejected', 'cancelled'] as const
+const STATUS_FILTERS = ['', 'pending', 'ordered', 'delivered', 'rejected', 'cancelled', 'return_requested', 'returned'] as const
 
 type SortKey = 'newest' | 'oldest' | 'total_asc' | 'total_desc'
 
@@ -60,6 +62,56 @@ export function AdminOrdersPage() {
     window.open(adminApi.exportOrdersCsvUrl(params), '_blank')
   }
 
+  const columns = useMemo<Column<Order>[]>(() => [
+    {
+      header: 'Order',
+      accessor: (order) => (
+        <span className="font-mono font-medium">#{order.id.slice(0, 8)}</span>
+      ),
+    },
+    {
+      header: 'User',
+      accessor: (order) => (
+        <>
+          <div className="font-medium">{order.user_display_name || '—'}</div>
+          <div className="text-xs text-[hsl(var(--muted-foreground))]">{order.user_email}</div>
+        </>
+      ),
+    },
+    {
+      header: 'Items',
+      accessor: (order) => (
+        <>{order.items.length} item{order.items.length !== 1 ? 's' : ''}</>
+      ),
+    },
+    {
+      header: <SortHeader label="Total" ascKey="total_asc" descKey="total_desc" currentSort={sort} onSort={setSort} />,
+      accessor: (order) => (
+        <span className="font-medium">{formatCents(order.total_cents)}</span>
+      ),
+    },
+    {
+      header: 'Status',
+      accessor: (order) => (
+        <div className="flex items-center gap-2">
+          <Badge variant={ORDER_STATUS_VARIANT[order.status]}>{order.status}</Badge>
+          {order.invoices && order.invoices.length > 0 && (
+            <span title="Invoice uploaded"><FileText className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" /></span>
+          )}
+          {order.purchase_url && (
+            <span title="Purchase URL"><Link2 className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" /></span>
+          )}
+        </div>
+      ),
+    },
+    {
+      header: <SortHeader label="Date" ascKey="oldest" descKey="newest" currentSort={sort} onSort={setSort} />,
+      accessor: (order) => (
+        <span className="text-[hsl(var(--muted-foreground))]">{formatDate(order.created_at)}</span>
+      ),
+    },
+  ], [sort])
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -88,73 +140,34 @@ export function AdminOrdersPage() {
       </div>
 
       {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Order</th>
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">User</th>
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Items</th>
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                    <SortHeader label="Total" ascKey="total_asc" descKey="total_desc" currentSort={sort} onSort={setSort} />
-                  </th>
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">Status</th>
-                  <th className="text-left px-4 py-3 font-medium text-[hsl(var(--muted-foreground))]">
-                    <SortHeader label="Date" ascKey="oldest" descKey="newest" currentSort={sort} onSort={setSort} />
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && orders.length === 0 ? (
-                  [...Array(5)].map((_, i) => (
+      {loading && orders.length === 0 ? (
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <tbody>
+                  {[...Array(5)].map((_, i) => (
                     <tr key={i} className="border-b border-[hsl(var(--border))]">
                       <td colSpan={6} className="px-4 py-4"><div className="h-5 bg-gray-100 rounded animate-pulse" /></td>
                     </tr>
-                  ))
-                ) : orders.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-[hsl(var(--muted-foreground))]">No orders found.</td>
-                  </tr>
-                ) : orders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/0.5)] cursor-pointer"
-                    onClick={() => setSelected(order)}
-                  >
-                    <td className="px-4 py-3">
-                      <span className="font-mono font-medium">#{order.id.slice(0, 8)}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium">{order.user_display_name || '—'}</div>
-                      <div className="text-xs text-[hsl(var(--muted-foreground))]">{order.user_email}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {order.items.length} item{order.items.length !== 1 ? 's' : ''}
-                    </td>
-                    <td className="px-4 py-3 font-medium">{formatCents(order.total_cents)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={ORDER_STATUS_VARIANT[order.status]}>{order.status}</Badge>
-                        {order.invoices && order.invoices.length > 0 && (
-                          <span title="Invoice uploaded"><FileText className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" /></span>
-                        )}
-                        {order.purchase_url && (
-                          <span title="Purchase URL"><Link2 className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" /></span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-[hsl(var(--muted-foreground))]">{formatDate(order.created_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+          </CardContent>
+        </Card>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={orders}
+          rowKey={(order) => order.id}
+          emptyMessage="No orders found."
+          onRowClick={(order) => setSelected(order)}
+        >
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
-        </CardContent>
-      </Card>
+        </DataTable>
+      )}
 
       {/* Detail dialog */}
       <OrderDetailDialog
