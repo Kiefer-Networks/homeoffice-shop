@@ -9,7 +9,7 @@ Internal home office equipment shop for employees. Employees receive a configura
 - **Database:** PostgreSQL 16
 - **Auth:** Google OAuth 2.0, JWT (Access + Refresh tokens)
 - **Integrations:** HiBob (HRIS), Amazon via ScraperAPI (product data & pricing)
-- **Notifications:** SMTP email + Slack webhooks
+- **Notifications:** SMTP email
 
 ## Quick Start
 

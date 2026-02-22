@@ -175,8 +175,6 @@ def upgrade() -> None:
         "admin_notification_prefs",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
         sa.Column("user_id", UUID(as_uuid=True), sa.ForeignKey("users.id"), unique=True, nullable=False),
-        sa.Column("slack_enabled", sa.Boolean, nullable=False, server_default="true"),
-        sa.Column("slack_events", JSONB, nullable=False, server_default=sa.text("'[\"order.created\",\"order.cancelled\",\"hibob.sync\"]'::jsonb")),
         sa.Column("email_enabled", sa.Boolean, nullable=False, server_default="true"),
         sa.Column("email_events", JSONB, nullable=False, server_default=sa.text("'[\"order.created\"]'::jsonb")),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
