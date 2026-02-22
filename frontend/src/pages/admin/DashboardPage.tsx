@@ -31,8 +31,8 @@ export function DashboardPage() {
       setStats({
         orders: d.total_orders,
         pending: d.pending_orders,
-        ordered: 0,
-        delivered: 0,
+        ordered: d.ordered_orders ?? 0,
+        delivered: d.delivered_orders ?? 0,
         users: d.total_employees,
         products: d.total_products,
       })

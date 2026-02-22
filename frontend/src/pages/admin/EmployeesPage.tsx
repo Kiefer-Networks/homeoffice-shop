@@ -48,7 +48,7 @@ export function AdminEmployeesPage() {
   useEffect(() => {
     adminApi.listDepartments().then(({ data }) => {
       setDepartments(data.sort())
-    }).catch((err) => console.error('Failed to load departments:', err))
+    }).catch((err: unknown) => addToast({ title: 'Failed to load departments', description: getErrorMessage(err), variant: 'destructive' }))
   }, [])
 
   const load = useCallback(() => {

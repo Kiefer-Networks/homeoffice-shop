@@ -13,7 +13,8 @@ import { setAccessToken } from '@/lib/token'
 
 export function Header() {
   const { user, logout: logoutStore } = useAuthStore()
-  const { cart, setOpen: setCartOpen } = useCartStore()
+  const cart = useCartStore(s => s.cart)
+  const setCartOpen = useCartStore(s => s.setOpen)
   const { setSidebarOpen } = useUiStore()
   const { companyName } = useBrandingStore()
   const navigate = useNavigate()

@@ -11,6 +11,8 @@ import type {
 
 export interface DashboardStats {
   pending_orders: number
+  ordered_orders: number
+  delivered_orders: number
   total_orders: number
   total_products: number
   active_products: number

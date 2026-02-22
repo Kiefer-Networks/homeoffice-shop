@@ -41,7 +41,9 @@ export function EmployeeDetailModal({ userId, onClose }: EmployeeDetailModalProp
 
   const reload = () => {
     if (!userId) return
-    adminApi.getUserDetail(userId).then(({ data }) => setData(data))
+    adminApi.getUserDetail(userId)
+      .then(({ data }) => setData(data))
+      .catch((err: unknown) => addToast({ title: 'Failed to reload employee details', description: getErrorMessage(err), variant: 'destructive' }))
   }
 
   const openOverrideForm = (override?: UserBudgetOverride) => {
