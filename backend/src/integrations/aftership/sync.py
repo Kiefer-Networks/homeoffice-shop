@@ -1,6 +1,5 @@
 """AfterShip tracking sync — batch sync 4x daily (08, 12, 16, 20 UTC) and manual admin sync."""
 
-import asyncio
 import logging
 from datetime import datetime, timezone
 
@@ -22,11 +21,6 @@ from src.notifications.service import notify_user_email
 from src.services.budget_service import refresh_budget_cache
 
 logger = logging.getLogger(__name__)
-
-_scheduler_task: asyncio.Task | None = None
-
-# Run at 08:00, 12:00, 16:00, 20:00 UTC
-SYNC_HOURS = (8, 12, 16, 20)
 
 
 async def _load_order_items(db: AsyncSession, order_id) -> list[dict]:
@@ -245,44 +239,3 @@ async def sync_all_active_orders() -> dict:
         return {"checked": len(orders), "delivered": delivered_count, "api_calls": 1}
 
 
-async def _scheduler_loop() -> None:
-    """Run AfterShip sync at configured hours, deduped by date+hour."""
-    last_run_key: str | None = None
-
-    while True:
-        await asyncio.sleep(60)
-        try:
-            now = datetime.now(timezone.utc)
-
-            if now.hour not in SYNC_HOURS:
-                continue
-
-            run_key = f"{now.strftime('%Y-%m-%d')}T{now.hour}"
-            if last_run_key == run_key:
-                continue
-
-            last_run_key = run_key
-            logger.info("AfterShip scheduled sync triggered at %s", now.isoformat())
-
-            result = await sync_all_active_orders()
-            logger.info("AfterShip scheduled sync result: %s", result)
-        except Exception:
-            logger.exception("AfterShip scheduled sync failed")
-
-
-def start_aftership_scheduler() -> None:
-    global _scheduler_task
-    if not aftership_client.is_configured:
-        logger.info("AfterShip API key not configured, scheduler not started")
-        return
-    if _scheduler_task is None or _scheduler_task.done():
-        _scheduler_task = asyncio.create_task(_scheduler_loop())
-        logger.info("AfterShip scheduler started (sync at %s UTC)", SYNC_HOURS)
-
-
-def stop_aftership_scheduler() -> None:
-    global _scheduler_task
-    if _scheduler_task and not _scheduler_task.done():
-        _scheduler_task.cancel()
-        _scheduler_task = None
-        logger.info("AfterShip scheduler stopped")

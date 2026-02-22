@@ -35,9 +35,7 @@ from src.api.routes.admin import (
 )
 from src.audit.service import ensure_audit_partitions
 from src.core.config import settings
-from src.services.backup_scheduler import start_backup_scheduler, stop_backup_scheduler
-from src.integrations.aftership.sync import start_aftership_scheduler, stop_aftership_scheduler
-from src.services.delivery_scheduler import start_delivery_scheduler, stop_delivery_scheduler
+from src.services.scheduler import start_scheduler, stop_scheduler
 from src.services.settings_service import load_settings, seed_defaults
 
 logger = logging.getLogger(__name__)
@@ -73,13 +71,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             await db.commit()
         except Exception:
             logger.exception("Failed to cleanup stale cart items")
-    start_backup_scheduler()
-    start_delivery_scheduler()
-    start_aftership_scheduler()
+    start_scheduler()
     yield
-    stop_aftership_scheduler()
-    stop_delivery_scheduler()
-    stop_backup_scheduler()
+    stop_scheduler()
 
 
 app = FastAPI(

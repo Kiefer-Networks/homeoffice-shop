@@ -128,7 +128,7 @@ async def _run_employee_sync(admin_id: UUID, ip: str | None, user_agent: str | N
             logger.exception("Background employee sync failed")
 
 
-async def _create_sync_log(triggered_by: UUID) -> UUID:
+async def _create_sync_log(triggered_by: UUID | None) -> UUID:
     """Create a sync log entry in a separate committed transaction.
 
     This ensures the 'running' status is visible to all workers immediately.
