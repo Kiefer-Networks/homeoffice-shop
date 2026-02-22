@@ -10,7 +10,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { adminApi } from '@/services/adminApi'
 import { useUiStore } from '@/stores/uiStore'
 import { formatCents, formatDate, parseEuroToCents, centsToEuroInput } from '@/lib/utils'
-import { Plus, X, Pencil, Trash2, ArrowUpDown, Search, Loader2 } from 'lucide-react'
+import { Plus, X, Pencil, Trash2, ArrowUpDown, Search, Loader2, Download } from 'lucide-react'
 import { DEFAULT_PAGE_SIZE, SEARCH_DEBOUNCE_MS } from '@/lib/constants'
 import { getErrorMessage } from '@/lib/error'
 import { useAuthStore } from '@/stores/authStore'
@@ -198,7 +198,16 @@ export function AdminBudgetAdjustmentsPage() {
 
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Budget Adjustments</h1>
-        <Button onClick={() => setShowCreateDialog(true)}><Plus className="h-4 w-4 mr-1" /> Add Adjustment</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => {
+            const params: Record<string, string> = {}
+            if (debouncedSearch) params.q = debouncedSearch
+            window.open(adminApi.exportAdjustmentsCsvUrl(params), '_blank')
+          }}>
+            <Download className="h-4 w-4 mr-1" /> Export CSV
+          </Button>
+          <Button onClick={() => setShowCreateDialog(true)}><Plus className="h-4 w-4 mr-1" /> Add Adjustment</Button>
+        </div>
       </div>
 
       {/* Search bar */}

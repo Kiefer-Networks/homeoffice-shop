@@ -9,7 +9,7 @@ import { adminApi } from '@/services/adminApi'
 import { formatCents, formatDate } from '@/lib/utils'
 import { ORDER_STATUS_VARIANT, DEFAULT_PAGE_SIZE, SEARCH_DEBOUNCE_MS } from '@/lib/constants'
 import { useUiStore } from '@/stores/uiStore'
-import { Search, FileText, Link2 } from 'lucide-react'
+import { Search, FileText, Link2, Download } from 'lucide-react'
 import { getErrorMessage } from '@/lib/error'
 import { SortHeader } from '@/components/ui/SortHeader'
 import { OrderDetailDialog } from '@/components/admin/OrderDetailDialog'
@@ -53,9 +53,21 @@ export function AdminOrdersPage() {
     setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o))
   }
 
+  const handleExport = () => {
+    const params: Record<string, string> = {}
+    if (statusFilter) params.status = statusFilter
+    if (debouncedSearch) params.q = debouncedSearch
+    window.open(adminApi.exportOrdersCsvUrl(params), '_blank')
+  }
+
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Orders ({total})</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Orders ({total})</h1>
+        <Button variant="outline" size="sm" onClick={handleExport}>
+          <Download className="h-4 w-4 mr-1" /> Export CSV
+        </Button>
+      </div>
 
       {/* Search */}
       <div className="mb-4">

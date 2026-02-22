@@ -1,4 +1,7 @@
+import csv
+import io
 import logging
+from datetime import date, datetime
 from typing import Literal
 from urllib.parse import quote
 from uuid import UUID
@@ -6,7 +9,7 @@ from uuid import UUID
 from src.services.order_service import _retry_notification
 
 from fastapi import APIRouter, Depends, Query, Request, Response, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,6 +54,57 @@ async def list_all_orders(
         include_invoices=True,
     )
     return {"items": items, "total": total, "page": page, "per_page": per_page}
+
+
+@router.get("/export")
+async def export_orders_csv(
+    request: Request,
+    status: Literal["pending", "ordered", "delivered", "rejected", "cancelled"] | None = None,
+    q: str | None = Query(None, max_length=200),
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_staff),
+):
+    MAX_EXPORT_ROWS = 10000
+    items, _ = await order_service.get_orders(
+        db, status=status, q=q, page=1, per_page=MAX_EXPORT_ROWS,
+    )
+
+    # Apply date filters in Python since get_orders doesn't support them directly
+    if date_from:
+        items = [i for i in items if i.get("created_at") and i["created_at"] >= date_from]
+    if date_to:
+        items = [i for i in items if i.get("created_at") and i["created_at"] <= date_to]
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Order ID", "Employee", "Email", "Status", "Items Count", "Total (EUR)", "Created At"])
+    for item in items:
+        total_cents = item.get("total_cents") or 0
+        total_eur = f"{total_cents / 100:.2f}"
+        writer.writerow([
+            str(item.get("id", "")),
+            item.get("user_display_name", ""),
+            item.get("user_email", ""),
+            item.get("status", ""),
+            len(item.get("items", [])),
+            total_eur,
+            str(item.get("created_at", "")),
+        ])
+
+    await log_admin_action(
+        db, request, admin.id, "admin.orders.exported",
+        resource_type="order",
+        details={"filters": {"status": status, "q": q, "date_from": str(date_from) if date_from else None, "date_to": str(date_to) if date_to else None}, "row_count": len(items)},
+    )
+
+    filename = f"orders_{date.today().isoformat()}.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/{order_id}", response_model=OrderResponse)

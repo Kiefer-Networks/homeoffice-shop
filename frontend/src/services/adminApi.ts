@@ -70,6 +70,15 @@ export const adminApi = {
   unsyncOrderFromHiBob: (orderId: string) =>
     api.delete<{ detail: string; order: Order }>(`/api/admin/orders/${orderId}/sync-hibob`),
 
+  exportOrdersCsvUrl: (params?: Record<string, string>) => {
+    const query = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => { if (v) query.set(k, v) })
+    }
+    const qs = query.toString()
+    return `/api/admin/orders/export${qs ? `?${qs}` : ''}`
+  },
+
   // Users
   listUsers: (params?: Record<string, string | number>) =>
     api.get<PaginatedResponse<UserAdmin>>('/api/admin/users', { params }),
@@ -91,6 +100,15 @@ export const adminApi = {
     api.put<BudgetAdjustment>(`/api/admin/budgets/adjustments/${id}`, data),
   deleteAdjustment: (id: string) =>
     api.delete(`/api/admin/budgets/adjustments/${id}`),
+
+  exportAdjustmentsCsvUrl: (params?: Record<string, string>) => {
+    const query = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => { if (v) query.set(k, v) })
+    }
+    const qs = query.toString()
+    return `/api/admin/budgets/adjustments/export${qs ? `?${qs}` : ''}`
+  },
 
   // Settings
   getSettings: () => api.get<{ settings: Record<string, string> }>('/api/admin/settings'),

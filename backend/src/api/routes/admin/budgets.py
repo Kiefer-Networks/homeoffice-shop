@@ -1,8 +1,12 @@
+import csv
+import io
 import logging
+from datetime import date
 from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import require_staff
@@ -57,6 +61,46 @@ async def list_adjustments(
         db, user_id=user_id, q=q, sort=sort, page=page, per_page=per_page,
     )
     return {"items": items, "total": total, "page": page, "per_page": per_page}
+
+
+@router.get("/adjustments/export")
+async def export_adjustments_csv(
+    request: Request,
+    q: str | None = Query(None, max_length=200),
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_staff),
+):
+    MAX_EXPORT_ROWS = 10000
+    items, _ = await budget_service.list_adjustments(
+        db, q=q, page=1, per_page=MAX_EXPORT_ROWS,
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Employee", "Amount (EUR)", "Reason", "Created By", "Date"])
+    for item in items:
+        amount_cents = item.get("amount_cents") or 0
+        amount_eur = f"{amount_cents / 100:.2f}"
+        writer.writerow([
+            item.get("user_display_name", ""),
+            amount_eur,
+            item.get("reason", ""),
+            item.get("creator_display_name", ""),
+            str(item.get("created_at", "")),
+        ])
+
+    await log_admin_action(
+        db, request, admin.id, "admin.adjustments.exported",
+        resource_type="budget_adjustment",
+        details={"filters": {"q": q}, "row_count": len(items)},
+    )
+
+    filename = f"budget_adjustments_{date.today().isoformat()}.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/adjustments", response_model=BudgetAdjustmentResponse, status_code=201)
