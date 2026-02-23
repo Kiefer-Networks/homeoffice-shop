@@ -91,7 +91,7 @@ async def _handle_oauth_callback(
         value=tokens.refresh_token,
         httponly=True,
         secure=True,
-        samesite="strict",
+        samesite="lax",
         max_age=settings.jwt_refresh_token_expire_days * 86400,
         path="/api/auth",
     )
@@ -161,7 +161,7 @@ async def refresh_token(
         value=tokens.refresh_token,
         httponly=True,
         secure=True,
-        samesite="strict",
+        samesite="lax",
         max_age=settings.jwt_refresh_token_expire_days * 86400,
         path="/api/auth",
     )
@@ -191,6 +191,6 @@ async def logout_user(
         path="/api/auth",
         httponly=True,
         secure=True,
-        samesite="strict",
+        samesite="lax",
     )
     return response
