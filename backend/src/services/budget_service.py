@@ -182,19 +182,20 @@ async def check_budget_for_order(
     if not user:
         return False
 
-    # Lock relevant order rows to prevent concurrent checkout exploits
+    # User row is already locked above, which serialises concurrent checkouts.
+    # Aggregate queries cannot use FOR UPDATE in PostgreSQL.
     spent_result = await db.execute(
         select(func.coalesce(func.sum(Order.total_cents), 0)).where(
             Order.user_id == user_id,
             Order.status.in_(["pending", "ordered", "delivered", "return_requested", "returned"]),
-        ).with_for_update()
+        )
     )
     spent = spent_result.scalar() or 0
 
     adj_result = await db.execute(
         select(func.coalesce(func.sum(BudgetAdjustment.amount_cents), 0)).where(
             BudgetAdjustment.user_id == user_id
-        ).with_for_update()
+        )
     )
     adjustments = adj_result.scalar() or 0
 
