@@ -52,7 +52,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if path in ("/api/health", "/api/branding"):
             return await call_next(request)
 
-        if path.startswith("/api/auth"):
+        if path.startswith("/api/auth") and path not in ("/api/auth/refresh", "/api/auth/logout"):
             limit = 10
             allowed, retry_after, remaining = _limiter.is_allowed(
                 f"auth:{client_ip}", limit=limit, window_seconds=300
