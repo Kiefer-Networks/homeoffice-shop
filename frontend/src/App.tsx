@@ -123,6 +123,11 @@ function AppInit({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchBranding()
+    // Skip refresh on /callback — CallbackPage handles its own token exchange.
+    // Running both would trigger token-reuse detection and revoke the session.
+    if (window.location.pathname === '/callback') {
+      return
+    }
     authApi.refresh()
       .then(({ data }) => {
         const token = data.access_token
