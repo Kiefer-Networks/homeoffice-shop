@@ -159,7 +159,6 @@ async def create_order_from_cart(
             item_url = f"https://www.amazon.de/dp/{cart_item.variant_asin}"
 
         order_item = OrderItem(
-            order_id=order.id,
             product_id=product.id,
             quantity=cart_item.quantity,
             price_cents=item_price,
@@ -167,7 +166,7 @@ async def create_order_from_cart(
             variant_asin=cart_item.variant_asin,
             variant_value=cart_item.variant_value,
         )
-        db.add(order_item)
+        order.items.append(order_item)
 
     # Decrement stock for products that track stock
     for cart_item, product in rows:
